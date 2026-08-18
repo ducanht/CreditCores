@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ thống Quản lý Tín dụng & Trích nợ Tự động</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome 6 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-bg: #1b365d;
+      --sidebar-width: 270px;
+      --header-height: 60px;
+      --bg-light: #f4f7f6;
+      --text-main: #2c3e50;
+      --active-menu: #294b7a;
+      --accent-color: #0d6efd;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      overflow-x: hidden;
+    }
+
+    /* Sidebar Styling */
+    #sidebar {
+      width: var(--sidebar-width);
+      height: 100vh;
+      background-color: var(--primary-bg);
+      color: white;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 1000;
+      transition: all 0.3s;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.12);
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      background-color: rgba(0,0,0,0.15);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .nav-item-menu {
+      padding: 11px 20px;
+      color: rgba(255,255,255,0.78);
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      border-left: 4px solid transparent;
+      font-size: 0.92rem;
+    }
+
+    .nav-item-menu:hover {
+      background-color: rgba(255,255,255,0.06);
+      color: white;
+    }
+
+    .nav-item-menu.active {
+      background-color: var(--active-menu);
+      color: white;
+      border-left: 4px solid #0d6efd;
+      font-weight: 600;
+    }
+
+    .nav-item-menu i {
+      width: 26px;
+      font-size: 1.05rem;
+    }
+
+    .menu-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.45);
+      margin: 18px 20px 8px 20px;
+      font-weight: 700;
+    }
+
+    /* Layout Content */
+    #main-content {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #top-header {
+      height: var(--header-height);
+      background-color: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 999;
+    }
+
+    .content-wrapper {
+      padding: 24px;
+      flex-grow: 1;
+    }
+
+    /* Sections Animation */
+    .view-section {
+      display: none;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+    .view-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards & UI Elements */
+    .card-custom {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      background-color: white;
+    }
+
+    .kpi-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+
+    .status-badge-pending {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+    .status-badge-ok {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status-badge-overdue {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    /* Sub-tabs */
+    .nav-pills-custom .nav-link {
+      color: #555;
+      font-weight: 500;
+      border-radius: 8px;
+      padding: 8px 16px;
+      margin-right: 8px;
+    }
+    .nav-pills-custom .nav-link.active {
+      background-color: var(--primary-bg);
+      color: white;
+    }
+
+    .table th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .table td {
+      vertical-align: middle;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-building-columns fa-lg me-2 text-primary"></i>
+      <h5 class="mb-0 fw-bold tracking-wide">CREDIT<span class="text-primary">CORE</span></h5>
+    </div>
+
+    <div class="menu-list mt-2 pb-4">
+      <!-- Nhóm 1: Tổng quan -->
+      <div class="menu-title">TỔNG QUAN</div>
+      <div class="nav-item-menu active" onclick="switchView('view-dashboard', this)">
+        <i class="fa-solid fa-chart-pie"></i> Dashboard
+      </div>
+      <div class="nav-item-menu" onclick="switchView('view-customer-360', this)">
+        <i class="fa-solid fa-users-viewfinder"></i> Tra cứu Hồ sơ 360°
+      </div>
+
+      <!-- Nhóm 2: Tín dụng & Giám sát -->
+      <div class="menu-title mt-3">TÍN DỤNG & GIÁM SÁT</div>
+      <div class="nav-item-menu" onclick="switchView('view-credit-appraisal', this)">
+        <i class="fa-solid fa-file-signature"></i> Báo cáo Thẩm định KH
+      </div>
+      <div class="nav-item-menu" onclick="switchView('view-capital-inspection', this)">
+        <i class="fa-solid fa-clipboard-check"></i> Kiểm tra Sử dụng vốn
+      </div>
+
+      <!-- Nhóm 3: Nghiệp vụ trích nợ -->
+      <div class="menu-title mt-3">NGHIỆP VỤ TRÍCH NỢ</div>
+      <div class="nav-item-menu" onclick="switchView('view-debit-register', this)">
+        <i class="fa-solid fa-address-card"></i> Đăng ký Dịch vụ
+      </div>
+      <div class="nav-item-menu" onclick="switchView('view-debit-run', this)">
+        <i class="fa-solid fa-bolt"></i> Chạy Lệnh Kỳ thu nợ
+      </div>
+      <div class="nav-item-menu" onclick="switchView('view-debit-reconcile', this)">
+        <i class="fa-solid fa-file-invoice-dollar"></i> Đối soát & Ghi nhận
+      </div>
+
+      <!-- Nhóm 4: Rủi ro & Báo cáo -->
+      <div class="menu-title mt-3">QUẢN TRỊ & BÁO CÁO</div>
+      <div class="nav-item-menu" onclick="switchView('view-debt-warning', this)">
+        <i class="fa-solid fa-triangle-exclamation text-warning"></i> Cảnh báo Nợ tồn
+      </div>
+      <div class="nav-item-menu" onclick="switchView('view-reports', this)">
+        <i class="fa-solid fa-file-excel"></i> Xuất Báo cáo
+      </div>
+      <div class="nav-item-menu" onclick="switchView('view-settings', this)">
+        <i class="fa-solid fa-gears"></i> Cấu hình & Đồng bộ
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Wrapper -->
+  <div id="main-content">
+    <div id="top-header">
+      <div class="d-flex align-items-center">
+        <h5 class="mb-0 fw-bold text-dark" id="header-title">Dashboard Tổng quan</h5>
+      </div>
+      <div class="d-flex align-items-center">
+        <span class="badge bg-success-subtle text-success me-3 p-2 border border-success-subtle fw-medium">
+          <i class="fa-solid fa-wifi me-1"></i> Đã kết nối SQL Core
+        </span>
+        <div class="dropdown">
+          <button class="btn btn-light rounded-circle p-2 border" type="button" data-bs-toggle="dropdown">
+            <i class="fa-solid fa-user text-primary"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2">
+            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-user-pen me-2"></i> Hồ sơ cá nhân</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Đăng xuất</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-wrapper">
+      
+      <div id="view-dashboard" class="view-section active">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card card-custom p-3 h-100 border-start border-primary border-4 kpi-card">
+              <h6 class="text-muted mb-1 small fw-semibold">DƯ NỢ TRÍCH NỢ TỰ ĐỘNG</h6>
+              <h3 class="fw-bold mb-0 text-primary">12.5 Tỷ</h3>
+              <small class="text-muted">342 Hợp đồng hiệu lực</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 h-100 border-start border-success border-4 kpi-card">
+              <h6 class="text-muted mb-1 small fw-semibold">ĐÃ THU KỲ NÀY (T8/2026)</h6>
+              <h3 class="fw-bold mb-0 text-success">8.2 Tỷ</h3>
+              <small class="text-success"><i class="fa-solid fa-arrow-up me-1"></i> Đạt 94.2% kế hoạch</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 h-100 border-start border-warning border-4 kpi-card">
+              <h6 class="text-muted mb-1 small fw-semibold">SẮP ĐẾN HẠN KIỂM TRA VỐN</h6>
+              <h3 class="fw-bold mb-0 text-warning">15 HĐ</h3>
+              <small class="text-warning">Cần kiểm tra trong 30 ngày</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 h-100 border-start border-danger border-4 kpi-card">
+              <h6 class="text-muted mb-1 small fw-semibold">QUÁ HẠN KIỂM TRA / CẢNH BÁO</h6>
+              <h3 class="fw-bold mb-0 text-danger">4 HĐ</h3>
+              <small class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i> Cần xử lý ngay</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-custom p-4">
+          <h5 class="fw-bold mb-3"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Tình hình Giám sát Tín dụng & Trích nợ tháng 08/2026</h5>
+          <div class="p-5 text-center text-muted border rounded-3 bg-light" style="min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-chart-line fa-3x mb-3 text-secondary"></i>
+            <h6>Biểu đồ Lũy kế Thu nợ & Tiến độ Kiểm tra Vốn vay</h6>
+            <p class="small text-muted mb-0">Hệ thống đồng bộ dữ liệu từ SQL Core qua Google Sheets tự động</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-customer-360" class="view-section">
+        <div class="card card-custom p-4 mb-3">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" class="form-control border-start-0" id="search360" placeholder="Nhập Mã KH, Họ tên, CCCD hoặc Số HĐTD...">
+                <button class="btn btn-primary fw-semibold px-4" onclick="showNotification('Đã tìm thấy thông tin khách hàng NGUYỄN VĂN AN!')">Tra cứu 360°</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-custom p-4 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div>
+              <h5 class="fw-bold text-primary mb-1">NGUYỄN VĂN AN <span class="badge bg-success-subtle text-success fs-6 ms-2">KH008892</span></h5>
+              <span class="text-muted small">CCCD: 038086012345 | Ngày cấp: 15/05/2021 | ĐT: 0912.345.678</span>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" onclick="switchView('view-credit-appraisal', document.querySelectorAll('.nav-item-menu')[2])">
+              <i class="fa-solid fa-file-signature me-1"></i> Xem BCTĐ
+            </button>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <div class="small text-muted">Số tài khoản CASA</div>
+              <div class="fw-bold text-dark">3500 205 123456</div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Khu vực / Địa bàn</div>
+              <div class="fw-bold text-dark">Thôn 3, Xã Yên Thọ</div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Kỳ đăng ký trích nợ</div>
+              <div class="fw-bold text-success"><i class="fa-solid fa-bolt me-1"></i>Kỳ 1 (Ngày 05)</div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Tổng dư nợ các khế ước</div>
+              <div class="fw-bold text-danger">450.000.000 đ</div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-dark mt-3 mb-2"><i class="fa-solid fa-file-contract me-2 text-primary"></i>Danh sách Khế ước / Hợp đồng Tín dụng</h6>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Số HĐTD</th>
+                  <th>Sản phẩm vay</th>
+                  <th class="text-end">Số tiền vay</th>
+                  <th class="text-end">Dư nợ hiện tại</th>
+                  <th>Lãi suất</th>
+                  <th>Ngày vay</th>
+                  <th>Đáo hạn</th>
+                  <th>Trả lãi đến ngày</th>
+                  <th>Hình thức</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-bold text-primary">KU-2025-0982</td>
+                  <td>Cho vay SX Nông nghiệp</td>
+                  <td class="text-end">300.000.000 đ</td>
+                  <td class="text-end fw-bold text-danger">250.000.000 đ</td>
+                  <td>9.5% /năm</td>
+                  <td>15/08/2025</td>
+                  <td>15/08/2026</td>
+                  <td class="text-success fw-semibold">15/07/2026</td>
+                  <td><span class="badge bg-success-subtle text-success border">Trích nợ TĐ</span></td>
+                </tr>
+                <tr>
+                  <td class="fw-bold text-primary">KU-2026-0145</td>
+                  <td>Cho vay Kinh doanh TM</td>
+                  <td class="text-end">300.000.000 đ</td>
+                  <td class="text-end fw-bold text-danger">200.000.000 đ</td>
+                  <td>10.2% /năm</td>
+                  <td>10/02/2026</td>
+                  <td>10/02/2028</td>
+                  <td class="text-success fw-semibold">10/07/2026</td>
+                  <td><span class="badge bg-success-subtle text-success border">Trích nợ TĐ</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-credit-appraisal" class="view-section">
+        <!-- KPI Cards cho Phân hệ Thẩm định Tín dụng -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-primary border-4 kpi-card">
+              <span class="text-muted small fw-bold">TỔNG HỒ SƠ THẨM ĐỊNH</span>
+              <h4 class="fw-bold mb-0 text-primary">42 Hồ sơ</h4>
+              <small class="text-muted">Đang thụ lý trong tháng</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-warning border-4 kpi-card">
+              <span class="text-muted small fw-bold">ĐANG THẨM ĐỊNH / THỰC ĐỊA</span>
+              <h4 class="fw-bold mb-0 text-warning">8 Hồ sơ</h4>
+              <small class="text-warning fw-semibold">Cần thẩm định tại chỗ</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-success border-4 kpi-card">
+              <span class="text-muted small fw-bold">ĐÃ DỰ THẢO / CHỜ DUYỆT</span>
+              <h4 class="fw-bold mb-0 text-success">28 Hồ sơ</h4>
+              <small class="text-success fw-semibold">Đã lập BC Thẩm định</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-danger border-4 kpi-card">
+              <span class="text-muted small fw-bold">TỪ CHỐI / CẦN BỔ SUNG</span>
+              <h4 class="fw-bold mb-0 text-danger">6 Hồ sơ</h4>
+              <small class="text-muted">Rủi ro / Thiếu chứng từ</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Bar & Sub-Tabs Thẩm định -->
+        <div class="card card-custom p-4 mb-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <ul class="nav nav-pills nav-pills-custom" id="appraisalTabs" role="tablist">
+              <li class="nav-item">
+                <button class="nav-link active" onclick="switchAppraisalTab('tab-appr-pending', this)">
+                  <i class="fa-solid fa-hourglass-half me-1"></i> Đang thẩm định (8)
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" onclick="switchAppraisalTab('tab-appr-done', this)">
+                  <i class="fa-solid fa-circle-check text-success me-1"></i> Đã hoàn thành BCTĐ (28)
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" onclick="switchAppraisalTab('tab-appr-reject', this)">
+                  <i class="fa-solid fa-circle-xmark text-danger me-1"></i> Từ chối / Bổ sung (6)
+                </button>
+              </li>
+            </ul>
+
+            <div class="d-flex gap-2">
+              <input type="text" class="form-control form-control-sm" id="searchAppraisal" placeholder="Lọc theo Mã KH, Tên, Số tiền vay..." style="width: 220px;" onkeyup="filterAppraisalTable()">
+              <button class="btn btn-sm btn-primary fw-semibold" onclick="openAppraisalModal('KH009981', 'TRẦN THỊ HỒNG', '400000000')">
+                <i class="fa-solid fa-plus me-1"></i> Lập BCTĐ Mới
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 1: ĐANG THẨM ĐỊNH -->
+          <div id="tab-appr-pending" class="appraisal-tab-content">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Mã KH / Họ tên</th>
+                    <th>Nhu cầu Vốn vay</th>
+                    <th>Sản phẩm vay</th>
+                    <th>Hạn mức đề xuất</th>
+                    <th>Định giá TSĐB</th>
+                    <th>Xếp hạng CIC</th>
+                    <th>Cán bộ Thẩm định</th>
+                    <th class="text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold text-muted">1</td>
+                    <td>
+                      <div class="fw-bold text-primary">KH009981</div>
+                      <div class="small fw-semibold">TRẦN THỊ HỒNG</div>
+                    </td>
+                    <td>
+                      <div class="fw-bold text-dark">Vay Mua xe tải chở hàng</div>
+                      <div class="small text-muted">Kinh doanh vận tải</div>
+                    </td>
+                    <td class="fw-bold text-primary">400.000.000 đ</td>
+                    <td class="fw-bold text-success">350.000.000 đ</td>
+                    <td>
+                      <div class="fw-semibold">650.000.000 đ</div>
+                      <small class="text-muted">BĐS + Đăng ký xe</small>
+                    </td>
+                    <td><span class="badge bg-success-subtle text-success border">Nhóm 1 (Tốt)</span></td>
+                    <td>Trần Văn Bình</td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-warning text-dark fw-semibold me-1" onclick="openAppraisalModal('KH009981', 'TRẦN THỊ HỒNG', '400000000')">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Lập BCTĐ
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold text-muted">2</td>
+                    <td>
+                      <div class="fw-bold text-primary">KH008712</div>
+                      <div class="small fw-semibold">PHẠM QUỐC CƯỜNG</div>
+                    </td>
+                    <td>
+                      <div class="fw-bold text-dark">Mở rộng xưởng mộc</div>
+                      <div class="small text-muted">Sản xuất TTCN</div>
+                    </td>
+                    <td class="fw-bold text-primary">600.000.000 đ</td>
+                    <td class="fw-bold text-success">500.000.000 đ</td>
+                    <td>
+                      <div class="fw-semibold">900.000.000 đ</div>
+                      <small class="text-muted">QSDĐ</small>
+                    </td>
+                    <td><span class="badge bg-info-subtle text-info border">Nhóm 1 (Bình thường)</span></td>
+                    <td>Phạm Hoàng Nam</td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-warning text-dark fw-semibold me-1" onclick="openAppraisalModal('KH008712', 'PHẠM QUỐC CƯỜNG', '600000000')">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Lập BCTĐ
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 2: ĐÃ HOÀN THÀNH BCTĐ -->
+          <div id="tab-appr-done" class="appraisal-tab-content" style="display: none;">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Mã BCTĐ</th>
+                    <th>Mã KH / Họ tên</th>
+                    <th>Số tiền duyệt vay</th>
+                    <th>Thời hạn vay</th>
+                    <th>Lãi suất duyệt</th>
+                    <th>Đánh giá rủi ro</th>
+                    <th>Kết luận Thẩm định</th>
+                    <th class="text-center">File BCTĐ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold text-muted">1</td>
+                    <td><strong class="text-dark">BCTD-2026-0811</strong></td>
+                    <td>
+                      <div class="fw-bold text-primary">KH003411</div>
+                      <div class="small fw-semibold">LÊ THỊ HOA</div>
+                    </td>
+                    <td class="fw-bold text-success">500.000.000 đ</td>
+                    <td>12 Tháng</td>
+                    <td>9.5% /năm</td>
+                    <td><span class="badge bg-success text-white"><i class="fa-solid fa-shield-halved me-1"></i> Rủi ro thấp</span></td>
+                    <td><span class="badge status-badge-ok">✔ ĐỦ ĐIỀU KIỆN CẤP TÍN DỤNG</span></td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-outline-danger" onclick="showNotification('Đang xem file BCTD-2026-0811.pdf')">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Xem PDF
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 3: TỪ CHỐI / BỔ SUNG -->
+          <div id="tab-appr-reject" class="appraisal-tab-content" style="display: none;">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr class="table-danger">
+                    <th>STT</th>
+                    <th>Mã KH / Họ tên</th>
+                    <th>Số tiền đề xuất</th>
+                    <th>Lý do từ chối / Bổ sung</th>
+                    <th>Đánh giá rủi ro chính</th>
+                    <th>Cán bộ phụ trách</th>
+                    <th class="text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold text-muted">1</td>
+                    <td>
+                      <div class="fw-bold text-primary">KH004109</div>
+                      <div class="small fw-semibold">BÙI VĂN THÁI</div>
+                    </td>
+                    <td class="fw-bold">800.000.000 đ</td>
+                    <td><span class="text-danger fw-semibold">TSĐB không đủ giá trị pháp lý, dòng tiền yếu</span></td>
+                    <td>Phương án kinh doanh không khả thi</td>
+                    <td>Nguyễn Thị Mai</td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-outline-secondary" onclick="openAppraisalModal('KH004109', 'BÙI VĂN THÁI', '800000000')">
+                        <i class="fa-solid fa-eye me-1"></i> Xem lại BCTĐ
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-capital-inspection" class="view-section">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-warning border-4 kpi-card">
+              <span class="text-muted small fw-bold">SẮP ĐẾN HẠN KIỂM TRA</span>
+              <h4 class="fw-bold mb-0 text-warning">15 Hợp đồng</h4>
+              <small class="text-muted">Cần kiểm tra trong 30 ngày</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-danger border-4 kpi-card">
+              <span class="text-muted small fw-bold">QUÁ HẠN KIỂM TRA</span>
+              <h4 class="fw-bold mb-0 text-danger">4 Hợp đồng</h4>
+              <small class="text-danger fw-semibold">Cần xử lý biên bản ngay</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-success border-4 kpi-card">
+              <span class="text-muted small fw-bold">ĐÃ KIỂM TRA THÁNG NÀY</span>
+              <h4 class="fw-bold mb-0 text-success">38 Hợp đồng</h4>
+              <small class="text-success fw-semibold">Đạt 90.4% kế hoạch</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-secondary border-4 kpi-card">
+              <span class="text-muted small fw-bold">CẢNH BÁO SỬ DỤNG SAI MỤC ĐÍCH</span>
+              <h4 class="fw-bold mb-0 text-dark">1 HĐ</h4>
+              <small class="text-muted">Đề xuất thu hồi nợ sớm</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-custom p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <ul class="nav nav-pills nav-pills-custom" id="inspectionTabs">
+              <li class="nav-item">
+                <button class="nav-link active" onclick="switchInspectionTab('tab-insp-upcoming', this)">
+                  <i class="fa-solid fa-clock me-1"></i> Sắp đến hạn (15)
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" onclick="switchInspectionTab('tab-insp-overdue', this)">
+                  <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> Quá hạn (4)
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" onclick="switchInspectionTab('tab-insp-done', this)">
+                  <i class="fa-solid fa-circle-check text-success me-1"></i> Đã kiểm tra (38)
+                </button>
+              </li>
+            </ul>
+
+            <div class="d-flex gap-2">
+              <input type="text" class="form-control form-control-sm" id="searchInspect" placeholder="Lọc HĐTD, Tên KH..." style="width: 200px;">
+              <button class="btn btn-sm btn-primary fw-semibold" onclick="openInspectionModal('KU-2025-0982', 'KH008892', 'NGUYỄN VĂN AN')">
+                <i class="fa-solid fa-plus me-1"></i> Lập Biên Bản Mới
+              </button>
+            </div>
+          </div>
+
+          <div id="tab-insp-upcoming" class="inspection-tab-content">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Số HĐTD</th>
+                    <th>Mã KH / Họ tên</th>
+                    <th>Số tiền vay</th>
+                    <th>Dư nợ</th>
+                    <th>Ngày giải ngân</th>
+                    <th>Hạn KT tiếp theo</th>
+                    <th>Cán bộ phụ trách</th>
+                    <th class="text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold text-muted">1</td>
+                    <td class="fw-bold text-primary">KU-2025-0982</td>
+                    <td>
+                      <div class="fw-bold">KH008892</div>
+                      <div class="small text-muted">NGUYỄN VĂN AN</div>
+                    </td>
+                    <td>300.000.000 đ</td>
+                    <td class="fw-bold text-danger">250.000.000 đ</td>
+                    <td>15/08/2025</td>
+                    <td><span class="badge status-badge-pending">25/08/2026 (Còn 7 ngày)</span></td>
+                    <td>Trần Văn Bình</td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-primary fw-semibold" onclick="openInspectionModal('KU-2025-0982', 'KH008892', 'NGUYỄN VĂN AN')">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Lập Biên Bản
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="tab-insp-overdue" class="inspection-tab-content" style="display: none;">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr class="table-danger">
+                    <th>STT</th>
+                    <th>Số HĐTD</th>
+                    <th>Mã KH / Họ tên</th>
+                    <th>Dư nợ</th>
+                    <th>Hạn KT gần nhất</th>
+                    <th>Số ngày quá hạn</th>
+                    <th>Cán bộ phụ trách</th>
+                    <th class="text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold text-muted">1</td>
+                    <td class="fw-bold text-primary">KU-2025-0112</td>
+                    <td>
+                      <div class="fw-bold">KH001204</div>
+                      <div class="small text-muted">ĐẶNG THỊ MAI</div>
+                    </td>
+                    <td class="fw-bold text-danger">420.000.000 đ</td>
+                    <td>01/08/2026</td>
+                    <td><span class="badge status-badge-overdue">Quá 17 ngày</span></td>
+                    <td>Phạm Hoàng Nam</td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-danger fw-semibold" onclick="openInspectionModal('KU-2025-0112', 'KH001204', 'ĐẶNG THỊ MAI')">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Xử lý ngay
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="tab-insp-done" class="inspection-tab-content" style="display: none;">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Số HĐTD</th>
+                    <th>Mã KH / Họ tên</th>
+                    <th>Ngày KT thực tế</th>
+                    <th>Hình thức</th>
+                    <th>Đánh giá mục đích</th>
+                    <th>Mức độ rủi ro</th>
+                    <th class="text-center">Biên bản</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-bold text-muted">1</td>
+                    <td class="fw-bold text-primary">KU-2026-0145</td>
+                    <td>
+                      <div class="fw-bold">KH008892</div>
+                      <div class="small text-muted">NGUYỄN VĂN AN</div>
+                    </td>
+                    <td>10/08/2026</td>
+                    <td>Thực địa tận nơi</td>
+                    <td><span class="badge status-badge-ok">✔ Đúng mục đích</span></td>
+                    <td><span class="badge bg-success-subtle text-success">An toàn</span></td>
+                    <td class="text-center">
+                      <button class="btn btn-sm btn-outline-secondary" onclick="showNotification('Đang mở Biên bản kiểm tra PDF: BBKT-KU20260145.pdf')">
+                        <i class="fa-solid fa-file-pdf"></i> Xem BB
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-debit-register" class="view-section">
+        <div class="card card-custom p-4 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-primary mb-0"><i class="fa-solid fa-address-card me-2"></i>Danh sách Khách hàng Đăng ký Dịch vụ Trích nợ Tự động</h5>
+            <button class="btn btn-sm btn-success fw-semibold" onclick="openDebitRegisterModal()">
+              <i class="fa-solid fa-user-plus me-1"></i> Đăng ký Khách hàng Mới
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Mã KH</th>
+                  <th>Họ và Tên</th>
+                  <th>Số CCCD/GTTT</th>
+                  <th>Địa chỉ</th>
+                  <th>Số TK Thanh toán (CASA)</th>
+                  <th>Kỳ trích nợ đăng ký</th>
+                  <th>Trạng thái</th>
+                  <th class="text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-bold text-primary">KH008892</td>
+                  <td class="fw-semibold">NGUYỄN VĂN AN</td>
+                  <td>038086012345</td>
+                  <td>Thôn 3, Xã Yên Thọ</td>
+                  <td class="fw-bold text-dark">3500 205 123456</td>
+                  <td><span class="badge bg-primary">Kỳ 1 (Ngày 05)</span></td>
+                  <td><span class="badge status-badge-ok">Đang hoạt động</span></td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="openDebitRegisterModal('KH008892')"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="fw-bold text-primary">KH003411</td>
+                  <td class="fw-semibold">LÊ THỊ HOA</td>
+                  <td>038192004812</td>
+                  <td>Thôn 1, Xã Yên Phong</td>
+                  <td class="fw-bold text-dark">3500 205 889911</td>
+                  <td><span class="badge bg-info text-dark">Kỳ 2 (Ngày 15)</span></td>
+                  <td><span class="badge status-badge-ok">Đang hoạt động</span></td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="openDebitRegisterModal('KH003411')"><i class="fa-solid fa-pen-to-square"></i> Sửa</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-debit-run" class="view-section">
+        <div class="card card-custom p-4 mb-4">
+          <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-bolt me-2"></i>Khởi tạo & Chạy Lệnh Kỳ thu nợ Tự động</h5>
+          <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
+            <div class="col-md-3">
+              <label class="form-label fw-semibold small text-muted">Chọn Tháng/Năm Thu nợ</label>
+              <input type="month" class="form-control fw-bold" id="runThangNam" value="2026-08">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold small text-muted">Chọn Đợt / Kỳ trích nợ</label>
+              <select class="form-select fw-bold" id="runLanTrich">
+                <option value="1">Lần 1 (Ngày 05 - Đầu kỳ)</option>
+                <option value="2">Lần 2 (Ngày 15 - Giữa kỳ)</option>
+                <option value="3">Lần 3 (Ngày 25 - Vét nợ cuối kỳ)</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary fw-semibold w-100" onclick="executeDebitRun()">
+                <i class="fa-solid fa-gears me-1"></i> Lập Bảng kê Trích nợ
+              </button>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-success fw-semibold w-100" onclick="exportDebitBatchExcel()">
+                <i class="fa-solid fa-file-excel me-1"></i> Xuất File Lệnh Core
+              </button>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-dark mb-2">Danh sách Tài khoản cần trích tiền đợt này (Mã đợt: 202608-L1)</h6>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Mã Giao dịch</th>
+                  <th>Mã KH / Họ tên</th>
+                  <th>Số TK CASA</th>
+                  <th class="text-end">Phải thu Gốc</th>
+                  <th class="text-end">Phải thu Lãi</th>
+                  <th class="text-end">Nợ tồn kỳ trước</th>
+                  <th class="text-end fw-bold">TỔNG PHẢI TRÍCH</th>
+                  <th class="text-center">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>TXN-88A91B</td>
+                  <td>
+                    <div class="fw-bold text-primary">KH008892</div>
+                    <div class="small fw-semibold">NGUYỄN VĂN AN</div>
+                  </td>
+                  <td class="fw-bold">3500 205 123456</td>
+                  <td class="text-end">0 đ</td>
+                  <td class="text-end">3.680.000 đ</td>
+                  <td class="text-end text-muted">0 đ</td>
+                  <td class="text-end fw-bold text-danger">3.680.000 đ</td>
+                  <td class="text-center"><span class="badge status-badge-pending">Chờ cấn trừ Core</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-debit-reconcile" class="view-section">
+        <div class="card card-custom p-4 mb-4">
+          <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Đối soát & Ghi nhận Kết quả Trích nợ từ Core</h5>
+          <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Tải lên File kết quả từ Ngân hàng / CoreBanking (Excel/CSV)</label>
+              <input type="file" class="form-control" id="reconcileFile">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button class="btn btn-primary fw-semibold w-100" onclick="processReconciliation()">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i> Tải & Đối soát Tự động
+              </button>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <div class="card p-3 border-start border-success border-4 bg-success-subtle">
+                <span class="small fw-bold text-success">TRÍCH THÀNH CÔNG ĐỦ</span>
+                <h4 class="fw-bold text-success mb-0">318 KH (7.8 Tỷ)</h4>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3 border-start border-warning border-4 bg-warning-subtle">
+                <span class="small fw-bold text-warning-emphasis">TRÍCH THÀNH CÔNG 1 PHẦN</span>
+                <h4 class="fw-bold text-warning-emphasis mb-0">18 KH (320 Triệu)</h4>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3 border-start border-danger border-4 bg-danger-subtle">
+                <span class="small fw-bold text-danger">TRÍCH THẤT BẠI (KHÔNG ĐỦ SỐ DƯ)</span>
+                <h4 class="fw-bold text-danger mb-0">6 KH (85 Triệu)</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-debt-warning" class="view-section">
+        <div class="card card-custom p-4 mb-4">
+          <h5 class="fw-bold text-danger mb-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Cảnh báo Nợ tồn đọng & Chuyển kỳ tiếp theo</h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr class="table-danger">
+                  <th>Mã KH / Họ tên</th>
+                  <th>Số HĐTD</th>
+                  <th>Số tiền Phải thu</th>
+                  <th>Số tiền Đã trích</th>
+                  <th class="fw-bold text-danger">CÒN NỢ TỒN</th>
+                  <th>Nguyên nhân</th>
+                  <th>Cán bộ đôn đốc</th>
+                  <th class="text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="fw-bold text-primary">KH004109</div>
+                    <div class="small fw-semibold">BÙI VĂN THÁI</div>
+                  </td>
+                  <td class="fw-bold">KU-2025-0411</td>
+                  <td>5.400.000 đ</td>
+                  <td>2.000.000 đ</td>
+                  <td class="fw-bold text-danger">3.400.000 đ</td>
+                  <td><span class="badge bg-danger-subtle text-danger">Số dư CASA không đủ</span></td>
+                  <td>Nguyễn Thị Mai</td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-danger" onclick="showNotification('Đã gởi thông báo nhắc nợ tới SĐT KH004109')">
+                      <i class="fa-solid fa-bell me-1"></i> Nhắc nợ
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-reports" class="view-section">
+        <div class="card card-custom p-4 mb-4">
+          <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-file-excel me-2"></i>Xuất Báo cáo Quản trị & Đối soát Tín dụng</h5>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="card p-3 border text-center h-100">
+                <i class="fa-solid fa-file-invoice fa-2x text-primary mb-2"></i>
+                <h6>Báo cáo Tổng hợp Trích nợ Kỳ</h6>
+                <p class="small text-muted">Xuất danh sách tổng hợp thu gốc/lãi trích nợ tự động hàng tháng.</p>
+                <button class="btn btn-sm btn-outline-primary mt-auto" onclick="showNotification('Đang tải Báo cáo Tổng hợp Trích nợ...')">Xuất Báo Báo Excel</button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3 border text-center h-100">
+                <i class="fa-solid fa-clipboard-check fa-2x text-success mb-2"></i>
+                <h6>Báo cáo Kiểm tra Sử dụng Vốn</h6>
+                <p class="small text-muted">Thống kê tiến độ kiểm tra vốn vay sau giải ngân và phân loại rủi ro.</p>
+                <button class="btn btn-sm btn-outline-success mt-auto" onclick="showNotification('Đang tải Báo cáo Kiểm tra Sử dụng vốn...')">Xuất Báo Cáo Excel</button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card p-3 border text-center h-100">
+                <i class="fa-solid fa-shield-cat fa-2x text-danger mb-2"></i>
+                <h6>Báo cáo Cảnh báo Nợ tồn</h6>
+                <p class="small text-muted">Danh sách các khoản nợ trích thiếu, chuyển giao đôn đốc thu nợ.</p>
+                <button class="btn btn-sm btn-outline-danger mt-auto" onclick="showNotification('Đang tải Báo cáo Cảnh báo Nợ tồn...')">Xuất Báo Cáo Excel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-settings" class="view-section">
+        <div class="card card-custom p-4 mb-4">
+          <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-gears me-2"></i>Cấu hình Hệ thống & Trạng thái Đồng bộ SQL Server</h5>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="card p-3 bg-light border">
+                <h6 class="fw-bold text-dark mb-2">Trạng thái Hàng đợi Google Sheets (Sheet SETTING)</h6>
+                <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Lệnh gần nhất:</span><span class="fw-bold">SYNC_DATA</span></div>
+                <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Trạng thái Daemon:</span><span class="badge bg-success">SUCCESS</span></div>
+                <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Bản ghi đồng bộ:</span><span class="fw-bold">342 Hợp đồng</span></div>
+                <div class="d-flex justify-content-between small"><span class="text-muted">Cập nhật lần cuối:</span><span class="fw-bold">18/08/2026 08:00:00</span></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card p-3 bg-light border">
+                <h6 class="fw-bold text-dark mb-2">Kích hoạt Đồng bộ Thủ công</h6>
+                <p class="small text-muted mb-3">Gửi lệnh yêu cầu Daemon Python trên máy chủ SQL Server quét dữ liệu dư nợ mới nhất.</p>
+                <button class="btn btn-primary fw-semibold" onclick="triggerManualSync()">
+                  <i class="fa-solid fa-rotate me-1"></i> Gửi lệnh Cập nhật từ SQL
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: LẬP / CẬP NHẬT BÁO CÁO THẨM ĐỊNH KHÁCH HÀNG -->
+  <div class="modal fade" id="modalAppraisal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-signature me-2"></i>Báo cáo Thẩm định Khách hàng & Phê duyệt Tín dụng</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="formAppraisal">
+            <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-id-card me-2"></i>I. THÔNG TIN KHÁCH HÀNG & NHU CẦU VAY VỐN</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-3">
+                <label class="form-label fw-semibold small text-muted">Mã Khách hàng</label>
+                <input type="text" class="form-control fw-bold" id="apprMaKH" readonly>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold small text-muted">Họ và Tên Khách hàng</label>
+                <input type="text" class="form-control fw-bold" id="apprHoTen" readonly>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold small text-muted">Số tiền Nhu cầu</label>
+                <input type="text" class="form-control fw-bold text-primary" id="apprTienDeXuat" readonly>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold small text-muted">Ngày lập Báo cáo</label>
+                <input type="date" class="form-control" id="apprNgayLap" required>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-chart-line me-2"></i>II. ĐÁNH GIÁ TÀI CHÍNH & TÀI SẢN ĐẢM BẢO</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Thu nhập bình quân</label>
+                <input type="number" class="form-control" id="apprThuNhap" value="25000000">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Chi phí sinh hoạt & nợ khác</label>
+                <input type="number" class="form-control" id="apprChiPhi" value="10000000">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Dòng tiền thặng dư</label>
+                <input type="number" class="form-control fw-bold text-success" id="apprThangDu" value="15000000" readonly>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Xếp hạng CIC</label>
+                <select class="form-select fw-semibold" id="apprXepHangCIC">
+                  <option value="Hạng A (Tốt)">Hạng A (Tốt - Không nợ xấu)</option>
+                  <option value="Hạng B (Trung bình)">Hạng B (Bình thường)</option>
+                  <option value="Hạng C (Cần lưu ý)">Hạng C (Có nợ nhóm 2 trong 12 tháng)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Loại Tài sản Đảm bảo</label>
+                <select class="form-select" id="apprLoaiTS">
+                  <option value="QSDĐ">Quyền sử dụng đất (Sổ đỏ / Sổ hồng)</option>
+                  <option value="Phương tiện">Đăng ký Ô tô / Xe máy</option>
+                  <option value="Sổ tiết kiệm">Tiền gửi tiết kiệm / Giấy tờ có giá</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Giá trị Định giá TSĐB</label>
+                <input type="number" class="form-control fw-bold" id="apprGiaTriTS" value="700000000">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Tỷ lệ Tài trợ đề xuất (LTV)</label>
+                <input type="text" class="form-control fw-bold text-info" id="apprLTV" value="57.1%" readonly>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-gavel me-2"></i>III. KẾT LUẬN THẨM ĐỊNH & PHÊ DUYỆT</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold text-success">Đề xuất Hạn mức Vay</label>
+                <input type="number" class="form-control fw-bold text-success border-success" id="apprSoTienDuyet" value="350000000">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Thời hạn Vay đề xuất</label>
+                <select class="form-select" id="apprThoiHan">
+                  <option value="12">12 Tháng</option>
+                  <option value="24" selected>24 Tháng</option>
+                  <option value="36">36 Tháng</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Lãi suất Cho vay đề xuất</label>
+                <input type="text" class="form-control fw-bold" id="apprLaiSuat" value="9.5% /năm">
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Đánh giá Mức độ Rủi ro</label>
+                <select class="form-select fw-semibold" id="apprMucDoRuiRo">
+                  <option value="Rủi ro thấp" class="text-success">✔ RỦI RO THẤP</option>
+                  <option value="Rủi ro trung bình" class="text-warning">⚠ RỦI RO TRUNG BÌNH</option>
+                  <option value="Rủi ro cao" class="text-danger">✖ RỦI RO CAO</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Kết luận Cán bộ Thẩm định</label>
+                <select class="form-select fw-semibold" id="apprKetLuan">
+                  <option value="Đồng ý cấp tín dụng" class="text-success">✔ ĐỒNG Ý CẤP TÍN DỤNG</option>
+                  <option value="Từ chối cấp tín dụng" class="text-danger">✖ TỪ CHỐI CẤP TÍN DỤNG</option>
+                </select>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary fw-semibold" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-success fw-semibold px-4" onclick="saveAppraisalReport()">
+            <i class="fa-solid fa-check me-1"></i> Lưu & Trình Phê Duyệt
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CẬP NHẬT BIÊN BẢN KIỂM TRA SỬ DỤNG VỐN -->
+  <div class="modal fade" id="modalInspection" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-clipboard-check me-2"></i>Cập nhật Biên bản Kiểm tra Sử dụng Vốn Vay</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="formInspection">
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small text-muted">Số Hợp đồng Tín dụng</label>
+                <input type="text" class="form-control fw-bold" id="inspSoHDTD" readonly>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small text-muted">Mã Khách hàng</label>
+                <input type="text" class="form-control fw-bold" id="inspMaKH" readonly>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small text-muted">Tên Khách hàng</label>
+                <input type="text" class="form-control fw-bold" id="inspHoTen" readonly>
+              </div>
+            </div>
+
+            <hr class="my-3">
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Ngày thực hiện kiểm tra</label>
+                <input type="date" class="form-control" id="inspNgayKT" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Hình thức kiểm tra</label>
+                <select class="form-select" id="inspHinhThuc">
+                  <option value="Thực địa">Kiểm tra thực địa tận nơi</option>
+                  <option value="Chứng từ">Kiểm tra qua Chứng từ / Hóa đơn</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Đánh giá Mục đích Sử dụng Vốn</label>
+              <select class="form-select fw-semibold" id="inspDanhGiaMucDich">
+                <option value="Đúng mục đích" class="text-success">✔ ĐÚNG MỤC ĐÍCH VAY NỐI TRONG HỢP ĐỒNG</option>
+                <option value="Sai mục đích" class="text-danger">✖ SAI MỤC ĐÍCH VAY VỐN</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Mô tả thực tế & Hiện trạng TSBĐ</label>
+              <textarea class="form-control" rows="3" id="inspMoTa" placeholder="Nhập mô tả chi tiết thực tế sử dụng vốn..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary fw-semibold" data-bs-dismiss="modal">Hủy bỏ</button>
+          <button type="button" class="btn btn-primary fw-semibold px-4" onclick="saveInspectionResult()">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Lưu Biên Bản
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL THÔNG BÁO CHUNG -->
+  <div class="modal fade" id="modalNotice" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-circle-info me-2"></i>Thông báo Hệ thống</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+          <i class="fa-solid fa-circle-check fa-3x text-success mb-3" id="noticeIcon"></i>
+          <p class="mb-0 fs-6 fw-semibold" id="noticeMessage">Thao tác thành công!</p>
+        </div>
+        <div class="modal-footer bg-light justify-content-center">
+          <button type="button" class="btn btn-primary px-4 fw-semibold" data-bs-dismiss="modal">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+
+    function showNotification(msg) {
+      document.getElementById('noticeMessage').innerText = msg;
+      const modal = new bootstrap.Modal(document.getElementById('modalNotice'));
+      modal.show();
+    }
+
+    function switchView(viewId, menuItem) {
+      const allMenus = document.querySelectorAll('.nav-item-menu');
+      allMenus.forEach(menu => menu.classList.remove('active'));
+      
+      if (menuItem) menuItem.classList.add('active');
+
+      const menuText = menuItem ? menuItem.innerText.trim() : 'Dashboard';
+      document.getElementById('header-title').innerText = menuText;
+
+      const allViews = document.querySelectorAll('.view-section');
+      allViews.forEach(view => view.classList.remove('active'));
+
+      const selectedView = document.getElementById(viewId);
+      if (selectedView) {
+        selectedView.classList.add('active');
+      }
+    }
+
+    function switchInspectionTab(tabId, btnEl) {
+      const tabBtns = document.querySelectorAll('#inspectionTabs .nav-link');
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+      btnEl.classList.add('active');
+
+      const tabContents = document.querySelectorAll('.inspection-tab-content');
+      tabContents.forEach(content => content.style.display = 'none');
+
+      const targetContent = document.getElementById(tabId);
+      if (targetContent) targetContent.style.display = 'block';
+    }
+
+    function switchAppraisalTab(tabId, btnEl) {
+      const tabBtns = document.querySelectorAll('#appraisalTabs .nav-link');
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+      btnEl.classList.add('active');
+
+      const tabContents = document.querySelectorAll('.appraisal-tab-content');
+      tabContents.forEach(content => content.style.display = 'none');
+
+      const targetContent = document.getElementById(tabId);
+      if (targetContent) targetContent.style.display = 'block';
+    }
+
+    function openAppraisalModal(maKH, hoTen, soTienDeXuat) {
+      document.getElementById('apprMaKH').value = maKH;
+      document.getElementById('apprHoTen').value = hoTen;
+      document.getElementById('apprTienDeXuat').value = parseInt(soTienDeXuat).toLocaleString('vi-VN') + " đ";
+      document.getElementById('apprNgayLap').value = new Date().toISOString().split('T')[0];
+
+      const modalEl = new bootstrap.Modal(document.getElementById('modalAppraisal'));
+      modalEl.show();
+    }
+
+    function saveAppraisalReport() {
+      const maKH = document.getElementById('apprMaKH').value;
+      const hoTen = document.getElementById('apprHoTen').value;
+      
+      const modalEl = bootstrap.Modal.getInstance(document.getElementById('modalAppraisal'));
+      if (modalEl) modalEl.hide();
+
+      showNotification("Đã lưu thành công Báo cáo Thẩm định Khách hàng cho: " + hoTen + " (" + maKH + ")");
+    }
+
+    function filterAppraisalTable() {
+      const input = document.getElementById("searchAppraisal").value.toUpperCase();
+      const activeTabContent = document.querySelector('.appraisal-tab-content:not([style*="display: none"])');
+      if (!activeTabContent) return;
+
+      const tr = activeTabContent.getElementsByTagName("tr");
+      for (let i = 1; i < tr.length; i++) {
+        let textContent = tr[i].textContent || tr[i].innerText;
+        tr[i].style.display = textContent.toUpperCase().indexOf(input) > -1 ? "" : "none";
+      }
+    }
+
+    function openInspectionModal(soHDTD, maKH, hoTen) {
+      document.getElementById('inspSoHDTD').value = soHDTD;
+      document.getElementById('inspMaKH').value = maKH;
+      document.getElementById('inspHoTen').value = hoTen;
+      document.getElementById('inspNgayKT').value = new Date().toISOString().split('T')[0];
+
+      const modalEl = new bootstrap.Modal(document.getElementById('modalInspection'));
+      modalEl.show();
+    }
+
+    function saveInspectionResult() {
+      const soHDTD = document.getElementById('inspSoHDTD').value;
+      const modalEl = bootstrap.Modal.getInstance(document.getElementById('modalInspection'));
+      if (modalEl) modalEl.hide();
+
+      showNotification("Đã lưu Biên bản kiểm tra sử dụng vốn cho HĐTD: " + soHDTD);
+    }
+
+    function openDebitRegisterModal(maKH) {
+      showNotification("Mở form Đăng ký / Chỉnh sửa dịch vụ Trích nợ cho: " + (maKH || "Mới"));
+    }
+
+    function executeDebitRun() {
+      showNotification("Đã khởi tạo Bảng kê Trích nợ tự động thành công cho đợt 202608-L1!");
+    }
+
+    function exportDebitBatchExcel() {
+      showNotification("Đang kết xuất File Excel lệnh trích nợ gửi Ngân hàng CoreBanking...");
+    }
+
+    function processReconciliation() {
+      showNotification("Đã hoàn tất đối soát dữ liệu từ File Core. Đã phân loại 318 thành công, 18 một phần và 6 thất bại.");
+    }
+
+    function triggerManualSync() {
+      showNotification("Đã gửi cờ yêu cầu SYNC_DATA tới Sheet SETTING. Daemon Python đang xử lý...");
+    }
+  </script>
+</body>
+</html>

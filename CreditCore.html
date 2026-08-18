@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ thống Quản lý Tín dụng & Trích nợ Core - Co-opBank</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome 6 Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --sidebar-width: 260px;
+      --primary-color: #1b365d;
+      --primary-hover: #0f2341;
+      --accent-color: #0f5132;
+      --bg-body: #f4f6f9;
+      --card-border: #e2e8f0;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-body);
+      color: #334155;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    #sidebar {
+      width: var(--sidebar-width);
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      background-color: var(--primary-color);
+      color: #fff;
+      z-index: 1000;
+      transition: all 0.3s ease;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+    #sidebar .brand {
+      padding: 1.25rem 1.5rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      background-color: rgba(0,0,0,0.15);
+    }
+    #sidebar .nav-menu {
+      padding: 1rem 0;
+      list-style: none;
+      margin: 0;
+    }
+    #sidebar .nav-item-menu {
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      color: #cbd5e1;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+    }
+    #sidebar .nav-item-menu:hover,
+    #sidebar .nav-item-menu.active {
+      color: #fff;
+      background-color: rgba(255,255,255,0.08);
+      border-left-color: #38bdf8;
+    }
+    #sidebar .nav-item-menu i {
+      width: 24px;
+      font-size: 1rem;
+      margin-right: 0.75rem;
+    }
+    #main-content {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      padding: 1.5rem 2rem;
+      transition: all 0.3s ease;
+    }
+    #top-header {
+      background: #fff;
+      padding: 1rem 1.5rem;
+      margin: -1.5rem -2rem 1.5rem -2rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-custom {
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      background: #fff;
+    }
+    .kpi-card {
+      border-left: 4px solid var(--primary-color);
+      transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-3px); }
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <div class="brand">
+      <i class="fa-solid fa-building-columns text-info me-2 fs-4"></i>
+      <span>Hệ thống Tín dụng</span>
+    </div>
+    <ul class="nav-menu">
+      <li>
+        <a class="nav-item-menu active" onclick="switchView('view-dashboard', this)">
+          <i class="fa-solid fa-chart-pie"></i> Dashboard Tổng quan
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-360-search', this)">
+          <i class="fa-solid fa-address-card"></i> Tra cứu KH & HĐ 360°
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-credit-appraisal', this)">
+          <i class="fa-solid fa-file-signature"></i> Thẩm định Tín dụng
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-loan-inspection', this)">
+          <i class="fa-solid fa-list-check"></i> Kiểm tra Sử dụng Vốn
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-debit-register',this)">
+          <i class="fa-solid fa-user-plus"></i> Đăng ký Trích nợ
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-debit-execute', this)">
+          <i class="fa-solid fa-bolt text-warning"></i> Chạy đợt Trích nợ
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-reconciliation', this)">
+          <i class="fa-solid fa-file-invoice-dollar"></i> Đối soát & Kết quả
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-overdue-debts', this)">
+          <i class="fa-solid fa-triangle-exclamation text-danger"></i> Cảnh báo Nợ tồn
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-reports', this)">
+          <i class="fa-solid fa-chart-line"></i> Báo cáo Quản trị
+        </a>
+      </li>
+      <li>
+        <a class="nav-item-menu" onclick="switchView('view-settings', this)">
+          <i class="fa-solid fa-gears"></i> Cấu hình & Đồng bộ
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div id="main-content">
+    <div id="top-header">
+      <div class="d-flex align-items-center">
+        <h5 class="mb-0 fw-bold text-dark" id="header-title">Dashboard Tổng quan</h5>
+      </div>
+      <div class="d-flex align-items-center">
+        <span class="badge bg-success-subtle text-success me-3 p-2 border border-success-subtle fw-medium">
+          <i class="fa-solid fa-database me-1"></i> Đã kết nối KH_CORE & HDTD_CORE
+        </span>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle fw-semibold" type="button" data-bs-toggle="dropdown">
+            <i class="fa-solid fa-user-circle me-1"></i> Cán bộ Tín dụng
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-header">Lê Văn Tín</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#"><i class="fa-solid fa-key me-2"></i>Đổi mật khẩu</a></li>
+            <li><a class="dropdown-item text-danger" href="#"><i class="fa-solid fa-right-from-bracket me-2"></i>Đăng xuất</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-dashboard" class="view-section active">
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card card-custom kpi-card p-3 h-100" style="border-left-color: #1b365d;">
+            <div class="text-muted small fw-medium">TỔNG DƯ NỢ CỦA QUỸ</div>
+            <h3 class="fw-bold text-dark my-1">48.500.000.000 đ</h3>
+            <span class="text-success small fw-semibold"><i class="fa-solid fa-arrow-up me-1"></i>+2.4% so với tháng trước</span>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-custom kpi-card p-3 h-100" style="border-left-color: #0f5132;">
+            <div class="text-muted small fw-medium">DỰ THU LÃI THÁNG 08/2026</div>
+            <h3 class="fw-bold text-success my-1">385.400.000 đ</h3>
+            <span class="text-muted small">Đã thu: 312.000.000 đ (81%)</span>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-custom kpi-card p-3 h-100" style="border-left-color: #0d6efd;">
+            <div class="text-muted small fw-medium">KH ĐĂNG KÝ TRÍCH NỢ</div>
+            <h3 class="fw-bold text-primary my-1">210 Khách hàng</h3>
+            <span class="text-muted small">Chiếm 85% tổng số dư nợ</span>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-custom kpi-card p-3 h-100" style="border-left-color: #dc3545;">
+            <div class="text-muted small fw-medium">NỢ TỒN CẦN TRUY THU</div>
+            <h3 class="fw-bold text-danger my-1">14.250.000 đ</h3>
+            <span class="text-danger small fw-semibold"><i class="fa-solid fa-circle-exclamation me-1"></i>04 Khách hàng chưa đủ số dư</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-8">
+          <div class="card card-custom p-4 h-100">
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-line text-primary me-2"></i>Tiến độ Trích nợ Tự động Tháng 08/2026</h6>
+            <div class="progress mb-3" style="height: 25px;">
+              <div class="progress-bar bg-success" role="progressbar" style="width: 81%;">Đã thu 81% (312 triệu)</div>
+              <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: 15%;">Đang chờ Kỳ 2 & 3 (59 triệu)</div>
+              <div class="progress-bar bg-danger" role="progressbar" style="width: 4%;">Thiếu 4%</div>
+            </div>
+            <div class="table-responsive mt-3">
+              <table class="table table-sm table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th>Đợt trích nợ</th>
+                    <th class="text-center">Kỳ thu</th>
+                    <th class="text-end">Phải thu</th>
+                    <th class="text-end">Thực thu</th>
+                    <th class="text-center">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="fw-semibold text-primary">202608-L1</td>
+                    <td class="text-center"><span class="badge bg-secondary">Kỳ 1 (Ngày 05)</span></td>
+                    <td class="text-end fw-bold">185.000.000 đ</td>
+                    <td class="text-end text-success fw-bold">185.000.000 đ</td>
+                    <td class="text-center"><span class="badge bg-success">Hoàn tất 100%</span></td>
+                  </tr>
+                  <tr>
+                    <td class="fw-semibold text-primary">202608-L2</td>
+                    <td class="text-center"><span class="badge bg-secondary">Kỳ 2 (Ngày 15)</span></td>
+                    <td class="text-end fw-bold">127.000.000 đ</td>
+                    <td class="text-end text-success fw-bold">127.000.000 đ</td>
+                    <td class="text-center"><span class="badge bg-success">Hoàn tất 100%</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card card-custom p-4 h-100">
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Lịch sử Đồng bộ SQL Server</h6>
+            <div class="timeline border-start border-2 ps-3">
+              <div class="mb-3">
+                <div class="small text-muted">18/08/2026 08:00:00</div>
+                <div class="fw-bold text-dark">Cập nhật danh mục KH_CORE & HDTD_CORE</div>
+                <div class="small text-success"><i class="fa-solid fa-circle-check me-1"></i>342 Hợp đồng / 210 Khách hàng</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-360-search" class="view-section">
+      <div class="card card-custom p-3 mb-4">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-9">
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+              <input type="text" id="input360Search" class="form-control border-start-0 ps-0" placeholder="Nhập Mã KH, Họ tên, Số CCCD, Điện thoại hoặc Số Khế ước/HĐTD...">
+              <button class="btn btn-primary px-4 fw-semibold" onclick="execute360Search()"><i class="fa-solid fa-search me-1"></i> Tra cứu 360°</button>
+            </div>
+          </div>
+          <div class="col-md-3 text-end">
+            <button class="btn btn-outline-secondary w-100 fw-medium" onclick="triggerManualSync()"><i class="fa-solid fa-rotate me-1"></i> Cập nhật từ SQL</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-custom p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold text-primary mb-1">NGUYỄN VĂN AN <span class="badge bg-success-subtle text-success fs-6 ms-2">KH008892</span></h5>
+            <span class="text-muted small">CCCD: 038086012345 | Ngày cấp: 15/05/2021 | Nơi cấp: CA Tỉnh Thanh Hóa | ĐT: 0912.345.678</span>
+          </div>
+          <button class="btn btn-sm btn-outline-primary" onclick="switchView('view-credit-appraisal', document.querySelectorAll('.nav-item-menu')[2])">
+            <i class="fa-solid fa-file-signature me-1"></i> Xem BCTĐ
+          </button>
+        </div>
+
+        <div class="row g-3 mb-3 p-3 bg-light rounded-3 border">
+          <div class="col-md-2">
+            <div class="small text-muted">Số Thành viên (SoTV)</div>
+            <div class="fw-bold text-primary">TV-0892</div>
+          </div>
+          <div class="col-md-2">
+            <div class="small text-muted">Số sổ cổ phần (SoSoCP)</div>
+            <div class="fw-bold text-dark">CP-0412</div>
+          </div>
+          <div class="col-md-2">
+            <div class="small text-muted">Ngày vào TV</div>
+            <div class="fw-bold text-dark">10/01/2018</div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Tổng tiền cổ vốn (TongTienCP)</div>
+            <div class="fw-bold text-success">15.000.000 đ</div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Số tài khoản CASA (SoTK)</div>
+            <div class="fw-bold text-dark">3500 205 123456</div>
+          </div>
+        </div>
+
+        <div class="card p-3 mb-3 border bg-white rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+            <h6 class="fw-bold text-primary mb-0"><i class="fa-solid fa-shield-halved me-2"></i>Thông tin Tài sản Bảo đảm (TSBĐ) & Hồ sơ Hình ảnh</h6>
+            <button class="btn btn-sm btn-outline-primary fw-semibold" onclick="openPhotoViewer('TSBĐ - NGUYỄN VĂN AN', 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=800', 'QSD đất ở số GCN DT 123456 - Thôn 3, Yên Thọ')">
+              <i class="fa-solid fa-images me-1"></i> Xem Album Ảnh TSBĐ & Thực địa
+            </button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <div class="small text-muted">Loại TSBĐ</div>
+              <div class="fw-bold text-dark">Quyền sử dụng đất ở</div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Chủ sở hữu TSBĐ</div>
+              <div class="fw-bold text-dark">Nguyễn Văn An (Chính chủ)</div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Giá trị Định giá TSBĐ</div>
+              <div class="fw-bold text-success">600.000.000 đ</div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Tỷ lệ Cho vay / TSBĐ (LTV)</div>
+              <div class="fw-bold text-primary">50.0% (An toàn)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-credit-appraisal" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold text-primary mb-0"><i class="fa-solid fa-file-signature me-2"></i>Báo cáo Thẩm định & Hồ sơ Tài sản Bảo đảm (TSBĐ)</h5>
+          <button class="btn btn-primary btn-sm fw-semibold" onclick="openModalAppraisal()"><i class="fa-solid fa-plus me-1"></i> Lập Báo cáo Thẩm định Mới</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Mã BCTD</th>
+                <th>Mã KH</th>
+                <th>Họ tên Khách hàng</th>
+                <th class="text-end">Đề xuất vay</th>
+                <th class="text-end">Duyệt vay</th>
+                <th>Mô tả & Chủ sở hữu TSBĐ</th>
+                <th class="text-end">Giá trị TSBĐ</th>
+                <th class="text-center">LTV</th>
+                <th class="text-center">Hình ảnh</th>
+                <th class="text-center">Kết luận</th>
+                <th class="text-center">Cán bộ lập</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold text-primary">BCTD-2026-081</td>
+                <td>KH008892</td>
+                <td class="fw-semibold">NGUYỄN VĂN AN</td>
+                <td class="text-end">300.000.000 đ</td>
+                <td class="text-end fw-bold text-success">300.000.000 đ</td>
+                <td class="small">
+                  <div class="fw-bold text-dark">QSD Đất Ở (150m2)</div>
+                  <div class="text-muted">CSH: Nguyễn Văn An</div>
+                </td>
+                <td class="text-end fw-bold">600.000.000 đ</td>
+                <td class="text-center">50.0%</td>
+                <td class="text-center">
+                  <button class="btn btn-xs btn-outline-info rounded-pill px-2 py-1 small" onclick="openPhotoViewer('TSBĐ - BCTD-2026-081', 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=800', 'Ảnh Giấy chứng nhận QSD đất & Ảnh thực địa thẩm định')">
+                    <i class="fa-solid fa-image me-1"></i>Xem ảnh
+                  </button>
+                </td>
+                <td class="text-center"><span class="badge bg-success-subtle text-success">Đồng ý cấp tín dụng</span></td>
+                <td>Lê Văn Tín</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-loan-inspection" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold text-primary mb-0"><i class="fa-solid fa-list-check me-2"></i>Biên bản Kiểm tra Sử dụng Vốn vay Sau Giải ngân</h5>
+          <button class="btn btn-primary btn-sm fw-semibold" onclick="openModalInspection()"><i class="fa-solid fa-plus me-1"></i> Lập Biên bản Kiểm tra Mới</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Mã BBKT</th>
+                <th>Số Khế ước (HDTD)</th>
+                <th>Mã KH</th>
+                <th>Họ tên</th>
+                <th class="text-center">Ngày kiểm tra</th>
+                <th class="text-center">Hình thức</th>
+                <th class="text-center">Mục đích vốn</th>
+                <th class="text-center">Mức độ rủi ro</th>
+                <th>Mô tả thực tế</th>
+                <th>Cán bộ kiểm tra</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold text-primary">BBKT-001</td>
+                <td>KU-2025-0982</td>
+                <td>KH008892</td>
+                <td class="fw-semibold">NGUYỄN VĂN AN</td>
+                <td class="text-center">15/05/2026</td>
+                <td class="text-center"><span class="badge bg-secondary">Thực địa</span></td>
+                <td class="text-center"><span class="badge bg-success">Đúng mục đích</span></td>
+                <td class="text-center"><span class="badge bg-success-subtle text-success">Bình thường</span></td>
+                <td class="small">Đã mua 05 con bò giống, chuồng trại vệ sinh tốt.</td>
+                <td>Lê Văn Tín</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-debit-register" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold text-primary mb-0"><i class="fa-solid fa-user-plus me-2"></i>Danh sách Khách hàng Đăng ký Dịch vụ Trích nợ Tự động</h5>
+          <button class="btn btn-success btn-sm fw-semibold" onclick="openModalRegisterDebit()"><i class="fa-solid fa-plus me-1"></i> Thêm Khách hàng Đăng ký</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Mã KH</th>
+                <th>Họ tên</th>
+                <th>Số GTTT/CCCD</th>
+                <th>Số tài khoản CASA</th>
+                <th class="text-center">Kỳ đăng ký</th>
+                <th class="text-center">Trạng thái</th>
+                <th>Ghi chú</th>
+                <th class="text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold text-primary">KH008892</td>
+                <td class="fw-semibold">NGUYỄN VĂN AN</td>
+                <td>038086012345</td>
+                <td class="fw-bold text-dark">3500 205 123456</td>
+                <td class="text-center"><span class="badge bg-primary">Kỳ 1 (Ngày 05)</span></td>
+                <td class="text-center"><span class="badge bg-success">Hoạt động</span></td>
+                <td class="small text-muted">Đăng ký trích nợ tự động từ 2025</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-pen"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-debit-execute" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-bolt text-warning me-2"></i>Khởi tạo & Lập Danh sách Trích nợ Hàng tháng</h5>
+        <div class="row g-3 align-items-end mb-4 bg-light p-3 rounded-3 border">
+          <div class="col-md-3">
+            <label class="form-label fw-semibold small">Chọn Tháng / Năm</label>
+            <input type="month" id="inputThangNamExecute" class="form-control" value="2026-08">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold small">Chọn Lần trích trong tháng</label>
+            <select id="selectLanTrichExecute" class="form-select">
+              <option value="1">Lần 1 (Kỳ 1 - Ngày 05)</option>
+              <option value="2">Lần 2 (Kỳ 2 - Ngày 15)</option>
+              <option value="3">Lần 3 (Kỳ 3 - Ngày 25)</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-primary fw-semibold" onclick="generateBatchList()">
+              <i class="fa-solid fa-calculator me-1"></i> Tính toán Dự thu & Lập Danh sách
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-reconciliation" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Đối soát Kết quả Trích nợ từ Banking</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="card p-3 border bg-light">
+              <h6 class="fw-bold text-dark mb-2">Upload File Kết quả Trích nợ (Excel/CSV)</h6>
+              <input type="file" class="form-control mb-2" id="fileReconciliation">
+              <button class="btn btn-success btn-sm fw-semibold" onclick="processUploadReconciliation()"><i class="fa-solid fa-upload me-1"></i> Tải lên & Đối soát Tự động</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-overdue-debts" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <h5 class="fw-bold text-danger mb-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Sổ Theo dõi Nợ tồn đọng & Cảnh báo Rủi ro</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Mã KH</th>
+                <th>Số Khế ước</th>
+                <th class="text-end">Gốc tồn</th>
+                <th class="text-end">Lãi tồn</th>
+                <th class="text-end">Tổng nợ tồn</th>
+                <th class="text-center">Kỳ phát sinh</th>
+                <th class="text-center">Trạng thái</th>
+                <th class="text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold text-primary">KH008892</td>
+                <td>KU-2025-0982</td>
+                <td class="text-end fw-semibold">0 đ</td>
+                <td class="text-end fw-bold text-danger">1.979.452 đ</td>
+                <td class="text-end fw-bold text-danger">1.979.452 đ</td>
+                <td class="text-center">202607-L1</td>
+                <td class="text-center"><span class="badge bg-warning text-dark">Chưa thu</span></td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-phone me-1"></i>Đôn đốc</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-reports" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-chart-line me-2"></i>Báo cáo Tổng hợp Tín dụng & Dịch vụ Trích nợ</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="card p-3 border text-center">
+              <h6 class="fw-bold">Báo cáo Kết quả Trích nợ Tháng</h6>
+              <p class="small text-muted">Xuất bảng kê chi tiết thành công/thất bại</p>
+              <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-download me-1"></i> Tải Báo cáo Excel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-settings" class="view-section">
+      <div class="card card-custom p-4 mb-4">
+        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-gears me-2"></i>Cấu hình Hệ thống & Trạng thái Đồng bộ SQL Server</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="card p-3 bg-light border">
+              <h6 class="fw-bold text-dark mb-2">Trạng thái Hàng đợi Google Sheets (Sheet SETTING)</h6>
+              <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Lệnh gần nhất:</span><span class="fw-bold">SYNC_DATA</span></div>
+              <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Trạng thái Daemon:</span><span class="badge bg-success">SUCCESS</span></div>
+              <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Đồng bộ Lõi:</span><span class="fw-bold text-primary">KH_CORE & HDTD_CORE</span></div>
+              <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Bản ghi đồng bộ:</span><span class="fw-bold">342 Hợp đồng / 210 Khách hàng</span></div>
+              <div class="d-flex justify-content-between small"><span class="text-muted">Cập nhật lần cuối:</span><span class="fw-bold">18/08/2026 08:00:00</span></div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card p-3 bg-light border">
+              <h6 class="fw-bold text-dark mb-2">Kích hoạt Đồng bộ Thủ công</h6>
+              <p class="small text-muted mb-3">Gửi lệnh yêu cầu Daemon Python quét toàn bộ danh mục Khách hàng (KH_CORE) và Hợp đồng (HDTD_CORE) mới nhất từ SQL Server Core.</p>
+              <button class="btn btn-primary fw-semibold" onclick="triggerManualSync()">
+                <i class="fa-solid fa-rotate me-1"></i> Gửi lệnh Cập nhật từ SQL
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="modal fade" id="modalAppraisal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-header-title mb-0 fw-bold"><i class="fa-solid fa-file-signature me-2"></i>Lập Báo cáo Thẩm định & Định giá TSBĐ</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formAppraisal">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Mã KH</label>
+                <input type="text" class="form-control" value="KH008892">
+              </div>
+              <div class="col-md-8">
+                <label class="form-label small fw-semibold">Họ tên Khách hàng</label>
+                <input type="text" class="form-control" value="NGUYỄN VĂN AN">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Số tiền Đề xuất vay</label>
+                <input type="text" class="form-control" value="300.000.000">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Số tiền Duyệt vay</label>
+                <input type="text" class="form-control" value="300.000.000">
+              </div>
+              
+              <div class="col-12">
+                <hr class="my-2">
+                <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-shield-cat me-2"></i>Chi tiết Tài sản Bảo đảm (TSBĐ) & Ảnh Thẩm định</h6>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Loại Tài sản Bảo đảm</label>
+                <input type="text" class="form-control" value="Quyền sử dụng đất ở">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Chủ sở hữu TSBĐ</label>
+                <input type="text" class="form-control" value="Nguyễn Văn An (Chính chủ)">
+              </div>
+              <div class="col-md-12">
+                <label class="form-label small fw-semibold">Mô tả chi tiết TSBĐ (Số GCN, vị trí, diện tích...)</label>
+                <textarea class="form-control" rows="2">QSD đất ở số GCN: DT 123456, Thửa đất số 42, Tờ bản đồ số 08. Diện tích: 150m2 tại Thôn 3, Xã Yên Thọ.</textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Giá trị Tài sản Đảm bảo (đ)</label>
+                <input type="text" class="form-control" value="600.000.000">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Xếp hạng CIC</label>
+                <select class="form-select">
+                  <option selected>Hạng A (Tốt)</option>
+                  <option>Hạng B (Trung bình)</option>
+                  <option>Hạng C (Cần lưu ý)</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold"><i class="fa-brands fa-google-drive text-success me-1"></i>Link Thư mục/Ảnh TSBĐ (Google Drive)</label>
+                <input type="text" class="form-control" placeholder="https://drive.google.com/drive/folders/..." value="https://drive.google.com/drive/folders/tsbd_kh008892">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold"><i class="fa-brands fa-google-drive text-success me-1"></i>Link Thư mục/Ảnh Thẩm định Thực địa</label>
+                <input type="text" class="form-control" placeholder="https://drive.google.com/drive/folders/..." value="https://drive.google.com/drive/folders/thamdinh_kh008892">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Kết luận Thẩm định</label>
+                <select class="form-select">
+                  <option selected>Đồng ý cấp tín dụng</option>
+                  <option>Từ chối cấp tín dụng</option>
+                  <option>Yêu cầu bổ sung</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Cán bộ Thẩm định</label>
+                <input type="text" class="form-control" value="Lê Văn Tín">
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-primary" onclick="saveAppraisal()"><i class="fa-solid fa-save me-1"></i> Lưu Báo cáo Thẩm định</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalPhotoViewer" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h6 class="modal-title fw-bold" id="photoViewerTitle"><i class="fa-solid fa-images me-2 text-warning"></i>Xem Hồ sơ Hình ảnh Tài sản & Thực địa</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center bg-light">
+          <div class="mb-3">
+            <img id="photoViewerImg" src="" class="img-fluid rounded border shadow-sm" style="max-height: 400px; object-fit: contain;">
+          </div>
+          <p class="text-muted small fw-semibold mb-2" id="photoViewerDesc"></p>
+          <div class="d-flex justify-content-center gap-2">
+            <a id="photoDriveLink" href="#" target="_blank" class="btn btn-sm btn-outline-success">
+              <i class="fa-brands fa-google-drive me-1"></i> Mở Thư mục Lưu trữ Google Drive Chi tiết
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    function openPhotoViewer(title, imgSrc, desc) {
+      document.getElementById('photoViewerTitle').innerText = title;
+      document.getElementById('photoViewerImg').src = imgSrc;
+      document.getElementById('photoViewerDesc').innerText = desc;
+      document.getElementById('photoDriveLink').href = "https://drive.google.com";
+      const modal = new bootstrap.Modal(document.getElementById('modalPhotoViewer'));
+      modal.show();
+    }
+
+    function switchView(viewId, element) {
+      document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+
+      if (element) {
+        document.querySelectorAll('.nav-item-menu').forEach(item => item.classList.remove('active'));
+        element.classList.add('active');
+        document.getElementById('header-title').innerText = element.innerText.trim();
+      }
+    }
+
+    function execute360Search() {
+      const q = document.getElementById('input360Search').value.trim();
+      if (!q) {
+        alert("Vui lòng nhập thông tin tìm kiếm!");
+        return;
+      }
+      console.log("Đang tra cứu thông tin 360 độ cho:", q);
+    }
+
+    function triggerManualSync() {
+      alert("Đã gửi lệnh SYNC_DATA vào sheet SETTING. Daemon Python sẽ cập nhật dữ liệu KH_CORE và HDTD_CORE từ SQL Server trong giây lát!");
+    }
+
+    function openModalAppraisal() {
+      const modal = new bootstrap.Modal(document.getElementById('modalAppraisal'));
+      modal.show();
+    }
+
+    function saveAppraisal() {
+      alert("Đã lưu Báo cáo Thẩm định vào sheet BAO_CAO_THAM_DINH!");
+      bootstrap.Modal.getInstance(document.getElementById('modalAppraisal')).hide();
+    }
+
+    function openModalInspection() {
+      alert("Mở giao diện lập Biên bản kiểm tra vốn vay!");
+    }
+
+    function openModalRegisterDebit() {
+      alert("Mở giao diện đăng ký trích nợ khách hàng!");
+    }
+
+    function generateBatchList() {
+      alert("Đã khởi tạo danh sách trích nợ cho tháng đã chọn!");
+    }
+
+    function processUploadReconciliation() {
+      alert("Đã upload file và hoàn tất đối soát!");
+    }
+  </script>
+</body>
+</html>

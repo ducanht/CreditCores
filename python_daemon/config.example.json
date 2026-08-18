@@ -1,0 +1,13 @@
+{
+  "google_sheet_id": "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw",
+  "credentials_file": "credentials.json",
+  "poll_interval_seconds": 5,
+  "sql_server": {
+    "driver": "ODBC Driver 17 for SQL Server",
+    "server": "192.168.1.100\\SQLEXPRESS,1433",
+    "database": "CORE_BANKING_DB",
+    "username": "sa",
+    "password": "YourStrongPasswordHere",
+    "trust_server_certificate": "yes"
+  }
+}
