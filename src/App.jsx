@@ -13,6 +13,7 @@ import Settings from './components/Settings';
 import UserManagement from './components/UserManagement';
 import LoginModal from './components/LoginModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import CustomerQuickModal from './components/CustomerQuickModal';
 import { api } from './services/api';
 import { AuthService } from './services/auth';
 
@@ -42,9 +43,10 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Cross-module prefill states
+  // Cross-module prefill & quick view states
   const [prefilledCustomer, setPrefilledCustomer] = useState(null);
   const [prefilledContract, setPrefilledContract] = useState(null);
+  const [quickViewCustomer, setQuickViewCustomer] = useState(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -77,7 +79,7 @@ export default function App() {
       if (resStats.status === 'success') setStats(resStats.data);
       if (resSync.status === 'success') setSyncStatus(resSync.data);
     } catch (e) {
-      console.error(e);
+      console.error('Lỗi nạp dữ liệu ban đầu:', e);
     }
   };
 
@@ -97,6 +99,7 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setActiveTab('dashboard');
+    fetchInitialData();
   };
 
   const handleLogout = () => {
@@ -138,6 +141,10 @@ export default function App() {
     setActiveTab('debit_register');
   };
 
+  const handleOpenCustomerQuickView = (customer) => {
+    setQuickViewCustomer(customer);
+  };
+
   // IF NOT AUTHENTICATED -> SHOW LOGIN SCREEN
   if (!currentUser) {
     return <LoginModal onLoginSuccess={handleLoginSuccess} />;
@@ -172,27 +179,56 @@ export default function App() {
         />
 
         <main className="content-area">
-          {activeTab === 'dashboard' && <Dashboard stats={stats} onNavigate={setActiveTab} />}
+          {activeTab === 'dashboard' && (
+            <Dashboard 
+              stats={stats} 
+              onNavigate={setActiveTab} 
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
+            />
+          )}
 
           {activeTab === 'customer360' && (
             <Customer360
               onNavigateToAppraisal={handleNavigateToAppraisal}
               onNavigateToInspection={handleNavigateToInspection}
               onNavigateToDebit={handleNavigateToDebit}
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
             />
           )}
 
-          {activeTab === 'appraisal' && <Appraisal prefilledCustomer={prefilledCustomer} />}
+          {activeTab === 'appraisal' && (
+            <Appraisal 
+              prefilledCustomer={prefilledCustomer} 
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
+            />
+          )}
 
-          {activeTab === 'inspection' && <LoanInspection prefilledContract={prefilledContract} />}
+          {activeTab === 'inspection' && (
+            <LoanInspection 
+              prefilledContract={prefilledContract}
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
+            />
+          )}
 
-          {activeTab === 'debit_register' && <DebitManager prefilledCustomer={prefilledCustomer} />}
+          {activeTab === 'debit_register' && (
+            <DebitManager 
+              prefilledCustomer={prefilledCustomer}
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
+            />
+          )}
 
-          {activeTab === 'debit_batch' && <DebitManager prefilledCustomer={null} />}
+          {activeTab === 'debit_batch' && (
+            <DebitManager 
+              prefilledCustomer={null}
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
+            />
+          )}
 
           {activeTab === 'reconciliation' && <Reconciliation />}
 
-          {activeTab === 'debt_warning' && <DebtWarning />}
+          {activeTab === 'debt_warning' && (
+            <DebtWarning onOpenCustomerQuickView={handleOpenCustomerQuickView} />
+          )}
 
           {activeTab === 'reports' && <Reports />}
 
@@ -210,6 +246,16 @@ export default function App() {
 
       {showChangePassModal && (
         <ChangePasswordModal onClose={() => setShowChangePassModal(false)} />
+      )}
+
+      {quickViewCustomer && (
+        <CustomerQuickModal
+          customer={quickViewCustomer}
+          onClose={() => setQuickViewCustomer(null)}
+          onNavigateToAppraisal={handleNavigateToAppraisal}
+          onNavigateToInspection={handleNavigateToInspection}
+          onNavigateToDebit={handleNavigateToDebit}
+        />
       )}
     </div>
   );

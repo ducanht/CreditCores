@@ -266,6 +266,7 @@ export const api = {
   searchCustomer360: (query) => sendRequest('searchCustomer360', { query }),
   getAppraisals: () => sendRequest('getAppraisals'),
   saveAppraisalReport: (data) => sendRequest('saveAppraisalReport', data, 'POST'),
+  addApprovalOpinion: (data) => sendRequest('addApprovalOpinion', data, 'POST'),
   getInspections: () => sendRequest('getInspections'),
   saveLoanInspection: (data) => sendRequest('saveLoanInspection', data, 'POST'),
   getDebitRegistrations: () => sendRequest('getDebitRegistrations'),

@@ -31,22 +31,11 @@
   --text-secondary: #334155;        /* Chữ phụ Slate */
   --text-tertiary: #64748b;         /* Chữ mờ */
 
-  /* Sidebar Tokens (Sleek Banking Forest Navy) */
-  --sidebar-bg-top: #06261c;
-  --sidebar-bg-bottom: #091722;
-  --sidebar-border: rgba(154, 205, 50, 0.2);
-  --sidebar-text: #e2e8f0;
-  --sidebar-text-muted: #94a3b8;
-  --sidebar-active-bg: rgba(154, 205, 50, 0.16);
-  --sidebar-active-color: #ffffff;
-  --sidebar-active-indicator: #9acd32;
 
-  /* Layout Dimensions */
   --sidebar-width: 280px;
-  --header-height: 72px;
+  --sidebar-collapsed-width: 72px;
+  --header-height: 64px;
   --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
   --radius-full: 9999px;
 
   /* Elevation Shadows */
