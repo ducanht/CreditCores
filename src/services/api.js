@@ -5,10 +5,11 @@
  * 2. Chế độ Giả lập Offline (Mock Data Mode): Nạp dữ liệu mẫu ngân hàng phong phú khi chưa cấu hình GAS URL.
  */
 
+const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxLQHAgdH2cus1zX_z28b31qixMWqq5K0fgIsdy4QFD6xsjRlUyRrwmRyKU28jljAc2/exec';
 const STORAGE_KEY_GAS_URL = 'CREDITCORES_GAS_API_URL';
 
 export function getGasApiUrl() {
-  return localStorage.getItem(STORAGE_KEY_GAS_URL) || import.meta.env.VITE_GAS_API_URL || '';
+  return localStorage.getItem(STORAGE_KEY_GAS_URL) || import.meta.env.VITE_GAS_API_URL || DEFAULT_GAS_API_URL;
 }
 
 export function setGasApiUrl(url) {
