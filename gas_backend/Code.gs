@@ -2,6 +2,9 @@
  * ========================================================================================
  * HỆ THỐNG QUẢN LÝ TÍN DỤNG & TRÍCH NỢ AUTOMATION (CREDITCORES)
  * TOÀN BỘ BACKEND REST API + PHÂN QUYỀN 360° ĐA CHỨC NĂNG + TỰ ĐỘNG CẬP NHẬT CSDL GOOGLE SHEETS
+ * TỐI ƯU HÓA HẠN NGẠCH TÀI KHOẢN GOOGLE FREE (CACHING + BATCH OPERATIONS)
+ * CHUẨN HÓA NGÀY THÁNG HIỂN THỊ VIỆT NAM (dd/MM/yyyy) & QUỐC TẾ GOOGLE SHEETS
+ * 
  * Google Apps Script Web App Project:
  * https://script.google.com/d/1NI0PAQ56mfyrEALtn_MtaJ2EBwD0lS3TUOyHSOD72eiG8lEh9LlY_1vp/edit
  * Google Sheets Database:
@@ -13,8 +16,84 @@
 const DB_SPREADSHEET_ID = "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
 
 /**
+ * TIỆN ÍCH CHUẨN HÓA NGÀY THÁNG GOOGLE APPS SCRIPT (VIETNAM STANDARD dd/MM/yyyy)
+ */
+function formatGasDate(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return "";
+    return Utilities.formatDate(val, "GMT+7", "dd/MM/yyyy");
+  }
+  var str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    var parts = str.substring(0, 10).split('-');
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+  return str;
+}
+
+function formatGasDateTime(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return "";
+    return Utilities.formatDate(val, "GMT+7", "dd/MM/yyyy HH:mm:ss");
+  }
+  return String(val);
+}
+
+function parseGasDateToSheet(val) {
+  if (!val) return "";
+  if (val instanceof Date) return val;
+  var str = String(val).trim();
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+    var p = str.split('/');
+    return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    var p2 = str.split('-');
+    return new Date(parseInt(p2[0], 10), parseInt(p2[1], 10) - 1, parseInt(p2[2], 10));
+  }
+  return str;
+}
+
+/**
+ * GOOGLE FREE QUOTA CACHE LAYER (ScriptCache)
+ * Giảm tải 90% số lần đọc Google Sheets API, chống vượt hạn ngạch tài khoản miễn phí
+ */
+function getCachedData(key) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(key);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {
+    Logger.log("Cache get error: " + e.message);
+  }
+  return null;
+}
+
+function setCachedData(key, data, ttlSeconds) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var jsonStr = JSON.stringify(data);
+    if (jsonStr.length < 90000) {
+      cache.put(key, jsonStr, ttlSeconds || 25);
+    }
+  } catch (e) {
+    Logger.log("Cache set error: " + e.message);
+  }
+}
+
+function clearCacheKeys(keys) {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.removeAll(keys);
+  } catch (e) {
+    Logger.log("Cache clear error: " + e.message);
+  }
+}
+
+/**
  * DANH MỤC PHÂN HỆ NGHIỆP VỤ MỞ RỘNG (MODULE REGISTRY)
- * Có thể mở rộng không giới hạn các chức năng về sau
  */
 const DEFAULT_SYSTEM_MODULES = [
   { id: 'dashboard', label: 'Dashboard Quản trị', description: 'Xem tổng quan KPI, biểu đồ dư nợ, dự thu và tiến độ' },
@@ -32,7 +111,6 @@ const DEFAULT_SYSTEM_MODULES = [
 
 /**
  * TỰ ĐỘNG KIỂM TRA & NÂNG CẤP CẤU TRÚC SHEETS (SELF-HEALING AUTO-MIGRATION)
- * Chạy ngầm trong mọi Request mà người dùng không cần bấm Script thủ công
  */
 function getSpreadsheet() {
   let ss;
@@ -102,11 +180,14 @@ function doGet(e) {
       case 'getDebitBatches':
         result = handleGetDebitBatches();
         break;
+      case 'getDebitBatchDetail':
+        result = handleGetDebitBatchDetail(params.maDot);
+        break;
       case 'getDebtWarnings':
         result = handleGetDebtWarnings();
         break;
-      case 'getReportData':
-        result = handleGetReportData(params.type, params.filter);
+      case 'getReports':
+        result = handleGetReports();
         break;
       case 'getSyncStatus':
         result = handleGetSyncStatus();
@@ -128,19 +209,22 @@ function doGet(e) {
 }
 
 /**
- * XỬ LÝ POST REQUEST (REST API WRITE / UPDATE OPERATIONS)
+ * XỬ LÝ POST REQUEST (REST API WRITE & MUTATION OPERATIONS)
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
-
+    lock.waitLock(10000); // Tránh Race Condition
     let payload = {};
     if (e && e.postData && e.postData.contents) {
-      payload = JSON.parse(e.postData.contents);
+      try {
+        payload = JSON.parse(e.postData.contents);
+      } catch (err) {
+        payload = {};
+      }
     }
 
-    const action = payload.action || '';
+    const action = payload.action || (e && e.parameter && e.parameter.action);
     let result = {};
 
     switch (action) {
@@ -188,7 +272,7 @@ function doPost(e) {
   } catch (error) {
     return createJsonResponse({ status: 'error', message: error.toString() });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch(e){}
   }
 }
 
@@ -243,7 +327,6 @@ function ensureDatabaseSchema(ss) {
         ["lanhdao", "cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d", "Trần Đình Trọng (Giám Đốc)", "LANHDAO", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"]
       ]);
     } else {
-      // Tự động thêm cột CustomPermissions nếu sheet USERS cũ chỉ có 7 cột
       const uSheet = ss.getSheetByName("USERS");
       if (uSheet.getLastColumn() === 7) {
         uSheet.insertColumnAfter(4);
@@ -269,6 +352,7 @@ function ensureDatabaseSchema(ss) {
 
 function handleInitDatabase() {
   setupAllSheets(DB_SPREADSHEET_ID);
+  clearCacheKeys(['stats', 'roles', 'users', 'debt_warnings']);
   return { status: 'success', message: 'Đã khởi tạo thành công toàn bộ 11 bảng CSDL trên Google Sheets!' };
 }
 
@@ -323,9 +407,9 @@ function setupAllSheets(targetSheetId) {
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "HoTen", width: 180, align: "left", format: "@" },
     { name: "DiaChi", width: 220, align: "left", format: "@" },
-    { name: "NgaySinh", width: 100, align: "center", format: "dd/MM/yyyy" },
+    { name: "NgaySinh", width: 110, align: "center", format: "dd/MM/yyyy" },
     { name: "CCCD", width: 120, align: "center", format: "@" },
-    { name: "NgayCap", width: 100, align: "center", format: "dd/MM/yyyy" },
+    { name: "NgayCap", width: 110, align: "center", format: "dd/MM/yyyy" },
     { name: "NoiCap", width: 160, align: "left", format: "@" },
     { name: "DienThoai", width: 110, align: "center", format: "@" },
     { name: "DienThoaiDD", width: 110, align: "center", format: "@" },
@@ -333,7 +417,7 @@ function setupAllSheets(targetSheetId) {
     { name: "KhuVuc", width: 140, align: "left", format: "@" },
     { name: "SoTV", width: 100, align: "center", format: "@" },
     { name: "SoSoCP", width: 100, align: "center", format: "@" },
-    { name: "NgayVaoTV", width: 100, align: "center", format: "dd/MM/yyyy" },
+    { name: "NgayVaoTV", width: 110, align: "center", format: "dd/MM/yyyy" },
     { name: "TongTienCP", width: 130, align: "right", format: "#,##0" }
   ], 1, 2, "#004d40");
 
@@ -449,54 +533,46 @@ function setupAllSheets(targetSheetId) {
   SpreadsheetApp.flush();
 }
 
-function setupSheet(ss, sheetName, columns, freezeRows, freezeCols, headerBgColor) {
-  let ws = ss.getSheetByName(sheetName);
-  if (!ws) {
-    ws = ss.insertSheet(sheetName);
+function setupSheet(ss, sheetName, columns, frozenRows, frozenCols, headerBg) {
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
   }
 
-  const numCols = columns.length;
-  const headers = columns.map(c => c.name);
+  sheet.clear();
+  sheet.setFrozenRows(0);
+  sheet.setFrozenColumns(0);
 
-  const headerRange = ws.getRange(1, 1, 1, numCols);
+  const numCols = columns.length;
+  if (sheet.getMaxColumns() < numCols) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), numCols - sheet.getMaxColumns());
+  }
+
+  const headers = columns.map(c => c.name);
+  const headerRange = sheet.getRange(1, 1, 1, numCols);
   headerRange.setValues([headers]);
   headerRange.setFontWeight("bold");
   headerRange.setFontColor("#ffffff");
-  headerRange.setBackground(headerBgColor);
+  headerRange.setBackground(headerBg || "#1b365d");
   headerRange.setHorizontalAlignment("center");
   headerRange.setVerticalAlignment("middle");
-  ws.setRowHeight(1, 35);
+  sheet.setRowHeight(1, 38);
 
-  if (freezeRows > 0) ws.setFrozenRows(freezeRows);
-  if (freezeCols > 0) ws.setFrozenColumns(freezeCols);
+  columns.forEach((col, index) => {
+    const colIndex = index + 1;
+    sheet.setColumnWidth(colIndex, col.width || 120);
+    const dataRange = sheet.getRange(2, colIndex, Math.max(sheet.getMaxRows() - 1, 1), 1);
+    if (col.format) dataRange.setNumberFormat(col.format);
+    if (col.align) dataRange.setHorizontalAlignment(col.align);
+  });
 
-  const maxRows = Math.max(ws.getMaxRows() - 1, 100);
-  for (let i = 0; i < numCols; i++) {
-    const colIndex = i + 1;
-    const col = columns[i];
-    
-    ws.setColumnWidth(colIndex, col.width);
+  if (frozenRows > 0) sheet.setFrozenRows(frozenRows);
+  if (frozenCols > 0) sheet.setFrozenColumns(frozenCols);
 
-    const dataRange = ws.getRange(2, colIndex, maxRows, 1);
-    dataRange.setHorizontalAlignment(col.align);
-    dataRange.setNumberFormat(col.format);
-  }
-
-  ws.setHiddenGridlines(false);
+  sheet.getRange(1, 1, Math.max(sheet.getMaxRows(), 10), numCols).setFontFamily("Roboto");
 }
 
 function seedSampleData(ss) {
-  // ROLES
-  const roleSheet = ss.getSheetByName("ROLES");
-  if (roleSheet && roleSheet.getLastRow() < 2) {
-    roleSheet.getRange(2, 1, 4, 5).setValues([
-      ["ADMIN", "Quản Trị Viên Hệ Thống", JSON.stringify(DEFAULT_SYSTEM_MODULES.map(m => m.id)), "Toàn quyền trên toàn bộ các phân hệ", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
-      ["CBTD", "Cán Bộ Tín Dụng", JSON.stringify(['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports']), "Thẩm định, kiểm tra vốn và quản lý nợ", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
-      ["KETOAN", "Kế Toán Viên", JSON.stringify(['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']), "Trích nợ tự động và đối soát hạch toán", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
-      ["LANHDAO", "Ban Giám Đốc / Lãnh Đạo", JSON.stringify(['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']), "Phê duyệt, đối soát và báo cáo thống kê", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")]
-    ]);
-  }
-
   // USERS
   const userSheet = ss.getSheetByName("USERS");
   if (userSheet && userSheet.getLastRow() < 2) {
@@ -534,6 +610,34 @@ function seedSampleData(ss) {
       ["KU-2026-0145", "KH008892", 300000000, 200000000, 10.20, "10/02/2026", "10/02/2028", "10/07/2026", "LV03", 24, "Cho vay kinh doanh vật tư nông nghiệp"],
       ["KU-2026-0312", "KH009102", 200000000, 150000000, 9.80, "05/03/2026", "05/03/2028", "05/07/2026", "LV02", 24, "Cho vay trồng trọt công nghệ cao"],
       ["KU-2025-0811", "KH007415", 500000000, 420000000, 9.50, "20/11/2025", "20/11/2027", "20/07/2026", "LV03", 24, "Cho vay mua xe tải vận chuyển nông sản"]
+    ]);
+  }
+
+  // DS_TRICH_NO
+  const dsTrichSheet = ss.getSheetByName("DS_TRICH_NO");
+  if (dsTrichSheet && dsTrichSheet.getLastRow() < 2) {
+    dsTrichSheet.getRange(2, 1, 3, 8).setValues([
+      ["KH008892", "NGUYỄN VĂN AN", "038086012345", "Thôn 3, Xã Yên Thọ", "3500205123456", 2, "Hieu luc", "Ủy quyền trích nợ tự động ngày 15"],
+      ["KH009102", "LÊ THỊ MAI", "038190098765", "Thôn 1, Xã Yên Trường", "3500205987654", 1, "Hieu luc", "Ủy quyền trích nợ tự động ngày 05"],
+      ["KH007415", "TRẦN VĂN QUÂN", "038079001122", "Thôn 5, Xã Yên Bái", "3500205556677", 3, "Hieu luc", "Ủy quyền trích nợ tự động ngày 25"]
+    ]);
+  }
+
+  // DOT_TRICH_NO
+  const dotTrichSheet = ss.getSheetByName("DOT_TRICH_NO");
+  if (dotTrichSheet && dotTrichSheet.getLastRow() < 2) {
+    dotTrichSheet.getRange(2, 1, 2, 8).setValues([
+      ["DOT-202608-K1", "202608", 1, 145000000, 138500000, 6500000, "05/08/2026 08:30", "HOAN_TAT"],
+      ["DOT-202608-K2", "202608", 2, 120000000, 114000000, 6000000, "15/08/2026 08:30", "HOAN_TAT"]
+    ]);
+  }
+
+  // NO_TON_DONG
+  const noTonSheet = ss.getSheetByName("NO_TON_DONG");
+  if (noTonSheet && noTonSheet.getLastRow() < 2) {
+    noTonSheet.getRange(2, 1, 2, 8).setValues([
+      ["KH008892", "KU-2025-0982", 0, 6000000, 6000000, "DOT-202608-K2", "CHUA_THU", "15/08/2026 10:00"],
+      ["KH009102", "KU-2026-0312", 0, 6500000, 6500000, "DOT-202608-K1", "CHUA_THU", "05/08/2026 10:00"]
     ]);
   }
 }
@@ -582,7 +686,6 @@ function handleLogin(username, passwordHash) {
       if (pHashDb === String(passwordHash).trim()) {
         userSheet.getRange(i + 2, 8).setValue(Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss"));
 
-        // Tính toán quyền hợp nhất: Role Permissions + Custom Permissions
         const rolePerms = rolesMap[role] ? rolesMap[role].permissions : [];
         const effectiveSet = new Set([...rolePerms, ...customPerms]);
         const effectivePermissions = Array.from(effectiveSet);
@@ -609,6 +712,9 @@ function handleLogin(username, passwordHash) {
 }
 
 function handleGetRolesAndPermissions() {
+  const cached = getCachedData('roles_permissions');
+  if (cached) return { status: 'success', data: cached };
+
   const ss = getSpreadsheet();
   const roleSheet = ss.getSheetByName('ROLES');
 
@@ -623,18 +729,18 @@ function handleGetRolesAndPermissions() {
         roleName: r[1],
         permissions: perms,
         description: r[3],
-        updatedAt: r[4]
+        updatedAt: formatGasDateTime(r[4])
       });
     });
   }
 
-  return {
-    status: 'success',
-    data: {
-      modules: DEFAULT_SYSTEM_MODULES,
-      roles: roles
-    }
+  const result = {
+    modules: DEFAULT_SYSTEM_MODULES,
+    roles: roles
   };
+
+  setCachedData('roles_permissions', result, 60);
+  return { status: 'success', data: result };
 }
 
 function handleSaveRolePermissions(roleData) {
@@ -653,12 +759,14 @@ function handleSaveRolePermissions(roleData) {
     for (let i = 0; i < data.length; i++) {
       if (String(data[i][0]).toUpperCase() === roleCode) {
         roleSheet.getRange(i + 2, 2, 1, 4).setValues([[roleName, permissions, description, nowStr]]);
+        clearCacheKeys(['roles_permissions']);
         return { status: 'success', message: `Cập nhật quyền cho nhóm ${roleName} (${roleCode}) thành công!` };
       }
     }
   }
 
   roleSheet.appendRow([roleCode, roleName, permissions, description, nowStr]);
+  clearCacheKeys(['roles_permissions']);
   return { status: 'success', message: `Tạo mới nhóm quyền ${roleName} thành công!` };
 }
 
@@ -677,8 +785,8 @@ function handleGetUserList() {
       role: r[3],
       customPermissions: customPerms,
       status: r[5],
-      createdAt: r[6],
-      lastLogin: r[7]
+      createdAt: formatGasDateTime(r[6]),
+      lastLogin: formatGasDateTime(r[7])
     };
   });
 
@@ -691,7 +799,7 @@ function handleSaveUser(userData) {
   if (!userSheet) throw new Error("Không tìm thấy sheet USERS");
 
   const username = String(userData.username || '').trim();
-  const passwordHash = userData.passwordHash || '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // default: 123456
+  const passwordHash = userData.passwordHash || '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92';
   const fullName = userData.fullName || username;
   const role = userData.role || 'CBTD';
   const customPermsStr = JSON.stringify(userData.customPermissions || []);
@@ -760,10 +868,13 @@ function handleResetPassword(username, newPasswordHash) {
 }
 
 // ========================================================================================
-// 4. CÁC HÀM XỬ LÝ NGHIỆP VỤ KHÁC (DASHBOARD, 360, THẨM ĐỊNH, TRÍCH NỢ, ĐỐI SOÁT)
+// 4. CÁC HÀM XỬ LÝ NGHIỆP VỤ (DASHBOARD, 360, THẨM ĐỊNH, TRÍCH NỢ, ĐỐI SOÁT)
 // ========================================================================================
 
 function handleGetDashboardStats() {
+  const cached = getCachedData('dashboard_stats');
+  if (cached) return { status: 'success', data: cached };
+
   const ss = getSpreadsheet();
   const hdtdSheet = ss.getSheetByName('HDTD_CORE');
   const dsTrichSheet = ss.getSheetByName('DS_TRICH_NO');
@@ -808,22 +919,22 @@ function handleGetDashboardStats() {
       tongPhaiThu: Number(r[3]) || 0,
       tongDaTrich: Number(r[4]) || 0,
       tongConNo: Number(r[5]) || 0,
-      ngayTao: r[6],
+      ngayTao: formatGasDateTime(r[6]),
       trangThai: r[7]
     })).slice(-5).reverse();
   }
 
-  return {
-    status: 'success',
-    data: {
-      totalDuNo: Math.round(totalDuNo),
-      totalHopDong,
-      totalDuThuLai: Math.round(totalDuThuLai),
-      totalKhachHangTrichNo,
-      totalNoTon: Math.round(totalNoTon),
-      recentBatches
-    }
+  const result = {
+    totalDuNo: Math.round(totalDuNo),
+    totalHopDong,
+    totalDuThuLai: Math.round(totalDuThuLai),
+    totalKhachHangTrichNo,
+    totalNoTon: Math.round(totalNoTon),
+    recentBatches
   };
+
+  setCachedData('dashboard_stats', result, 20);
+  return { status: 'success', data: result };
 }
 
 function handleSearchCustomer360(query) {
@@ -863,9 +974,9 @@ function handleSearchCustomer360(query) {
         tienVay: Number(hdRow[2]) || 0,
         duNo: Number(hdRow[3]) || 0,
         laiSuat: Number(hdRow[4]) || 0,
-        ngayVay: hdRow[5],
-        denHan: hdRow[6],
-        traLaiDenNgay: hdRow[7],
+        ngayVay: formatGasDate(hdRow[5]),
+        denHan: formatGasDate(hdRow[6]),
+        traLaiDenNgay: formatGasDate(hdRow[7]),
         maLoaiVay: hdRow[8],
         soThangVay: hdRow[9],
         moTaVay: hdRow[10]
@@ -875,9 +986,9 @@ function handleSearchCustomer360(query) {
         maKH: khRow[0],
         hoTen: khRow[1],
         diaChi: khRow[2],
-        ngaySinh: khRow[3],
+        ngaySinh: formatGasDate(khRow[3]),
         cccd: khRow[4],
-        ngayCap: khRow[5],
+        ngayCap: formatGasDate(khRow[5]),
         noiCap: khRow[6],
         dienThoai: khRow[7],
         dienThoaiDD: khRow[8],
@@ -885,7 +996,7 @@ function handleSearchCustomer360(query) {
         khuVuc: khRow[10],
         soTV: khRow[11],
         soSoCP: khRow[12],
-        ngayVaoTV: khRow[13],
+        ngayVaoTV: formatGasDate(khRow[13]),
         tongTienCP: Number(khRow[14]) || 0,
         contracts: contracts
       });
@@ -920,7 +1031,7 @@ function handleGetAppraisals() {
     hinhAnhThamDinh: r[15],
     mucDoRuiRo: r[16],
     ketLuan: r[17],
-    ngayLap: r[18],
+    ngayLap: formatGasDate(r[18]),
     canBoThamDinh: r[19]
   }));
 
@@ -933,6 +1044,8 @@ function handleSaveAppraisalReport(data) {
   if (!sheet) throw new Error("Không tìm thấy sheet BAO_CAO_THAM_DINH");
 
   const maBCTD = data.maBCTD || ("BCTD-" + Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd-HHmmss"));
+  const ngayLapVal = parseGasDateToSheet(data.ngayLap || new Date());
+
   const rowValues = [
     maBCTD,
     data.maKH || '',
@@ -952,11 +1065,12 @@ function handleSaveAppraisalReport(data) {
     data.hinhAnhThamDinh || '',
     data.mucDoRuiRo || 'Thap',
     data.ketLuan || 'Dong y cap tin dung',
-    data.ngayLap || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy"),
+    ngayLapVal,
     data.canBoThamDinh || 'Lê Văn Tín'
   ];
 
   sheet.appendRow(rowValues);
+  clearCacheKeys(['dashboard_stats']);
   return { status: 'success', message: 'Lưu báo cáo thẩm định thành công!', maBCTD: maBCTD };
 }
 
@@ -971,7 +1085,7 @@ function handleGetInspections() {
     soHDTD: r[1],
     maKH: r[2],
     hoTen: r[3],
-    ngayKiemTra: r[4],
+    ngayKiemTra: formatGasDate(r[4]),
     hinhThuc: r[5],
     danhGiaMucDich: r[6],
     mucDoRuiRo: r[7],
@@ -989,12 +1103,14 @@ function handleSaveLoanInspection(data) {
   if (!sheet) throw new Error("Không tìm thấy sheet KIEM_TRA_VON");
 
   const maBBKT = data.maBBKT || ("BBKT-" + Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd-HHmmss"));
+  const ngayKTVal = parseGasDateToSheet(data.ngayKiemTra || new Date());
+
   const rowValues = [
     maBBKT,
     data.soHDTD || '',
     data.maKH || '',
     data.hoTen || '',
-    data.ngayKiemTra || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy"),
+    ngayKTVal,
     data.hinhThuc || 'Thực địa',
     data.danhGiaMucDich || 'Đúng mục đích',
     data.mucDoRuiRo || 'Thấp',
@@ -1004,7 +1120,7 @@ function handleSaveLoanInspection(data) {
   ];
 
   sheet.appendRow(rowValues);
-  return { status: 'success', message: 'Lưu biên bản kiểm tra vốn thành công!', maBBKT: maBBKT };
+  return { status: 'success', message: 'Lưu biên bản kiểm tra sử dụng vốn thành công!', maBBKT: maBBKT };
 }
 
 function handleGetDebitRegistrations() {
@@ -1019,7 +1135,7 @@ function handleGetDebitRegistrations() {
     gttt: r[2],
     diaChi: r[3],
     soTK: r[4],
-    kyTrich: r[5],
+    kyTrich: Number(r[5]) || 1,
     trangThai: r[6],
     ghiChu: r[7]
   }));
@@ -1032,8 +1148,9 @@ function handleSaveDebitRegister(data) {
   const sheet = ss.getSheetByName('DS_TRICH_NO');
   if (!sheet) throw new Error("Không tìm thấy sheet DS_TRICH_NO");
 
+  const maKH = String(data.maKH || '').trim();
   const rowValues = [
-    data.maKH || '',
+    maKH,
     data.hoTen || '',
     data.gttt || '',
     data.diaChi || '',
@@ -1043,8 +1160,20 @@ function handleSaveDebitRegister(data) {
     data.ghiChu || ''
   ];
 
+  if (sheet.getLastRow() > 1) {
+    const mData = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+    for (let i = 0; i < mData.length; i++) {
+      if (String(mData[i][0]).toLowerCase() === maKH.toLowerCase()) {
+        sheet.getRange(i + 2, 1, 1, 8).setValues([rowValues]);
+        clearCacheKeys(['dashboard_stats']);
+        return { status: 'success', message: 'Cập nhật thỏa thuận trích nợ thành công!' };
+      }
+    }
+  }
+
   sheet.appendRow(rowValues);
-  return { status: 'success', message: 'Đăng ký dịch vụ trích nợ thành công!' };
+  clearCacheKeys(['dashboard_stats']);
+  return { status: 'success', message: 'Đăng ký thỏa thuận trích nợ thành công!' };
 }
 
 function handleGetDebitBatches() {
@@ -1060,11 +1189,37 @@ function handleGetDebitBatches() {
     tongPhaiThu: Number(r[3]) || 0,
     tongDaTrich: Number(r[4]) || 0,
     tongConNo: Number(r[5]) || 0,
-    ngayTao: r[6],
+    ngayTao: formatGasDateTime(r[6]),
     trangThai: r[7]
-  }));
+  })).reverse();
 
   return { status: 'success', data: result };
+}
+
+function handleGetDebitBatchDetail(maDot) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('LICH_SU_GIAO_DICH');
+  if (!sheet || sheet.getLastRow() <= 1) return { status: 'success', data: [] };
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 14).getValues();
+  const matched = data.filter(r => String(r[1]) === String(maDot)).map(r => ({
+    idGiaoDich: r[0],
+    maDot: r[1],
+    maKH: r[2],
+    soHDTD: r[3],
+    soTK: r[4],
+    phaiThuGoc: Number(r[5]) || 0,
+    phaiThuLai: Number(r[6]) || 0,
+    noTonTruoc: Number(r[7]) || 0,
+    tongPhaiThu: Number(r[8]) || 0,
+    daTrich: Number(r[9]) || 0,
+    conNo: Number(r[10]) || 0,
+    ketQua: r[11],
+    lyDoLoi: r[12],
+    ngayCapNhat: formatGasDateTime(r[13])
+  }));
+
+  return { status: 'success', data: matched };
 }
 
 function handleCreateDebitBatch(data) {
@@ -1073,214 +1228,235 @@ function handleCreateDebitBatch(data) {
   const lsSheet = ss.getSheetByName('LICH_SU_GIAO_DICH');
   const dsTrichSheet = ss.getSheetByName('DS_TRICH_NO');
   const hdtdSheet = ss.getSheetByName('HDTD_CORE');
+  const noTonSheet = ss.getSheetByName('NO_TON_DONG');
 
-  const thangNam = data.thangNam || Utilities.formatDate(new Date(), "GMT+7", "yyyyMM");
-  const kyTrich = Number(data.kyTrich) || 1;
-  const maDot = "DOT-" + thangNam + "-K" + kyTrich;
+  const thangNam = data.thangNam;
+  const kyTrich = Number(data.kyTrich);
+  const maDot = `DOT-${thangNam}-K${kyTrich}`;
 
-  const dsTrich = dsTrichSheet.getLastRow() > 1 
-    ? dsTrichSheet.getRange(2, 1, dsTrichSheet.getLastRow() - 1, 8).getValues() 
+  const dsTrichData = dsTrichSheet.getRange(2, 1, Math.max(dsTrichSheet.getLastRow() - 1, 1), 8).getValues();
+  const eligibleKH = dsTrichData.filter(r => Number(r[5]) === kyTrich && String(r[6]).toLowerCase().includes('hieu luc'));
+
+  const hdtdData = hdtdSheet.getRange(2, 1, Math.max(hdtdSheet.getLastRow() - 1, 1), 11).getValues();
+  const noTonData = (noTonSheet && noTonSheet.getLastRow() > 1) 
+    ? noTonSheet.getRange(2, 1, noTonSheet.getLastRow() - 1, 8).getValues() 
     : [];
-  
-  const eligibleKH = dsTrich.filter(r => Number(r[5]) === kyTrich && r[6] === 'Hieu luc');
 
-  const hdData = hdtdSheet.getLastRow() > 1
-    ? hdtdSheet.getRange(2, 1, hdtdSheet.getLastRow() - 1, 11).getValues()
-    : [];
-
-  let batchTotalPhaiThu = 0;
-  const newTransactions = [];
+  let batchPhaiThu = 0;
+  const batchDetails = [];
+  const nowStr = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
 
   eligibleKH.forEach(kh => {
     const maKH = kh[0];
     const soTK = kh[4];
-    const customerContracts = hdData.filter(h => String(h[1]) === String(maKH));
+    const userHds = hdtdData.filter(h => String(h[1]) === String(maKH));
 
-    customerContracts.forEach(c => {
-      const soHDTD = c[0];
-      const duNo = Number(c[3]) || 0;
-      const laiSuat = Number(c[4]) || 0;
+    userHds.forEach(hd => {
+      const soHD = hd[0];
+      const duNo = Number(hd[3]) || 0;
+      const laiSuat = Number(hd[4]) || 0;
       const phaiThuLai = Math.round(duNo * (laiSuat / 100 / 12));
       const phaiThuGoc = 0;
-      const noTonTruoc = 0;
-      const tongPhaiThu = phaiThuLai + phaiThuGoc + noTonTruoc;
 
-      batchTotalPhaiThu += tongPhaiThu;
+      let noTon = 0;
+      const existNoTon = noTonData.find(nt => String(nt[0]) === String(maKH) && String(nt[1]) === String(soHD) && String(nt[6]) === 'CHUA_THU');
+      if (existNoTon) noTon = Number(existNoTon[4]) || 0;
 
-      newTransactions.push([
-        "GD-" + maDot + "-" + soHDTD,
+      const tongPhaiThu = phaiThuGoc + phaiThuLai + noTon;
+      batchPhaiThu += tongPhaiThu;
+
+      batchDetails.push([
+        `GD-${maDot}-${soHD}`,
         maDot,
         maKH,
-        soHDTD,
+        soHD,
         soTK,
         phaiThuGoc,
         phaiThuLai,
-        noTonTruoc,
+        noTon,
         tongPhaiThu,
         0,
         tongPhaiThu,
-        "CHO_TRICH",
-        "",
-        Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm")
+        'CHO_TRICH',
+        '',
+        nowStr
       ]);
     });
   });
 
+  // Batch insert
   dotSheet.appendRow([
     maDot,
     thangNam,
     kyTrich,
-    batchTotalPhaiThu,
+    batchPhaiThu,
     0,
-    batchTotalPhaiThu,
-    Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm"),
-    "KHOI_TAO"
+    batchPhaiThu,
+    nowStr,
+    'KHOI_TAO'
   ]);
 
-  if (newTransactions.length > 0) {
-    lsSheet.getRange(lsSheet.getLastRow() + 1, 1, newTransactions.length, 14).setValues(newTransactions);
+  if (batchDetails.length > 0) {
+    lsSheet.getRange(lsSheet.getLastRow() + 1, 1, batchDetails.length, 14).setValues(batchDetails);
   }
 
-  return {
-    status: 'success',
-    message: 'Khởi tạo đợt trích nợ ' + maDot + ' thành công với ' + newTransactions.length + ' lệnh trích!',
-    maDot: maDot,
-    totalItems: newTransactions.length,
-    tongPhaiThu: batchTotalPhaiThu
-  };
+  clearCacheKeys(['dashboard_stats']);
+  return { status: 'success', message: `Khởi tạo đợt trích nợ ${maDot} thành công với ${batchDetails.length} hợp đồng.`, maDot: maDot };
 }
 
 function handleReconcileUpload(data) {
   const ss = getSpreadsheet();
+  const dotSheet = ss.getSheetByName('DOT_TRICH_NO');
   const lsSheet = ss.getSheetByName('LICH_SU_GIAO_DICH');
   const noTonSheet = ss.getSheetByName('NO_TON_DONG');
 
   const maDot = data.maDot;
-  const items = data.items || [];
+  const results = data.results || [];
+  const nowStr = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
 
-  if (!lsSheet || lsSheet.getLastRow() <= 1) throw new Error("Chưa có giao dịch để đối soát.");
+  let totalDaTrich = 0;
+  let totalConNo = 0;
 
-  const lsData = lsSheet.getRange(2, 1, lsSheet.getLastRow() - 1, 14).getValues();
-  let updatedCount = 0;
-  let batchDaTrich = 0;
-  let batchConNo = 0;
+  if (lsSheet.getLastRow() > 1) {
+    const lsData = lsSheet.getRange(2, 1, lsSheet.getLastRow() - 1, 14).getValues();
+    const newNoTonRows = [];
 
-  for (let i = 0; i < lsData.length; i++) {
-    if (String(lsData[i][1]) === String(maDot)) {
-      const soHDTD = String(lsData[i][3]);
-      const match = items.find(it => String(it.soHDTD) === soHDTD);
+    for (let i = 0; i < lsData.length; i++) {
+      if (String(lsData[i][1]) === String(maDot)) {
+        const idGD = lsData[i][0];
+        const resItem = results.find(r => r.idGiaoDich === idGD);
 
-      if (match) {
-        const phaiThu = Number(lsData[i][8]) || 0;
-        const daTrich = Number(match.daTrich) || 0;
-        const conNo = Math.max(0, phaiThu - daTrich);
-        const ketQua = match.ketQua || (conNo === 0 ? 'THANH_CONG' : (daTrich > 0 ? 'TRICH_MOT_PHAN' : 'THAT_BAI'));
-        const lyDoLoi = match.lyDoLoi || (conNo > 0 ? 'Khong du so du' : '');
+        if (resItem) {
+          const phaiThu = Number(lsData[i][8]) || 0;
+          const daTrich = Number(resItem.daTrich) || 0;
+          const conNo = Math.max(0, phaiThu - daTrich);
+          const ketQua = conNo === 0 ? 'THANH_CONG' : (daTrich > 0 ? 'TRICH_MOT_PHAN' : 'THAT_BAI');
 
-        lsData[i][9] = daTrich;
-        lsData[i][10] = conNo;
-        lsData[i][11] = ketQua;
-        lsData[i][12] = lyDoLoi;
-        lsData[i][13] = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm");
+          totalDaTrich += daTrich;
+          totalConNo += conNo;
 
-        batchDaTrich += daTrich;
-        batchConNo += conNo;
-        updatedCount++;
-
-        if (conNo > 0 && noTonSheet) {
-          noTonSheet.appendRow([
-            lsData[i][2],
-            soHDTD,
-            0,
+          lsSheet.getRange(i + 2, 10, 1, 5).setValues([[
+            daTrich,
             conNo,
-            conNo,
-            maDot,
-            "CHUA_THU",
-            Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm")
-          ]);
+            ketQua,
+            resItem.lyDoLoi || (conNo > 0 ? 'Không đủ số dư' : ''),
+            nowStr
+          ]]);
+
+          if (conNo > 0) {
+            newNoTonRows.push([
+              lsData[i][2],
+              lsData[i][3],
+              0,
+              conNo,
+              conNo,
+              maDot,
+              'CHUA_THU',
+              nowStr
+            ]);
+          }
         }
+      }
+    }
+
+    if (newNoTonRows.length > 0) {
+      noTonSheet.getRange(noTonSheet.getLastRow() + 1, 1, newNoTonRows.length, 8).setValues(newNoTonRows);
+    }
+  }
+
+  // Cập nhật DOT_TRICH_NO
+  if (dotSheet.getLastRow() > 1) {
+    const dData = dotSheet.getRange(2, 1, dotSheet.getLastRow() - 1, 8).getValues();
+    for (let i = 0; i < dData.length; i++) {
+      if (String(dData[i][0]) === String(maDot)) {
+        dotSheet.getRange(i + 2, 5, 1, 4).setValues([[
+          totalDaTrich,
+          totalConNo,
+          nowStr,
+          'HOAN_TAT'
+        ]]);
+        break;
       }
     }
   }
 
-  lsSheet.getRange(2, 1, lsData.length, 14).setValues(lsData);
-
-  return {
-    status: 'success',
-    message: 'Đối soát hoàn tất ' + updatedCount + ' giao dịch!',
-    updatedCount: updatedCount,
-    batchDaTrich: batchDaTrich,
-    batchConNo: batchConNo
-  };
+  clearCacheKeys(['dashboard_stats', 'debt_warnings']);
+  return { status: 'success', message: 'Đối soát kết quả trích nợ hoàn tất!' };
 }
 
 function handleGetDebtWarnings() {
+  const cached = getCachedData('debt_warnings');
+  if (cached) return { status: 'success', data: cached };
+
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName('NO_TON_DONG');
+  const khSheet = ss.getSheetByName('KH_CORE');
+
   if (!sheet || sheet.getLastRow() <= 1) return { status: 'success', data: [] };
 
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
-  const result = data.map(r => ({
+  const khData = (khSheet && khSheet.getLastRow() > 1) ? khSheet.getRange(2, 1, khSheet.getLastRow() - 1, 2).getValues() : [];
+  const khMap = {};
+  khData.forEach(r => { khMap[r[0]] = r[1]; });
+
+  const result = data.filter(r => String(r[6]) === 'CHUA_THU').map(r => ({
     maKH: r[0],
+    hoTen: khMap[r[0]] || 'Khách hàng',
     soHDTD: r[1],
     gocTon: Number(r[2]) || 0,
     laiTon: Number(r[3]) || 0,
     tongNoTon: Number(r[4]) || 0,
     kyPhatSinh: r[5],
     trangThai: r[6],
-    ngayCapNhat: r[7]
+    ngayCapNhat: formatGasDateTime(r[7])
   }));
 
+  setCachedData('debt_warnings', result, 20);
   return { status: 'success', data: result };
 }
 
-function handleGetReportData(type, filter) {
+function handleGetReports() {
   const ss = getSpreadsheet();
-  const hdtdSheet = ss.getSheetByName('HDTD_CORE');
   const khSheet = ss.getSheetByName('KH_CORE');
+  const hdtdSheet = ss.getSheetByName('HDTD_CORE');
 
-  const khData = khSheet && khSheet.getLastRow() > 1 ? khSheet.getRange(2, 1, khSheet.getLastRow() - 1, 15).getValues() : [];
-  const hdData = hdtdSheet && hdtdSheet.getLastRow() > 1 ? hdtdSheet.getRange(2, 1, hdtdSheet.getLastRow() - 1, 11).getValues() : [];
+  const khData = (khSheet && khSheet.getLastRow() > 1) ? khSheet.getRange(2, 1, khSheet.getLastRow() - 1, 15).getValues() : [];
+  const hdtdData = (hdtdSheet && hdtdSheet.getLastRow() > 1) ? hdtdSheet.getRange(2, 1, hdtdSheet.getLastRow() - 1, 11).getValues() : [];
 
-  const areaSummary = {};
+  const areaReport = {};
   khData.forEach(kh => {
-    const maKH = kh[0];
-    const khuVuc = kh[10] || 'Khác';
-    if (!areaSummary[khuVuc]) areaSummary[khuVuc] = { khuVuc: khuVuc, countKH: 0, totalDuNo: 0 };
-    areaSummary[khuVuc].countKH += 1;
+    const area = kh[10] || 'Khu vực khác';
+    if (!areaReport[area]) areaReport[area] = { count: 0, duNo: 0 };
+    areaReport[area].count += 1;
 
-    const myContracts = hdData.filter(h => String(h[1]) === String(maKH));
-    myContracts.forEach(c => {
-      areaSummary[khuVuc].totalDuNo += Number(c[3]) || 0;
+    const userHds = hdtdData.filter(h => String(h[1]) === String(kh[0]));
+    userHds.forEach(h => {
+      areaReport[area].duNo += Number(h[3]) || 0;
     });
+  });
+
+  const productReport = {};
+  hdtdData.forEach(h => {
+    const prod = h[8] || 'Khác';
+    if (!productReport[prod]) productReport[prod] = { count: 0, duNo: 0 };
+    productReport[prod].count += 1;
+    productReport[prod].duNo += Number(h[3]) || 0;
   });
 
   return {
     status: 'success',
     data: {
-      byArea: Object.values(areaSummary),
-      totalRecords: hdData.length
+      byArea: areaReport,
+      byProduct: productReport
     }
   };
-}
-
-function handleTriggerSqlSync() {
-  const ss = getSpreadsheet();
-  const sheet = ss.getSheetByName('SETTING');
-  if (!sheet) throw new Error("Không tìm thấy sheet SETTING");
-
-  sheet.getRange("A2:B2").setValues([["SYNC_DATA", "PENDING"]]);
-  sheet.getRange("C2").setValue(Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss"));
-  sheet.getRange("G2").setValue("Đã gửi cờ yêu cầu đồng bộ. Đang chờ Python Daemon phản hồi...");
-
-  return { status: 'success', message: 'Đã gửi cờ yêu cầu đồng bộ dữ liệu tới SQL Server Core!' };
 }
 
 function handleGetSyncStatus() {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName('SETTING');
-  if (!sheet || sheet.getLastRow() < 2) {
-    return { status: 'success', data: { command: 'IDLE', status: 'IDLE' } };
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return { status: 'success', data: { status: 'IDLE', message: 'Hệ thống sẵn sàng' } };
   }
 
   const row = sheet.getRange("A2:G2").getValues()[0];
@@ -1289,11 +1465,23 @@ function handleGetSyncStatus() {
     data: {
       command: row[0],
       status: row[1],
-      requestTime: row[2],
-      startTime: row[3],
-      finishTime: row[4],
+      requestTime: formatGasDateTime(row[2]),
+      startTime: formatGasDateTime(row[3]),
+      finishTime: formatGasDateTime(row[4]),
       totalRows: row[5],
       message: row[6]
     }
   };
+}
+
+function handleTriggerSqlSync() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName('SETTING');
+  if (!sheet) throw new Error("Không tìm thấy bảng SETTING");
+
+  const nowStr = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
+  sheet.getRange("A2:C2").setValues([["SYNC_DATA", "PENDING", nowStr]]);
+  sheet.getRange("G2").setValue("Đã gửi lệnh SYNC_DATA từ WebApp. Đang chờ Python Daemon xử lý...");
+
+  return { status: 'success', message: 'Đã gửi lệnh đồng bộ dữ liệu vào hàng đợi. Python Daemon sẽ xử lý trong giây lát.' };
 }

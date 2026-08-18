@@ -5,6 +5,8 @@
  * 2. Chế độ Giả lập Offline (Mock Data Mode): Nạp dữ liệu mẫu ngân hàng phong phú khi chưa cấu hình GAS URL.
  */
 
+import { formatDateVN, formatDateTimeVN, getTodayVN } from '../utils/dateUtils';
+
 const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxLQHAgdH2cus1zX_z28b31qixMWqq5K0fgIsdy4QFD6xsjRlUyRrwmRyKU28jljAc2/exec';
 const STORAGE_KEY_GAS_URL = 'CREDITCORES_GAS_API_URL';
 
@@ -347,7 +349,7 @@ async function requestApi(action, method = 'GET', data = null) {
           role: data?.role || 'CBTD',
           customPermissions: data?.customPermissions || [],
           status: data?.status || 'ACTIVE',
-          createdAt: new Date().toLocaleDateString('vi-VN'),
+          createdAt: formatDateTimeVN(new Date()),
           lastLogin: '---'
         });
         return { status: 'success', message: 'Tạo mới tài khoản thành công!' };
@@ -383,7 +385,7 @@ async function requestApi(action, method = 'GET', data = null) {
       const newAppr = {
         maBCTD: 'BCTD-' + Date.now(),
         ...data,
-        ngayLap: new Date().toLocaleDateString('vi-VN')
+        ngayLap: formatDateVN(new Date())
       };
       mockData.appraisals.unshift(newAppr);
       return { status: 'success', message: 'Đã lưu báo cáo thẩm định thành công!', maBCTD: newAppr.maBCTD };
@@ -395,7 +397,7 @@ async function requestApi(action, method = 'GET', data = null) {
       const newInsp = {
         maBBKT: 'BBKT-' + Date.now(),
         ...data,
-        ngayKiemTra: new Date().toLocaleDateString('vi-VN')
+        ngayKiemTra: formatDateVN(new Date())
       };
       mockData.inspections.unshift(newInsp);
       return { status: 'success', message: 'Đã lưu biên bản kiểm tra sử dụng vốn thành công!', maBBKT: newInsp.maBBKT };

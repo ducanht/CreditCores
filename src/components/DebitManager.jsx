@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserCheck, Zap, Plus, Download, Play, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { api } from '../services/api';
+import { formatDateVN, formatDateTimeVN, formatCurrencyVN } from '../utils/dateUtils';
 
 export default function DebitManager({ prefilledCustomer }) {
   const [activeSubTab, setActiveSubTab] = useState('register'); // 'register' | 'batch'
@@ -216,15 +217,15 @@ export default function DebitManager({ prefilledCustomer }) {
                   batches.map((b) => (
                     <tr key={b.maDot}>
                       <td>
-                        <span className="fw-bold text-primary">{b.maDot}</span>
-                        <div className="text-muted small">{b.ngayTao}</div>
+                        <span className="fw-bold text-primary font-monospace">{b.maDot}</span>
+                        <div className="text-muted small">{formatDateTimeVN(b.ngayTao)}</div>
                       </td>
                       <td>
-                        <span className="fw-semibold">Kỳ {b.kyTrich}</span> (Tháng {b.thangNam})
+                        <span className="badge bg-light text-dark border fw-semibold">Kỳ {b.kyTrich}</span> (Tháng {b.thangNam})
                       </td>
-                      <td className="text-end fw-bold">{formatCurrency(b.tongPhaiThu)}</td>
-                      <td className="text-end fw-bold text-success">{formatCurrency(b.tongDaTrich)}</td>
-                      <td className="text-end fw-bold text-danger">{formatCurrency(b.tongConNo)}</td>
+                      <td className="text-end fw-bold num-tabular">{formatCurrencyVN(b.tongPhaiThu)}</td>
+                      <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(b.tongDaTrich)}</td>
+                      <td className="text-end fw-bold text-danger num-tabular">{formatCurrencyVN(b.tongConNo)}</td>
                       <td className="text-center">
                         <span
                           className={`badge-status ${

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Search, User, CreditCard, Landmark, FileText, CheckCircle2, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, User, CreditCard, Landmark, FileText, ShieldCheck } from 'lucide-react';
 import { api } from '../services/api';
+import { formatDateVN, formatCurrencyVN } from '../utils/dateUtils';
 
 export default function Customer360({ onNavigateToAppraisal, onNavigateToInspection, onNavigateToDebit }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [loading, setLoading] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   const fetchCustomers = async (q = '') => {
     setLoading(true);
@@ -31,12 +33,19 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
     fetchCustomers('');
   }, []);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    fetchCustomers(searchTerm);
+  const handleSearchChange = (val) => {
+    setSearchTerm(val);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchCustomers(val);
+    }, 350); // Debounce 350ms to protect Google API Quota
   };
 
-  const formatCurrency = (val) => (val || 0).toLocaleString('vi-VN') + ' đ';
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    fetchCustomers(searchTerm);
+  };
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -53,13 +62,13 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
                 className="form-control border-start-0 ps-0"
                 placeholder="Nhập Mã Khách Hàng, Họ Tên, CCCD (12 số), Số Điện Thoại hoặc Số Tài Khoản..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
           </div>
           <div className="col-md-3 d-flex gap-2">
             <button type="submit" className="btn btn-primary fw-semibold w-100" disabled={loading}>
-              {loading ? 'Đang tìm kiếm...' : 'Tra cứu 360°'}
+              {loading ? 'Đang tra cứu...' : 'Tra cứu 360°'}
             </button>
             <button
               type="button"
@@ -120,7 +129,7 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
             <div className="d-flex flex-column gap-3">
               {/* Profile Card */}
               <div className="card-modern p-4">
-                <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3 flex-wrap gap-2">
                   <div>
                     <h4 className="fw-bold text-primary m-0 d-flex align-items-center gap-2">
                       <User size={24} /> {selectedCustomer.hoTen}
@@ -153,14 +162,16 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
                     <div className="p-3 bg-light rounded-3">
                       <span className="text-muted small d-block">Số CCCD / Ngày Cấp</span>
                       <span className="fw-bold text-dark">
-                        {selectedCustomer.cccd} ({selectedCustomer.ngayCap || '---'})
+                        {selectedCustomer.cccd} ({formatDateVN(selectedCustomer.ngayCap)})
                       </span>
                     </div>
                   </div>
                   <div className="col-md-4">
                     <div className="p-3 bg-light rounded-3">
                       <span className="text-muted small d-block">Số Điện Thoại</span>
-                      <span className="fw-bold text-dark">{selectedCustomer.dienThoaiDD || selectedCustomer.dienThoai || '---'}</span>
+                      <span className="fw-bold text-dark">
+                        {selectedCustomer.dienThoaiDD || selectedCustomer.dienThoai || '---'}
+                      </span>
                     </div>
                   </div>
                   <div className="col-md-4">
@@ -180,13 +191,17 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
                   <div className="col-md-4">
                     <div className="p-3 bg-light rounded-3">
                       <span className="text-muted small d-block">Số Sổ Cổ Phần / Ngày Vào</span>
-                      <span className="fw-bold text-dark">{selectedCustomer.soSoCP || '---'} ({selectedCustomer.ngayVaoTV || '---'})</span>
+                      <span className="fw-bold text-dark">
+                        {selectedCustomer.soSoCP || '---'} ({formatDateVN(selectedCustomer.ngayVaoTV)})
+                      </span>
                     </div>
                   </div>
                   <div className="col-md-4">
                     <div className="p-3 bg-light rounded-3">
                       <span className="text-muted small d-block">Tổng Vốn Góp Cổ Phần</span>
-                      <span className="fw-bold text-success">{formatCurrency(selectedCustomer.tongTienCP)}</span>
+                      <span className="fw-bold text-success num-tabular">
+                        {formatCurrencyVN(selectedCustomer.tongTienCP)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -216,15 +231,15 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
                         selectedCustomer.contracts.map((c) => (
                           <tr key={c.soHDTD}>
                             <td>
-                              <span className="fw-bold text-primary">{c.soHDTD}</span>
+                              <span className="fw-bold text-primary font-monospace">{c.soHDTD}</span>
                               <div className="text-muted small">{c.moTaVay}</div>
                             </td>
-                            <td className="text-end fw-semibold">{formatCurrency(c.tienVay)}</td>
-                            <td className="text-end fw-bold text-danger">{formatCurrency(c.duNo)}</td>
+                            <td className="text-end fw-semibold num-tabular">{formatCurrencyVN(c.tienVay)}</td>
+                            <td className="text-end fw-bold text-danger num-tabular">{formatCurrencyVN(c.duNo)}</td>
                             <td className="text-center fw-semibold text-success">{c.laiSuat}% /năm</td>
                             <td className="text-center small">
-                              {c.ngayVay} <br />
-                              <span className="text-muted">đến {c.denHan}</span>
+                              {formatDateVN(c.ngayVay)} <br />
+                              <span className="text-muted">đến {formatDateVN(c.denHan)}</span>
                             </td>
                             <td className="text-center">
                               <button

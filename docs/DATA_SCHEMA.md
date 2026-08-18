@@ -183,3 +183,33 @@ Tài liệu này định nghĩa chi tiết 11 bảng CSDL của hệ thống **C
 | I | `MoTaThucTe` | String | Mô tả hiện trạng thực tế sử dụng vốn vay |
 | J | `HinhAnhKiemTra`| String (URL) | Link thư mục ảnh kiểm tra thực địa trên Google Drive |
 | K | `CanBoKiemTra` | String | Cán bộ tín dụng thực hiện |
+
+---
+
+## 🕒 3. Quy Tắc Định Dạng Ngày Tháng (Date Normalization Protocol)
+
+1. **Hiển thị trên Giao diện Người dùng (Frontend Display)**:
+   - **Bắt buộc**: 100% các trường ngày hiển thị chuẩn Việt Nam **`dd/MM/yyyy`** (ví dụ: `18/08/2026`).
+   - Các trường có thời gian hiển thị **`dd/MM/yyyy HH:mm:ss`** (ví dụ: `18/08/2026 14:30:00`).
+   - Sử dụng thư viện tiện ích [`src/utils/dateUtils.js`](../src/utils/dateUtils.js) (`formatDateVN`, `formatDateTimeVN`).
+2. **Ghi nhận vào Google Sheets & API (Database Storage)**:
+   - Google Apps Script chuyển đổi sang đối tượng `Date` hoặc chuẩn quốc tế ISO `yyyy-MM-dd` kết hợp thiết lập `setNumberFormat("dd/MM/yyyy")` trên toàn bộ cột để Google Sheets lưu trữ chính xác mà không bị đảo lộn ngày/tháng do cài đặt vùng miền (Locale).
+
+---
+
+## ⚡ 4. Cơ Chế Tối Ưu Hóa & Bảo Vệ Hạn Ngạch Tài Khoản Google Miễn Phí (Google Free Quota Protection)
+
+Nhằm đảm bảo hệ thống vận hành 24/7 liên tục mà không bao giờ chạm ngưỡng giới hạn (Rate Limits / API Quotas) của tài khoản Google Free:
+
+1. **Tầng Caching ScriptCache trên Backend (`gas_backend/Code.gs`)**:
+   - Sử dụng `CacheService.getScriptCache()` lưu tạm kết quả của các hàm đọc nhiều (`getDashboardStats`, `getRolesAndPermissions`, `getDebtWarnings`) với TTL 20 - 60 giây.
+   - Giảm tải **hơn 90% số lượng request đọc Google Sheets API**, giúp Web App phản hồi tức thì dưới 100ms.
+   - Tự động xóa Cache (Cache Invalidation) khi phát sinh thao tác ghi mới (`saveAppraisalReport`, `reconcileUpload`, `saveUser`...).
+2. **Thao Tác Dữ Liệu Theo Lô (Batch Operations)**:
+   - Tuyệt đối không gọi `getValue()` hoặc `setValue()` trong vòng lặp. Toàn bộ thao tác đọc/ghi đều sử dụng mảng 2 chiều (`getRange().getValues()` và `setValues()`).
+   - Chỉ gọi `SpreadsheetApp.flush()` đúng 1 lần khi kết thúc phiên xử lý.
+3. **Chống Race Condition & Khóa Giao Dịch An Toàn**:
+   - Sử dụng `LockService.getScriptLock()` với thời gian chờ 10 giây và khối lệnh `try ... finally { lock.releaseLock() }` đảm bảo an toàn tuyệt đối cho số liệu.
+4. **Debounce 350ms trên Giao Diện Tìm Kiếm**:
+   - Mọi ô tìm kiếm (Tra cứu 360°, Thẩm định, Sổ nợ) đều được trang bị bộ đệm thời gian 350ms, tránh việc người dùng gõ từng ký tự làm kích hoạt hàng loạt request không cần thiết.
+

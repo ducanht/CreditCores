@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileCheck2, Plus, Search, CheckCircle2, ShieldAlert, FolderOpen, ExternalLink } from 'lucide-react';
+import { FileCheck2, Plus, Search } from 'lucide-react';
 import { api } from '../services/api';
+import { formatDateVN, formatCurrencyVN, getTodayVN } from '../utils/dateUtils';
 
 export default function Appraisal({ prefilledCustomer }) {
   const [appraisals, setAppraisals] = useState([]);
@@ -140,15 +141,15 @@ export default function Appraisal({ prefilledCustomer }) {
                 filteredAppraisals.map((a) => (
                   <tr key={a.maBCTD}>
                     <td>
-                      <span className="fw-bold text-primary">{a.maBCTD}</span>
-                      <div className="text-muted small">{a.ngayLap}</div>
+                      <span className="fw-bold text-primary font-monospace">{a.maBCTD}</span>
+                      <div className="text-muted small">{formatDateVN(a.ngayLap)}</div>
                     </td>
                     <td>
                       <div className="fw-bold text-dark">{a.hoTen}</div>
                       <span className="text-muted small">Mã: {a.maKH}</span>
                     </td>
                     <td className="text-end">
-                      <div className="fw-bold text-success">{formatCurrency(a.duyetVay)}</div>
+                      <div className="fw-bold text-success num-tabular">{formatCurrencyVN(a.duyetVay)}</div>
                       <span className="text-muted small">{a.thoiHanThang} tháng @ {a.laiSuatDuyet}%</span>
                     </td>
                     <td>
@@ -158,7 +159,7 @@ export default function Appraisal({ prefilledCustomer }) {
                       </div>
                     </td>
                     <td className="text-center">
-                      <div className="fw-semibold">{formatCurrency(a.giaTriTSBD)}</div>
+                      <div className="fw-semibold num-tabular">{formatCurrencyVN(a.giaTriTSBD)}</div>
                       <span className="badge bg-info-subtle text-info fw-bold">{a.tyLeLTV}</span>
                     </td>
                     <td className="text-center">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowLeftRight, UploadCloud, CheckCircle2, AlertCircle, XCircle, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { api } from '../services/api';
+import { formatCurrencyVN } from '../utils/dateUtils';
 
 export default function Reconciliation() {
   const [selectedBatch, setSelectedBatch] = useState('DOT-202608-K1');
@@ -142,11 +143,11 @@ export default function Reconciliation() {
                 const conNo = Math.max(0, it.phaiThu - it.daTrich);
                 return (
                   <tr key={idx}>
-                    <td className="fw-bold text-primary">{it.soHDTD}</td>
+                    <td className="fw-bold text-primary font-monospace">{it.soHDTD}</td>
                     <td className="fw-semibold text-dark">{it.hoTen}</td>
-                    <td className="text-end fw-bold">{formatCurrency(it.phaiThu)}</td>
-                    <td className="text-end fw-bold text-success">{formatCurrency(it.daTrich)}</td>
-                    <td className="text-end fw-bold text-danger">{formatCurrency(conNo)}</td>
+                    <td className="text-end fw-bold num-tabular">{formatCurrencyVN(it.phaiThu)}</td>
+                    <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(it.daTrich)}</td>
+                    <td className="text-end fw-bold text-danger num-tabular">{formatCurrencyVN(conNo)}</td>
                     <td className="text-center">
                       <span
                         className={`badge-status ${

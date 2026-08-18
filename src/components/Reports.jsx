@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileBarChart2, Download, Filter, Landmark, MapPin, PieChart } from 'lucide-react';
+import { FileBarChart2, Download, MapPin, PieChart } from 'lucide-react';
+import { formatCurrencyVN } from '../utils/dateUtils';
 
 export default function Reports() {
   const formatCurrency = (val) => (val || 0).toLocaleString('vi-VN') + ' đ';
@@ -58,9 +59,9 @@ export default function Reports() {
                   {areaData.map((a, idx) => (
                     <tr key={idx}>
                       <td className="fw-semibold text-dark">{a.area}</td>
-                      <td className="text-center">{a.countKH} KH</td>
-                      <td className="text-end fw-bold text-primary">{formatCurrency(a.duNo)}</td>
-                      <td className="text-end fw-bold">{a.rate}</td>
+                      <td className="text-center num-tabular">{a.countKH}</td>
+                      <td className="text-end fw-bold text-primary num-tabular">{formatCurrencyVN(a.duNo)}</td>
+                      <td className="text-end fw-bold text-success num-tabular">{a.rate}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -69,32 +70,35 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Report 2: By Loan Product */}
+        {/* Report 2: By Product */}
         <div className="col-lg-6">
           <div className="card-modern p-4 h-100">
             <h6 className="fw-bold mb-3 text-slate-800 d-flex align-items-center gap-2">
-              <PieChart size={18} className="text-primary" /> Cơ Cấu Sản Phẩm Cho Vay
+              <PieChart size={18} className="text-success" /> Cơ Cấu Sản Phẩm Tín Dụng
             </h6>
 
-            <div className="d-flex flex-column gap-3 mt-3">
-              {loanTypes.map((t, idx) => (
-                <div key={idx} className="p-3 bg-light rounded-3">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="fw-bold text-dark">{t.type}</span>
-                    <span className="fw-bold text-primary">{formatCurrency(t.amount)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center text-muted small">
-                    <span>{t.count} món vay</span>
-                    <span>{((t.amount / 48500000000) * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="progress mt-2" style={{ height: 6 }}>
-                    <div
-                      className={`progress-bar ${t.color}`}
-                      style={{ width: `${(t.amount / 48500000000) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+            <div className="table-responsive">
+              <table className="table table-custom align-middle">
+                <thead>
+                  <tr>
+                    <th>Sản Phẩm Vay</th>
+                    <th className="text-center">Số Món</th>
+                    <th className="text-end">Tổng Dư Nợ (VNĐ)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loanTypes.map((lt, idx) => (
+                    <tr key={idx}>
+                      <td className="fw-semibold text-dark d-flex align-items-center gap-2">
+                        <span className={`badge p-1 rounded-circle ${lt.color}`}> </span>
+                        {lt.type}
+                      </td>
+                      <td className="text-center num-tabular">{lt.count}</td>
+                      <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(lt.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

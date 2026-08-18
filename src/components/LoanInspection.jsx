@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, Plus, Search, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Plus, Search } from 'lucide-react';
 import { api } from '../services/api';
+import { formatDateVN, getTodayISO } from '../utils/dateUtils';
 
 export default function LoanInspection({ prefilledContract }) {
   const [inspections, setInspections] = useState([]);
@@ -12,7 +13,7 @@ export default function LoanInspection({ prefilledContract }) {
     soHDTD: '',
     maKH: '',
     hoTen: '',
-    ngayKiemTra: new Date().toISOString().split('T')[0],
+    ngayKiemTra: getTodayISO(),
     hinhThuc: 'Thực địa',
     danhGiaMucDich: 'Đúng mục đích',
     mucDoRuiRo: 'Thấp',
@@ -119,11 +120,11 @@ export default function LoanInspection({ prefilledContract }) {
                 filteredInspections.map((item) => (
                   <tr key={item.maBBKT}>
                     <td>
-                      <span className="fw-bold text-primary">{item.maBBKT}</span>
-                      <div className="text-muted small">{item.ngayKiemTra}</div>
+                      <span className="fw-bold text-primary font-monospace">{item.maBBKT}</span>
+                      <div className="text-muted small">{formatDateVN(item.ngayKiemTra)}</div>
                     </td>
                     <td>
-                      <span className="fw-bold text-dark">{item.soHDTD}</span>
+                      <span className="fw-bold text-dark font-monospace">{item.soHDTD}</span>
                       <div className="text-muted small">
                         {item.hoTen} ({item.maKH})
                       </div>

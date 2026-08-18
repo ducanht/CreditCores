@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, PhoneCall, CheckCircle2, Search, ArrowRight, ShieldAlert } from 'lucide-react';
 import { api } from '../services/api';
+import { formatCurrencyVN } from '../utils/dateUtils';
 
 export default function DebtWarning() {
   const [warnings, setWarnings] = useState([]);
@@ -20,8 +21,6 @@ export default function DebtWarning() {
   useEffect(() => {
     fetchWarnings();
   }, []);
-
-  const formatCurrency = (val) => (val || 0).toLocaleString('vi-VN') + ' đ';
 
   const totalOverdue = warnings.reduce((acc, w) => acc + (w.tongNoTon || 0), 0);
 
@@ -44,7 +43,7 @@ export default function DebtWarning() {
             <div>
               <h5 className="fw-bold text-danger m-0">Sổ Theo Dõi Nợ Tồn Đọng & Cảnh Báo Thu Nợ</h5>
               <p className="text-danger-emphasis small m-0">
-                Tổng số tiền nợ tồn chưa thu được: <strong>{formatCurrency(totalOverdue)}</strong> ({warnings.length} món)
+                Tổng số tiền nợ tồn chưa thu được: <strong>{formatCurrencyVN(totalOverdue)}</strong> ({warnings.length} món)
               </p>
             </div>
           </div>
@@ -87,10 +86,10 @@ export default function DebtWarning() {
                 filtered.map((w, idx) => (
                   <tr key={idx}>
                     <td className="fw-bold text-primary">{w.maKH}</td>
-                    <td className="fw-semibold text-dark">{w.soHDTD}</td>
-                    <td className="text-end">{formatCurrency(w.gocTon)}</td>
-                    <td className="text-end text-danger">{formatCurrency(w.laiTon)}</td>
-                    <td className="text-end fw-bold text-danger">{formatCurrency(w.tongNoTon)}</td>
+                    <td className="fw-semibold text-dark font-monospace">{w.soHDTD}</td>
+                    <td className="text-end num-tabular">{formatCurrencyVN(w.gocTon)}</td>
+                    <td className="text-end text-danger num-tabular">{formatCurrencyVN(w.laiTon)}</td>
+                    <td className="text-end fw-bold text-danger num-tabular">{formatCurrencyVN(w.tongNoTon)}</td>
                     <td className="text-center">
                       <span className="badge bg-secondary-subtle text-secondary">{w.kyPhatSinh}</span>
                     </td>
