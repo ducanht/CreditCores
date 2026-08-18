@@ -44,22 +44,21 @@
 Mở PowerShell tại thư mục `CreditCores`:
 ```powershell
 cd "d:\Antigravity Projects\CreditCores"
-git init
 git add .
-git commit -m "feat: initial commit for CreditCores automation system"
-git branch -M main
-git remote add origin https://github.com/<your-username>/CreditCores.git
-git push -u origin main
+git commit -m "update: deployment guide and links"
+git push
 ```
+
+Repository GitHub chính thức: **[https://github.com/ducanht/CreditCores](https://github.com/ducanht/CreditCores)**
 
 ### Bước 2: Tự động Triển khai trên Vercel
 1. Đăng nhập vào [Vercel Dashboard](https://vercel.com).
-2. Nhấn **Add New Project** $\to$ Chọn Repository `CreditCores`.
+2. Nhấn **Add New Project** $\to$ Chọn Repository **`ducanht/CreditCores`**.
 3. Framework Preset: **Vite**.
 4. Root Directory: `./`.
 5. *(Tùy chọn)* Trong phần **Environment Variables**, thêm biến:
    - `VITE_GAS_API_URL`: Dán đường dẫn Web App URL của Google Apps Script từ Bước 1.
-6. Nhấn **Deploy**. Vercel sẽ tự động build và cung cấp liên kết truy cập trực tiếp `https://creditcores-....vercel.app`.
+6. Nhấn **Deploy**. Vercel sẽ tự động build và cung cấp liên kết truy cập trực tiếp `https://creditcores.vercel.app`.
 
 ---
 
