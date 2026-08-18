@@ -237,7 +237,13 @@ async function requestApi(action, method = 'GET', data = null) {
       const res = await fetch(url, options);
       if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
       const json = await res.json();
-      return json;
+      
+      // Nếu GAS là phiên bản cũ chưa hỗ trợ action mới (vd: login), tự động fallback mà không làm gián đoạn người dùng
+      if (json && json.status === 'error' && json.message && json.message.includes('Hành động không hợp lệ')) {
+        console.warn(`[CreditCores API] GAS chưa cập nhật bản mới cho action [${action}], tự động chuyển sang Fallback Engine.`);
+      } else {
+        return json;
+      }
     } catch (err) {
       console.warn(`[CreditCores API] Gọi GAS thất bại, chuyển sang Mock Data: ${err.message}`);
     }
