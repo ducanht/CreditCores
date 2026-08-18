@@ -35,6 +35,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChangePassModal, setShowChangePassModal] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('CREDITCORES_THEME') === 'dark');
 
   const [stats, setStats] = useState(null);
@@ -57,6 +58,14 @@ export default function App() {
 
   const toggleTheme = () => {
     setIsDarkMode(prev => !prev);
+  };
+
+  const handleToggleSidebar = () => {
+    if (window.innerWidth < 992) {
+      setIsMobileSidebarOpen(prev => !prev);
+    } else {
+      setIsSidebarCollapsed(prev => !prev);
+    }
   };
 
   const fetchInitialData = async () => {
@@ -135,7 +144,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -144,16 +153,20 @@ export default function App() {
         onLogout={handleLogout}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
       <div className="main-wrapper">
         <TopHeader
           activeTabTitle={TAB_TITLES[activeTab] || 'CreditCores'}
+          activeTab={activeTab}
+          onNavigate={setActiveTab}
           syncStatus={syncStatus}
           isSyncing={isSyncing}
           onTriggerSync={handleTriggerSync}
           currentUser={currentUser}
-          onToggleMobile={() => setIsMobileSidebarOpen(prev => !prev)}
+          onToggleSidebar={handleToggleSidebar}
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
         />

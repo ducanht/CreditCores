@@ -7,29 +7,60 @@ import {
   ShieldCheck,
   UserCheck,
   Shield,
-  Sliders,
   Check,
   Save,
   Layers,
-  Sparkles,
-  Info,
+  Lock,
+  Unlock,
   CheckSquare,
-  Square
+  Square,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../services/api';
 import { hashPassword, ROLE_LABELS, MODULE_REGISTRY } from '../services/auth';
 
+const GROUPS_METADATA = [
+  {
+    code: 'ADMIN',
+    name: 'Quản Trị Viên (Admin)',
+    badgeClass: 'badge-danger-soft',
+    description: 'Toàn quyền quản trị hệ thống, quản lý người dùng và cấu hình tham số'
+  },
+  {
+    code: 'CBTD',
+    name: 'Cán Bộ Tín Dụng',
+    badgeClass: 'badge-brand-soft',
+    description: 'Thẩm định hồ sơ vay vốn, lập biên bản kiểm tra sử dụng vốn và tra cứu 360°'
+  },
+  {
+    code: 'KETOAN',
+    name: 'Kế Toán Viên / Thủ Quỹ',
+    badgeClass: 'badge-success-soft',
+    description: 'Quản lý thỏa thuận ủy quyền trích nợ, tạo đợt trích nợ tự động và đối soát số liệu'
+  },
+  {
+    code: 'BKS',
+    name: 'Ban Kiểm Soát / Giám Đốc',
+    badgeClass: 'badge-warning-soft',
+    description: 'Giám sát hoạt động tín dụng, cảnh báo nợ quá hạn và xem báo cáo thống kê đa chiều'
+  }
+];
+
 export default function UserManagement() {
-  const [subTab, setSubTab] = useState('users'); // 'users' | 'roles' | 'modules'
+  const [activeSubTab, setActiveSubTab] = useState('roles'); // 'roles' | 'users'
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [alertInfo, setAlertInfo] = useState(null);
+
+  // Modals state
   const [showUserModal, setShowUserModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
-  const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [newResetPass, setNewResetPass] = useState('123456');
-  const [saving, setSaving] = useState(false);
+  const [newResetPass, setNewResetPass] = useState('Qtd@2003');
 
   // Form User state
   const [userFormData, setUserFormData] = useState({
@@ -38,18 +69,11 @@ export default function UserManagement() {
     role: 'CBTD',
     customPermissions: [],
     status: 'ACTIVE',
-    password: ''
-  });
-
-  // Form Role state
-  const [roleFormData, setRoleFormData] = useState({
-    roleCode: '',
-    roleName: '',
-    permissions: [],
-    description: ''
+    password: 'Qtd@2003'
   });
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const [uRes, rRes] = await Promise.all([
         api.getUserList(),
@@ -59,11 +83,29 @@ export default function UserManagement() {
       if (uRes.status === 'success' && uRes.data) {
         setUsers(uRes.data);
       }
-      if (rRes.status === 'success' && rRes.data && rRes.data.roles) {
-        setRoles(rRes.data.roles);
+      if (rRes.status === 'success' && rRes.data) {
+        const rolesList = Array.isArray(rRes.data) ? rRes.data : (rRes.data.roles || []);
+        // Đảm bảo có đủ 4 nhóm
+        const mergedRoles = GROUPS_METADATA.map(g => {
+          const found = rolesList.find(r => r.roleCode === g.code);
+          return {
+            roleCode: g.code,
+            roleName: g.name,
+            description: g.description,
+            permissions: found?.permissions || (
+              g.code === 'ADMIN' ? MODULE_REGISTRY.map(m => m.id) :
+              g.code === 'CBTD' ? ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'reports'] :
+              g.code === 'KETOAN' ? ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'] :
+              ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports']
+            )
+          };
+        });
+        setRoles(mergedRoles);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Lỗi nạp dữ liệu phân quyền:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,7 +113,59 @@ export default function UserManagement() {
     fetchData();
   }, []);
 
-  // --- USER HANDLERS ---
+  const showNotification = (msg, type = 'success') => {
+    setAlertInfo({ msg, type });
+    setTimeout(() => setAlertInfo(null), 4000);
+  };
+
+  // --- ROLE PERMISSION MATRIX HANDLERS ---
+  const toggleGroupPermission = (roleCode, moduleId) => {
+    setRoles(prevRoles =>
+      prevRoles.map(role => {
+        if (role.roleCode === roleCode) {
+          const currentPerms = role.permissions || [];
+          const exists = currentPerms.includes(moduleId);
+          const newPerms = exists
+            ? currentPerms.filter(p => p !== moduleId)
+            : [...currentPerms, moduleId];
+          return { ...role, permissions: newPerms };
+        }
+        return role;
+      })
+    );
+  };
+
+  const handleSaveGroupPermissions = async (roleObj) => {
+    setSaving(true);
+    try {
+      const res = await api.saveRolePermissions(roleObj);
+      if (res.status === 'success') {
+        showNotification(res.message || `Đã lưu phân quyền nhóm ${roleObj.roleName} thành công!`);
+      } else {
+        showNotification(res.message || 'Lỗi lưu phân quyền nhóm.', 'danger');
+      }
+    } catch (e) {
+      showNotification('Lỗi kết nối máy chủ: ' + e.message, 'danger');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAllGroups = async () => {
+    setSaving(true);
+    try {
+      for (const r of roles) {
+        await api.saveRolePermissions(r);
+      }
+      showNotification('Đã cập nhật ma trận phân quyền cho toàn bộ 4 nhóm nghiệp vụ thành công!');
+    } catch (e) {
+      showNotification('Lỗi lưu phân quyền: ' + e.message, 'danger');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // --- USER ACCOUNT HANDLERS ---
   const handleOpenAddUser = () => {
     setUserFormData({
       username: '',
@@ -79,393 +173,217 @@ export default function UserManagement() {
       role: 'CBTD',
       customPermissions: [],
       status: 'ACTIVE',
-      password: ''
+      password: 'Qtd@2003'
     });
     setSelectedUser(null);
     setShowUserModal(true);
   };
 
-  const handleOpenEditUser = (user) => {
-    setSelectedUser(user);
+  const handleOpenEditUser = (u) => {
+    setSelectedUser(u);
     setUserFormData({
-      username: user.username,
-      fullName: user.fullName,
-      role: user.role,
-      customPermissions: user.customPermissions || [],
-      status: user.status,
+      username: u.username,
+      fullName: u.fullName,
+      role: u.role || 'CBTD',
+      customPermissions: u.customPermissions || [],
+      status: u.status || 'ACTIVE',
       password: ''
     });
     setShowUserModal(true);
   };
 
-  const handleToggleUserCustomPerm = (moduleId) => {
-    const current = userFormData.customPermissions || [];
-    if (current.includes(moduleId)) {
-      setUserFormData({
-        ...userFormData,
-        customPermissions: current.filter((id) => id !== moduleId)
-      });
-    } else {
-      setUserFormData({
-        ...userFormData,
-        customPermissions: [...current, moduleId]
-      });
+  const handleSaveUserSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!userFormData.username.trim() || !userFormData.fullName.trim()) {
+      alert('Vui lòng nhập đầy đủ tên đăng nhập và họ tên.');
+      return;
     }
-  };
 
-  const handleSaveUser = async (e) => {
-    e.preventDefault();
     setSaving(true);
     try {
-      let payload = {
-        username: userFormData.username,
-        fullName: userFormData.fullName,
+      let pHash = undefined;
+      if (!selectedUser && userFormData.password) {
+        pHash = await hashPassword(userFormData.password);
+      }
+
+      const payload = {
+        username: userFormData.username.trim().toLowerCase(),
+        fullName: userFormData.fullName.trim(),
         role: userFormData.role,
         customPermissions: userFormData.customPermissions,
-        status: userFormData.status
+        status: userFormData.status,
+        passwordHash: pHash
       };
-
-      if (userFormData.password) {
-        payload.passwordHash = await hashPassword(userFormData.password);
-      }
 
       const res = await api.saveUser(payload);
       if (res.status === 'success') {
-        alert(res.message || 'Lưu tài khoản và phân quyền thành công!');
+        showNotification(res.message || 'Lưu thông tin tài khoản thành công!');
         setShowUserModal(false);
         fetchData();
       } else {
-        alert(res.message || 'Lưu tài khoản thất bại.');
+        showNotification(res.message || 'Lỗi lưu tài khoản.', 'danger');
       }
     } catch (err) {
-      alert('Lỗi: ' + err.message);
+      showNotification('Lỗi: ' + err.message, 'danger');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleResetPass = async (e) => {
-    e.preventDefault();
-    if (!selectedUser) return;
+  const handleResetPasswordSubmit = async () => {
+    if (!selectedUser || !newResetPass) return;
     setSaving(true);
     try {
       const pHash = await hashPassword(newResetPass);
       const res = await api.resetPassword(selectedUser.username, pHash);
       if (res.status === 'success') {
-        alert(res.message || `Đã reset mật khẩu cho ${selectedUser.username} thành "${newResetPass}"!`);
+        showNotification(`Đã đặt lại mật khẩu cho tài khoản ${selectedUser.username} thành công!`);
         setShowResetModal(false);
       } else {
-        alert(res.message || 'Reset mật khẩu thất bại.');
+        showNotification(res.message || 'Lỗi reset mật khẩu.', 'danger');
       }
     } catch (err) {
-      alert('Lỗi: ' + err.message);
+      showNotification('Lỗi: ' + err.message, 'danger');
     } finally {
       setSaving(false);
     }
   };
 
-  // --- ROLE / GROUP PERMISSIONS HANDLERS ---
-  const handleToggleRolePermission = async (roleCode, moduleId) => {
-    const targetRole = roles.find((r) => r.roleCode === roleCode);
-    if (!targetRole) return;
-
-    let updatedPerms = [...(targetRole.permissions || [])];
-    if (updatedPerms.includes(moduleId)) {
-      updatedPerms = updatedPerms.filter((id) => id !== moduleId);
-    } else {
-      updatedPerms.push(moduleId);
-    }
-
-    // Cập nhật state local ngay lập tức
-    const newRoles = roles.map((r) =>
-      r.roleCode === roleCode ? { ...r, permissions: updatedPerms } : r
-    );
-    setRoles(newRoles);
-
-    // Lưu vào Backend
-    try {
-      await api.saveRolePermissions({
-        roleCode: targetRole.roleCode,
-        roleName: targetRole.roleName,
-        permissions: updatedPerms,
-        description: targetRole.description
-      });
-    } catch (e) {
-      console.error('Lỗi cập nhật quyền nhóm:', e);
-    }
-  };
-
-  const handleOpenAddRole = () => {
-    setRoleFormData({
-      roleCode: '',
-      roleName: '',
-      permissions: ['dashboard', 'customer360'],
-      description: ''
-    });
-    setShowRoleModal(true);
-  };
-
-  const handleSaveNewRole = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await api.saveRolePermissions(roleFormData);
-      if (res.status === 'success') {
-        alert(res.message || 'Tạo nhóm quyền mới thành công!');
-        setShowRoleModal(false);
-        fetchData();
-      } else {
-        alert(res.message || 'Tạo nhóm quyền thất bại.');
-      }
-    } catch (err) {
-      alert('Lỗi: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Helper tính danh sách quyền tổng hợp của một User
-  const calculateEffectiveCount = (user) => {
-    const roleObj = roles.find((r) => r.roleCode === user.role);
-    const rolePerms = roleObj ? roleObj.permissions : [];
-    const customPerms = user.customPermissions || [];
-    const all = new Set([...rolePerms, ...customPerms]);
-    return all.size;
-  };
-
-  const filteredUsers = users.filter(
-    (u) =>
-      !searchTerm ||
-      u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.role?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter(u =>
+    !searchTerm ||
+    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.fullName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Navigation Sub-Tabs */}
-      <div className="card-modern p-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="btn-group p-1 bg-light rounded-3">
-          <button
-            className={`btn btn-sm fw-bold px-3 ${
-              subTab === 'users' ? 'btn-primary shadow-sm' : 'btn-light text-muted'
-            }`}
-            onClick={() => setSubTab('users')}
+      {/* Header & Sub-tab navigation */}
+      <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="p-2 rounded-3 text-dark d-flex align-items-center justify-content-center"
+            style={{ background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)', width: 42, height: 42 }}
           >
-            <Users size={16} className="me-1" /> Danh Sách Người Dùng & Gán Quyền ({users.length})
-          </button>
-          <button
-            className={`btn btn-sm fw-bold px-3 ${
-              subTab === 'roles' ? 'btn-primary shadow-sm' : 'btn-light text-muted'
-            }`}
-            onClick={() => setSubTab('roles')}
-          >
-            <ShieldCheck size={16} className="me-1" /> Ma Trận Phân Quyền Nhóm 360° ({roles.length})
-          </button>
-          <button
-            className={`btn btn-sm fw-bold px-3 ${
-              subTab === 'modules' ? 'btn-primary shadow-sm' : 'btn-light text-muted'
-            }`}
-            onClick={() => setSubTab('modules')}
-          >
-            <Layers size={16} className="me-1" /> Danh Mục Phân Hệ Mở Rộng ({MODULE_REGISTRY.length})
-          </button>
+            <ShieldCheck size={24} className="text-white" />
+          </div>
+          <div>
+            <h5 className="fw-bold m-0 text-slate-800 font-heading">
+              Quản Trị Phân Quyền Theo Nhóm & Người Dùng
+            </h5>
+            <span className="text-muted small">
+              Quản lý phân quyền truy cập 360° theo 4 nhóm nghiệp vụ và danh sách cán bộ
+            </span>
+          </div>
         </div>
 
-        {subTab === 'users' && (
-          <button className="btn btn-primary fw-bold d-flex align-items-center gap-2" onClick={handleOpenAddUser}>
-            <Plus size={18} /> Thêm Người Dùng Mới
-          </button>
-        )}
+        {/* Tab Switcher */}
+        <div className="d-flex align-items-center gap-2">
+          <div className="btn-group p-1 bg-light rounded-3 border">
+            <button
+              type="button"
+              className={`btn btn-sm ${activeSubTab === 'roles' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
+              onClick={() => setActiveSubTab('roles')}
+            >
+              <Layers size={14} className="me-1" /> Phân Quyền Theo Nhóm (4 Nhóm)
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${activeSubTab === 'users' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
+              onClick={() => setActiveSubTab('users')}
+            >
+              <Users size={14} className="me-1" /> Danh Sách Tài Khoản & Gán Nhóm
+            </button>
+          </div>
 
-        {subTab === 'roles' && (
-          <button className="btn btn-outline-primary fw-bold d-flex align-items-center gap-2" onClick={handleOpenAddRole}>
-            <Plus size={18} /> Thêm Nhóm Quyền Mới
+          <button
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            onClick={fetchData}
+            disabled={loading}
+            title="Tải lại dữ liệu"
+          >
+            <RefreshCw size={14} className={loading ? 'fa-spin' : ''} />
           </button>
-        )}
+        </div>
       </div>
 
-      {/* ================= TAB 1: USERS 360° ================= */}
-      {subTab === 'users' && (
+      {alertInfo && (
+        <div className={`alert alert-${alertInfo.type} d-flex align-items-center gap-2 py-2 px-3 small shadow-sm`}>
+          <AlertCircle size={16} />
+          <div>{alertInfo.msg}</div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 1: MA TRẬN PHÂN QUYỀN THEO NHÓM (GROUP PERMISSIONS MATRIX) */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'roles' && (
         <div className="card-modern p-4">
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h5 className="fw-bold m-0 text-slate-800 d-flex align-items-center gap-2">
-              <Users size={20} className="text-primary" />
-              Quản Lý Người Dùng & Phân Quyền Cá Nhân Hóa
-            </h5>
-
-            <div className="input-group" style={{ maxWidth: 320 }}>
-              <span className="input-group-text bg-light border-end-0">
-                <Search size={16} className="text-muted" />
+            <div>
+              <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-2">
+                <Shield size={18} className="text-success" /> Ma Trận Phân Quyền Truy Cập 360° (4 Nhóm Nghiệp Vụ)
+              </h6>
+              <span className="text-muted small">
+                Tick chọn để cấp quyền truy cập từng phân hệ chức năng cho từng nhóm nghiệp vụ
               </span>
-              <input
-                type="text"
-                className="form-control border-start-0"
-                placeholder="Tìm tên đăng nhập, họ tên, vai trò..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
             </div>
+
+            <button
+              className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-2"
+              onClick={handleSaveAllGroups}
+              disabled={saving}
+            >
+              <Save size={15} /> {saving ? 'Đang lưu...' : 'Lưu Tất Cả Phân Quyền'}
+            </button>
           </div>
 
           <div className="table-responsive">
             <table className="table table-custom align-middle">
               <thead>
                 <tr>
-                  <th>Tài Khoản</th>
-                  <th>Họ và Tên</th>
-                  <th className="text-center">Nhóm Vai Trò</th>
-                  <th className="text-center">Phân Hệ Cho Phép</th>
-                  <th className="text-center">Trạng Thái</th>
-                  <th>Đăng Nhập Gần Nhất</th>
-                  <th className="text-center">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => {
-                  const roleInfo = ROLE_LABELS[u.role] || { label: u.role, badgeClass: 'badge-info-soft' };
-                  const permCount = calculateEffectiveCount(u);
-                  const hasCustom = u.customPermissions && u.customPermissions.length > 0;
-
-                  return (
-                    <tr key={u.username}>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <div
-                            className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold"
-                            style={{ width: 34, height: 34, fontSize: '0.8rem' }}
-                          >
-                            {u.username.substring(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <span className="fw-bold text-primary">{u.username}</span>
-                            <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                              Tạo: {u.createdAt || '---'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="fw-semibold text-dark">{u.fullName}</td>
-                      <td className="text-center">
-                        <span className={`badge-status ${roleInfo.badgeClass}`}>{roleInfo.label}</span>
-                      </td>
-                      <td className="text-center">
-                        <span className="badge bg-secondary-subtle text-dark px-2 py-1 fw-bold">
-                          {permCount} / {MODULE_REGISTRY.length} phân hệ
-                        </span>
-                        {hasCustom && (
-                          <span
-                            className="badge bg-warning-subtle text-warning-emphasis ms-1"
-                            title={`Có ${u.customPermissions.length} quyền riêng lẻ bổ sung`}
-                          >
-                            +{u.customPermissions.length} riêng
-                          </span>
-                        )}
-                      </td>
-                      <td className="text-center">
-                        <span
-                          className={`badge-status ${
-                            u.status === 'ACTIVE' ? 'badge-success-soft' : 'badge-danger-soft'
-                          }`}
-                        >
-                          {u.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}
-                        </span>
-                      </td>
-                      <td className="text-muted small">{u.lastLogin || '---'}</td>
-                      <td className="text-center">
-                        <div className="d-flex justify-content-center gap-2">
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => handleOpenEditUser(u)}
-                            title="Sửa thông tin & phân quyền tick chọn"
-                          >
-                            <Sliders size={13} className="me-1" /> Phân Quyền
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-warning text-dark"
-                            onClick={() => {
-                              setSelectedUser(u);
-                              setNewResetPass('123456');
-                              setShowResetModal(true);
-                            }}
-                            title="Reset mật khẩu"
-                          >
-                            <KeyRound size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 2: ROLES & GROUP PERMISSIONS MATRIX ================= */}
-      {subTab === 'roles' && (
-        <div className="card-modern p-4">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <h5 className="fw-bold m-0 text-slate-800 d-flex align-items-center gap-2">
-                <ShieldCheck size={20} className="text-primary" />
-                Ma Trận Phân Quyền Nhóm Chức Năng 360°
-              </h5>
-              <p className="text-muted small m-0 mt-1">
-                Tick chọn trực tiếp để bật/tắt quyền truy cập từng phân hệ cho từng nhóm vai trò. Thay đổi được lưu tự động lên CSDL.
-              </p>
-            </div>
-          </div>
-
-          <div className="table-responsive">
-            <table className="table table-bordered align-middle text-center" style={{ borderColor: 'var(--card-border)' }}>
-              <thead className="bg-light">
-                <tr>
-                  <th className="text-start" style={{ minWidth: 260 }}>
-                    Phân Hệ Nghiệp Vụ
-                  </th>
-                  {roles.map((r) => {
-                    const rInfo = ROLE_LABELS[r.roleCode] || { label: r.roleName, badgeClass: 'badge-info-soft' };
-                    return (
-                      <th key={r.roleCode} style={{ minWidth: 150 }}>
-                        <div>{r.roleName}</div>
-                        <span className={`badge-status ${rInfo.badgeClass} mt-1`} style={{ fontSize: '0.68rem' }}>
+                  <th style={{ minWidth: 260 }}>Phân Hệ Chức Năng (11 Module)</th>
+                  <th style={{ width: 140 }}>Phạm Vi</th>
+                  {roles.map(r => (
+                    <th key={r.roleCode} className="text-center" style={{ width: 170 }}>
+                      <div className="d-flex flex-column align-items-center">
+                        <span className="fw-bold text-dark">{r.roleName.split('(')[0].trim()}</span>
+                        <span className="badge bg-light text-muted border font-monospace mt-1" style={{ fontSize: '0.68rem' }}>
                           {r.roleCode}
                         </span>
-                      </th>
-                    );
-                  })}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {MODULE_REGISTRY.map((mod) => (
                   <tr key={mod.id}>
-                    <td className="text-start">
+                    <td>
                       <div className="fw-bold text-dark">{mod.label}</div>
-                      <div className="text-muted" style={{ fontSize: '0.74rem' }}>
-                        {mod.description}
-                      </div>
+                      <div className="text-muted small" style={{ fontSize: '0.75rem' }}>{mod.description}</div>
                     </td>
-                    {roles.map((r) => {
-                      const isAllowed = r.permissions && r.permissions.includes(mod.id);
-                      const isSystemAdmin = r.roleCode === 'ADMIN' && mod.id === 'user_management';
+                    <td>
+                      <span className="badge bg-light text-secondary border">
+                        {mod.category}
+                      </span>
+                    </td>
+
+                    {roles.map(role => {
+                      const isAllowed = (role.permissions || []).includes(mod.id);
+                      const isAdmin = role.roleCode === 'ADMIN';
 
                       return (
-                        <td key={r.roleCode + '_' + mod.id}>
+                        <td key={role.roleCode} className="text-center">
                           <button
                             type="button"
-                            className={`btn btn-sm ${
-                              isAllowed
-                                ? 'btn-success text-white'
-                                : 'btn-outline-secondary opacity-50'
-                            } d-inline-flex align-items-center justify-content-center p-2 rounded-circle`}
-                            style={{ width: 32, height: 32 }}
-                            disabled={isSystemAdmin}
-                            onClick={() => handleToggleRolePermission(r.roleCode, mod.id)}
-                            title={isAllowed ? 'Đang có quyền (Click để tắt)' : 'Chưa có quyền (Click để cấp)'}
+                            className={`btn btn-sm p-1 rounded-3 ${
+                              isAllowed ? 'btn-success text-white' : 'btn-outline-secondary text-muted'
+                            }`}
+                            onClick={() => toggleGroupPermission(role.roleCode, mod.id)}
+                            style={{ width: 34, height: 34 }}
+                            title={`${isAllowed ? 'Đang cấp quyền' : 'Chưa cấp quyền'} cho nhóm ${role.roleName}`}
                           >
-                            {isAllowed ? <Check size={16} /> : <span style={{ fontSize: '0.65rem' }}>✕</span>}
+                            {isAllowed ? <Check size={16} /> : <Square size={16} />}
                           </button>
                         </td>
                       );
@@ -475,203 +393,278 @@ export default function UserManagement() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
 
-      {/* ================= TAB 3: EXTENSIBLE MODULE REGISTRY ================= */}
-      {subTab === 'modules' && (
-        <div className="card-modern p-4">
-          <div className="d-flex align-items-center gap-2 mb-3">
-            <Layers size={20} className="text-primary" />
-            <h5 className="fw-bold m-0 text-slate-800">
-              Danh Mục Phân Hệ Nghiệp Vụ Chuẩn Hóa (Khả Năng Mở Rộng)
-            </h5>
-          </div>
+          {/* Group Summary Cards */}
+          <div className="row g-3 mt-3">
+            {roles.map(r => {
+              const meta = GROUPS_METADATA.find(g => g.code === r.roleCode) || {};
+              const permCount = (r.permissions || []).length;
 
-          <div className="alert alert-info d-flex align-items-center gap-2 py-2 small mb-4">
-            <Info size={18} className="flex-shrink-0" />
-            <span>
-              Hệ thống được thiết kế theo kiến trúc Dynamic Registry. Mọi tính năng bổ sung trong tương lai chỉ cần khai báo mã định danh là tự động xuất hiện trong ma trận phân quyền 360°.
-            </span>
-          </div>
-
-          <div className="row g-3">
-            {MODULE_REGISTRY.map((mod, idx) => (
-              <div className="col-md-6 col-lg-4" key={mod.id}>
-                <div className="p-3 border rounded-3 bg-white h-100 shadow-sm d-flex flex-column justify-content-between">
-                  <div>
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <span className="badge bg-primary-subtle text-primary fw-semibold">{mod.category}</span>
-                      <span className="text-muted font-monospace" style={{ fontSize: '0.72rem' }}>
-                        #{idx + 1} - {mod.id}
-                      </span>
+              return (
+                <div key={r.roleCode} className="col-md-6 col-lg-3">
+                  <div className="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <span className={`badge-status ${meta.badgeClass || 'badge-brand-soft'}`}>
+                          {r.roleCode}
+                        </span>
+                        <span className="small fw-bold text-primary">
+                          {permCount} / {MODULE_REGISTRY.length} quyền
+                        </span>
+                      </div>
+                      <h6 className="fw-bold text-dark mb-1" style={{ fontSize: '0.9rem' }}>
+                        {r.roleName}
+                      </h6>
+                      <p className="text-muted small m-0" style={{ fontSize: '0.75rem', lineHeight: '1.4' }}>
+                        {r.description}
+                      </p>
                     </div>
-                    <h6 className="fw-bold text-slate-800 m-0 mt-2">{mod.label}</h6>
-                    <p className="text-muted small mt-1 mb-0">{mod.description}</p>
+
+                    <button
+                      className="btn btn-sm btn-outline-success mt-3 fw-bold w-100 d-flex align-items-center justify-content-center gap-1"
+                      onClick={() => handleSaveGroupPermissions(r)}
+                      disabled={saving}
+                    >
+                      <Save size={13} /> Lưu Nhóm Này
+                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* ================= MODAL ADD / EDIT USER VỚI TICK QUYỀN 360° ================= */}
-      {showUserModal && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 1050 }}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 shadow-2xl" style={{ borderRadius: '16px', overflow: 'hidden' }}>
-              <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
-                  <Sliders size={20} />
-                  {selectedUser ? `Cấu Hình Quyền 360°: ${selectedUser.username}` : 'Thêm Người Dùng Mới'}
-                </h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowUserModal(false)}></button>
+      {/* ========================================================================= */}
+      {/* TAB 2: DANH SÁCH TÀI KHOẢN & GÁN NHÓM (USER ACCOUNTS) */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'users' && (
+        <div className="card-modern p-4">
+          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+              <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-2">
+                <Users size={18} className="text-primary" /> Danh Sách Tài Khoản Cán Bộ & Gán Nhóm
+              </h6>
+              <span className="text-muted small">
+                Gán tài khoản cán bộ vào đúng nhóm nghiệp vụ để tự động kế thừa phân quyền
+              </span>
+            </div>
+
+            <div className="d-flex align-items-center gap-2">
+              <div className="input-group input-group-sm" style={{ width: 240 }}>
+                <span className="input-group-text bg-white border-end-0 text-muted">
+                  <Search size={14} />
+                </span>
+                <input
+                  type="text"
+                  className="form-control border-start-0"
+                  placeholder="Tìm theo username, tên..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
 
-              <form onSubmit={handleSaveUser}>
-                <div className="modal-body p-4" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-                  <div className="row g-3 mb-4">
-                    <div className="col-md-6">
-                      <label className="form-label small fw-bold text-muted">Tên Đăng Nhập (Username)</label>
-                      <input
-                        type="text"
-                        className="form-control fw-bold"
-                        value={userFormData.username}
-                        onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
-                        disabled={Boolean(selectedUser)}
-                        placeholder="cbtd_yentho, ketoan01..."
-                        required
-                      />
-                    </div>
+              <button
+                className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1"
+                onClick={handleOpenAddUser}
+              >
+                <Plus size={15} /> Thêm Tài Khoản
+              </button>
+            </div>
+          </div>
 
-                    <div className="col-md-6">
-                      <label className="form-label small fw-bold text-muted">Họ và Tên Cán Bộ</label>
-                      <input
-                        type="text"
-                        className="form-control fw-semibold"
-                        value={userFormData.fullName}
-                        onChange={(e) => setUserFormData({ ...userFormData, fullName: e.target.value })}
-                        placeholder="Nguyễn Văn A..."
-                        required
-                      />
-                    </div>
+          <div className="table-responsive">
+            <table className="table table-custom align-middle">
+              <thead>
+                <tr>
+                  <th>Tài Khoản (Username)</th>
+                  <th>Họ Và Tên</th>
+                  <th>Nhóm Nghiệp Vụ</th>
+                  <th className="text-center">Trạng Thái</th>
+                  <th>Lần Đăng Nhập Cuối</th>
+                  <th className="text-center">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((u) => {
+                    const groupMeta = GROUPS_METADATA.find(g => g.code === u.role) || {};
+                    const roleLabel = ROLE_LABELS[u.role] || { label: u.role, badgeClass: 'badge-brand-soft' };
+                    const isLocked = u.status === 'LOCKED';
 
-                    {!selectedUser && (
-                      <div className="col-md-6">
-                        <label className="form-label small fw-bold text-muted">Mật Khẩu Ban Đầu</label>
-                        <input
-                          type="password"
-                          className="form-control"
-                          placeholder="Mặc định: 123456 (nếu để trống)"
-                          value={userFormData.password}
-                          onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                        />
-                      </div>
-                    )}
-
-                    <div className={selectedUser ? 'col-md-6' : 'col-md-6'}>
-                      <label className="form-label small fw-bold text-muted">Nhóm Vai Trò (Role/Group)</label>
-                      <select
-                        className="form-select fw-bold"
-                        value={userFormData.role}
-                        onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
-                      >
-                        {roles.map((r) => (
-                          <option key={r.roleCode} value={r.roleCode}>
-                            {r.roleName} ({r.roleCode})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label small fw-bold text-muted">Trạng Thái Tài Khoản</label>
-                      <select
-                        className="form-select fw-semibold"
-                        value={userFormData.status}
-                        onChange={(e) => setUserFormData({ ...userFormData, status: e.target.value })}
-                      >
-                        <option value="ACTIVE">ACTIVE - Đang hoạt động</option>
-                        <option value="LOCKED">LOCKED - Tạm khóa truy cập</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* GRANULAR TICK BOX 360° */}
-                  <div className="pt-3 border-top">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <div className="fw-bold text-slate-800 d-flex align-items-center gap-2">
-                        <Sparkles size={16} className="text-warning" />
-                        <span>TÙY BIẾN QUYỀN TRUY CẬP RIÊNG LẺ (CUSTOM PERMISSIONS):</span>
-                      </div>
-                      <span className="text-muted small">Tick chọn để mở rộng quyền ngoài nhóm</span>
-                    </div>
-
-                    <div className="row g-2">
-                      {MODULE_REGISTRY.map((mod) => {
-                        const roleObj = roles.find((r) => r.roleCode === userFormData.role);
-                        const isInherited = roleObj && roleObj.permissions && roleObj.permissions.includes(mod.id);
-                        const isCustomChecked = userFormData.customPermissions && userFormData.customPermissions.includes(mod.id);
-                        const isActive = isInherited || isCustomChecked;
-
-                        return (
-                          <div className="col-md-6" key={mod.id}>
+                    return (
+                      <tr key={u.username}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
                             <div
-                              onClick={() => {
-                                if (!isInherited) handleToggleUserCustomPerm(mod.id);
+                              className="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                              style={{
+                                width: 32,
+                                height: 32,
+                                background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)',
+                                color: '#0f172a',
+                                fontSize: '0.78rem'
                               }}
-                              className={`p-2 border rounded-3 d-flex align-items-center justify-content-between ${
-                                isInherited
-                                  ? 'bg-light border-primary-subtle opacity-75'
-                                  : isCustomChecked
-                                  ? 'bg-success-subtle border-success'
-                                  : 'bg-white'
-                              }`}
-                              style={{ cursor: isInherited ? 'not-allowed' : 'pointer' }}
                             >
-                              <div className="d-flex align-items-center gap-2 overflow-hidden">
-                                {isInherited ? (
-                                  <CheckSquare size={18} className="text-primary flex-shrink-0" />
-                                ) : isCustomChecked ? (
-                                  <CheckSquare size={18} className="text-success flex-shrink-0" />
-                                ) : (
-                                  <Square size={18} className="text-muted flex-shrink-0" />
-                                )}
-                                <div className="text-truncate">
-                                  <div className="fw-bold small text-dark text-truncate">{mod.label}</div>
-                                  <div className="text-muted" style={{ fontSize: '0.68rem' }}>
-                                    {isInherited ? '(Thừa hưởng từ nhóm vai trò)' : '(Quyền tùy chỉnh riêng lẻ)'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <span
-                                className={`badge ${
-                                  isInherited
-                                    ? 'bg-primary-subtle text-primary'
-                                    : isCustomChecked
-                                    ? 'bg-success text-white'
-                                    : 'bg-light text-muted'
-                                }`}
-                                style={{ fontSize: '0.65rem' }}
-                              >
-                                {isInherited ? 'Kế thừa' : isCustomChecked ? 'Cấp riêng' : 'Chưa có'}
-                              </span>
+                              {(u.fullName || u.username)[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="fw-bold font-monospace text-dark">{u.username}</div>
+                              <span className="text-muted small" style={{ fontSize: '0.7rem' }}>Ngày tạo: {u.createdAt || '---'}</span>
                             </div>
                           </div>
-                        );
-                      })}
+                        </td>
+                        <td className="fw-semibold text-dark">{u.fullName}</td>
+                        <td>
+                          <span className={`badge-status ${roleLabel.badgeClass}`}>
+                            {roleLabel.label} ({u.role})
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <span className={`badge ${isLocked ? 'bg-danger' : 'bg-success'}`}>
+                            {isLocked ? 'Đã khóa' : 'Hoạt động'}
+                          </span>
+                        </td>
+                        <td className="small text-muted">{u.lastLogin || '---'}</td>
+                        <td className="text-center">
+                          <div className="d-inline-flex gap-1">
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => handleOpenEditUser(u)}
+                              title="Chỉnh sửa thông tin & đổi nhóm"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline-warning"
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setNewResetPass('Qtd@2003');
+                                setShowResetModal(true);
+                              }}
+                              title="Đặt lại mật khẩu"
+                            >
+                              <KeyRound size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center text-muted py-4">
+                      {loading ? 'Đang tải danh sách tài khoản...' : 'Không tìm thấy tài khoản phù hợp.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: THÊM / SỬA TÀI KHOẢN VÀ GÁN NHÓM */}
+      {/* ========================================================================= */}
+      {showUserModal && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content card-modern p-4">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold text-dark font-heading">
+                  {selectedUser ? 'Chỉnh Sửa Tài Khoản Cán Bộ' : 'Thêm Mới Tài Khoản Cán Bộ'}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setShowUserModal(false)} />
+              </div>
+
+              <form onSubmit={handleSaveUserSubmit}>
+                <div className="modal-body py-3">
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-dark">
+                      Tên Đăng Nhập (Username)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="vd: qtdyentho.cbtd..."
+                      value={userFormData.username}
+                      onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                      disabled={Boolean(selectedUser)}
+                      required
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-dark">
+                      Họ Và Tên Cán Bộ
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="vd: Lê Văn Tín"
+                      value={userFormData.fullName}
+                      onChange={(e) => setUserFormData({ ...userFormData, fullName: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-dark">
+                      Nhóm Nghiệp Vụ Phân Quyền
+                    </label>
+                    <select
+                      className="form-select fw-semibold"
+                      value={userFormData.role}
+                      onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+                    >
+                      <option value="ADMIN">Quản Trị Viên (ADMIN) - Toàn quyền</option>
+                      <option value="CBTD">Cán Bộ Tín Dụng (CBTD)</option>
+                      <option value="KETOAN">Kế Toán Viên (KETOAN)</option>
+                      <option value="BKS">Ban Kiểm Soát (BKS)</option>
+                      <option value="LANHDAO">Ban Giám Đốc / HĐQT (LANHDAO)</option>
+                    </select>
+                    <div className="form-text small text-muted mt-1">
+                      Tài khoản sẽ tự động kế thừa toàn bộ quyền hạn của nhóm đã được cấu hình trong Ma trận phân quyền.
                     </div>
                   </div>
+
+                  {!selectedUser && (
+                    <div className="mb-3">
+                      <label className="form-label small fw-bold text-dark">
+                        Mật Khẩu Khởi Tạo
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Mặc định: Qtd@2003"
+                        value={userFormData.password}
+                        onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-dark">
+                      Trạng Thái Tài Khoản
+                    </label>
+                    <select
+                      className="form-select"
+                      value={userFormData.status}
+                      onChange={(e) => setUserFormData({ ...userFormData, status: e.target.value })}
+                    >
+                      <option value="ACTIVE">Hoạt động (Cho phép đăng nhập)</option>
+                      <option value="LOCKED">Khóa tài khoản (Tạm dừng truy cập)</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary fw-semibold" onClick={() => setShowUserModal(false)}>
+                <div className="modal-footer border-0 pt-0">
+                  <button type="button" className="btn btn-light" onClick={() => setShowUserModal(false)}>
                     Hủy
                   </button>
-                  <button type="submit" className="btn btn-primary fw-bold px-4" disabled={saving}>
-                    {saving ? 'Đang lưu CSDL...' : 'Lưu Tài Khoản & Quyền'}
+                  <button type="submit" className="btn btn-brand fw-bold" disabled={saving}>
+                    {saving ? 'Đang lưu...' : 'Lưu Tài Khoản'}
                   </button>
                 </div>
               </form>
@@ -680,106 +673,53 @@ export default function UserManagement() {
         </div>
       )}
 
-      {/* ================= MODAL THÊM NHÓM QUYỀN MỚI ================= */}
-      {showRoleModal && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '14px' }}>
-              <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title fw-bold">Thêm Nhóm Quyền Nghiệp Vụ Mới</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowRoleModal(false)}></button>
-              </div>
-
-              <form onSubmit={handleSaveNewRole}>
-                <div className="modal-body p-4">
-                  <div className="mb-3">
-                    <label className="form-label small fw-bold text-muted">Mã Nhóm (Role Code)</label>
-                    <input
-                      type="text"
-                      className="form-control text-uppercase fw-bold"
-                      placeholder="THUQUY, KIEMSOAT, THANHTRA..."
-                      value={roleFormData.roleCode}
-                      onChange={(e) => setRoleFormData({ ...roleFormData, roleCode: e.target.value.toUpperCase() })}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small fw-bold text-muted">Tên Nhóm Quyền</label>
-                    <input
-                      type="text"
-                      className="form-control fw-semibold"
-                      placeholder="Thủ Quỹ, Kiểm Soát Viên..."
-                      value={roleFormData.roleName}
-                      onChange={(e) => setRoleFormData({ ...roleFormData, roleName: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small fw-bold text-muted">Mô Tả Nhiệm Vụ</label>
-                    <textarea
-                      className="form-control"
-                      rows={2}
-                      placeholder="Mô tả phạm vi quyền hạn..."
-                      value={roleFormData.description}
-                      onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary fw-semibold" onClick={() => setShowRoleModal(false)}>
-                    Hủy
-                  </button>
-                  <button type="submit" className="btn btn-primary fw-bold px-4" disabled={saving}>
-                    {saving ? 'Đang tạo...' : 'Tạo Nhóm Mới'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL RESET PASSWORD ================= */}
+      {/* ========================================================================= */}
+      {/* MODAL: RESET MẬT KHẨU */}
+      {/* ========================================================================= */}
       {showResetModal && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '14px' }}>
-              <div className="modal-header bg-warning text-dark">
-                <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
-                  <KeyRound size={20} /> Reset Mật Khẩu: {selectedUser?.username}
+            <div className="modal-content card-modern p-4">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
+                  <KeyRound size={20} className="text-warning" /> Đặt Lại Mật Khẩu
                 </h5>
-                <button type="button" className="btn-close" onClick={() => setShowResetModal(false)}></button>
+                <button type="button" className="btn-close" onClick={() => setShowResetModal(false)} />
               </div>
 
-              <form onSubmit={handleResetPass}>
-                <div className="modal-body p-4">
-                  <p className="small text-muted mb-3">
-                    Cấp lại mật khẩu mới cho cán bộ <strong>{selectedUser?.fullName}</strong> ({selectedUser?.username}):
-                  </p>
-                  <div className="mb-3">
-                    <label className="form-label small fw-bold text-muted">Mật Khẩu Mới</label>
-                    <input
-                      type="text"
-                      className="form-control fw-bold"
-                      value={newResetPass}
-                      onChange={(e) => setNewResetPass(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
+              <div className="modal-body py-3">
+                <p className="small text-muted mb-3">
+                  Đặt lại mật khẩu mới cho tài khoản: <strong className="text-dark">{selectedUser?.username}</strong> ({selectedUser?.fullName})
+                </p>
 
-                <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-secondary fw-semibold" onClick={() => setShowResetModal(false)}>
-                    Hủy
-                  </button>
-                  <button type="submit" className="btn btn-warning text-dark fw-bold px-4" disabled={saving}>
-                    {saving ? 'Đang lưu...' : 'Xác Nhận Reset'}
-                  </button>
+                <div className="mb-3">
+                  <label className="form-label small fw-bold text-dark">
+                    Mật Khẩu Mới
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Nhập mật khẩu mới..."
+                    value={newResetPass}
+                    onChange={(e) => setNewResetPass(e.target.value)}
+                    required
+                  />
                 </div>
-              </form>
+              </div>
+
+              <div className="modal-footer border-0 pt-0">
+                <button type="button" className="btn btn-light" onClick={() => setShowResetModal(false)}>
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning fw-bold text-dark"
+                  onClick={handleResetPasswordSubmit}
+                  disabled={saving}
+                >
+                  {saving ? 'Đang thực hiện...' : 'Xác Nhận Đổi Mật Khẩu'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -391,9 +391,95 @@ html.dark .table-custom tbody tr:hover td {
   box-shadow: 0 0 10px var(--sidebar-active-indicator);
 }
 
+/* ========================================================================================
+   APP LAYOUT & RESPONSIVE POSITIONING (Chống Che Lấp Nội Dung)
+   ======================================================================================== */
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+  position: relative;
+  width: 100%;
+}
+
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--bg-app);
+  min-height: 100vh;
+}
+
+.app-container.sidebar-collapsed .main-wrapper {
+  margin-left: 72px;
+}
+
+.content-area {
+  flex: 1;
+  padding: 20px 24px;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 991.98px) {
+  .main-wrapper {
+    margin-left: 0 !important;
+  }
+}
+
+/* Sidebar Drawer Styles */
+.sidebar-drawer {
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  background-color: #06261c;
+  background-image: linear-gradient(180deg, #06281e 0%, #091722 100%);
+  color: #fff;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.35);
+  border-right: 1.5px solid rgba(154, 205, 50, 0.2);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
+}
+
+.app-container.sidebar-collapsed .sidebar-drawer {
+  width: 72px;
+}
+
+@media (max-width: 991.98px) {
+  .sidebar-drawer {
+    transform: translateX(-100%);
+  }
+  .sidebar-drawer.open {
+    transform: translateX(0);
+  }
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1030;
+}
+
+@media (max-width: 991.98px) {
+  .sidebar-overlay.active {
+    display: block;
+  }
+}
+
 /* Header Brand Container */
 .header-brand-container {
-  height: var(--header-height);
+  min-height: var(--header-height);
   background: var(--bg-surface-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -401,6 +487,58 @@ html.dark .table-custom tbody tr:hover td {
   position: sticky;
   top: 0;
   z-index: 1020;
+}
+
+/* Top Horizontal Module Quick Nav Bar */
+.horizontal-module-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 8px 16px;
+  background: var(--bg-surface-soft);
+  border-bottom: 1px solid var(--border-subtle);
+  scrollbar-width: thin;
+}
+
+.horizontal-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.horizontal-nav-item:hover {
+  background: #f2fad9;
+  border-color: var(--primary-brand);
+  color: var(--primary-emerald);
+}
+
+.horizontal-nav-item.active {
+  background: linear-gradient(135deg, var(--primary-brand) 0%, var(--primary-emerald) 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(4, 120, 87, 0.25);
+}
+
+html.dark .horizontal-nav-item {
+  background: #0f172a;
+  color: #cbd5e1;
+  border-color: rgba(163, 230, 53, 0.2);
+}
+
+html.dark .horizontal-nav-item:hover {
+  background: #1e293b;
+  color: #bef264;
 }
 
 /* Pulsing Online Dot */

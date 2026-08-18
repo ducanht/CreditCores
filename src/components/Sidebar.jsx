@@ -14,7 +14,9 @@ import {
   Landmark,
   LogOut,
   KeyRound,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { AuthService, ROLE_LABELS } from '../services/auth';
 
@@ -25,7 +27,9 @@ export default function Sidebar({
   onOpenChangePass,
   onLogout,
   isMobileOpen,
-  onCloseMobile
+  onCloseMobile,
+  isCollapsed,
+  onToggleCollapse
 }) {
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard Quản trị', icon: LayoutDashboard, category: 'TỔNG QUAN' },
@@ -41,7 +45,6 @@ export default function Sidebar({
     { id: 'settings', label: 'Cấu hình & Đồng bộ Core', icon: Settings, category: 'HỆ THỐNG' }
   ];
 
-  // Role-based filtering
   const visibleMenuItems = allMenuItems.filter((item) => AuthService.hasPermission(item.id));
 
   const roleInfo = ROLE_LABELS[currentUser?.role] || {
@@ -56,86 +59,89 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile Overlay */}
       <div
         className={`sidebar-overlay ${isMobileOpen ? 'active' : ''}`}
         onClick={onCloseMobile}
       />
 
-      <aside
-        className={`sidebar-drawer ${isMobileOpen ? 'open' : ''}`}
-        style={{
-          width: 'var(--sidebar-width)',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          backgroundColor: '#06261c',
-          backgroundImage: 'linear-gradient(180deg, #06281e 0%, #091722 100%)',
-          color: '#fff',
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '4px 0 25px rgba(0,0,0,0.35)',
-          borderRight: '1.5px solid rgba(154, 205, 50, 0.2)'
-        }}
-      >
-        {/* Brand Header */}
+      <aside className={`sidebar-drawer ${isMobileOpen ? 'open' : ''}`}>
+        {/* Header: Brand & Collapse Toggle */}
         <div
           style={{
             height: 'var(--header-height)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 18px',
-            backgroundColor: 'rgba(0,0,0,0.2)',
+            justifyContent: isCollapsed ? 'center' : 'space-between',
+            padding: isCollapsed ? '0 10px' : '0 16px',
+            backgroundColor: 'rgba(0,0,0,0.25)',
             borderBottom: '1.5px solid rgba(154, 205, 50, 0.2)'
           }}
         >
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 overflow-hidden">
             <div
               className="p-2 rounded-3 text-dark d-flex align-items-center justify-content-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)', width: 40, height: 40, boxShadow: '0 0 12px rgba(154, 205, 50, 0.4)' }}
+              style={{
+                background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)',
+                width: 38,
+                height: 38,
+                boxShadow: '0 0 10px rgba(154, 205, 50, 0.4)'
+              }}
             >
-              <Landmark size={22} className="text-white" />
+              <Landmark size={20} className="text-white" />
             </div>
-            <div>
-              <h1 className="m-0 fs-6 fw-extrabold text-white lh-1 font-heading" style={{ letterSpacing: '0.3px', textTransform: 'uppercase' }}>
-                QTDND YÊN THỌ
-              </h1>
-              <span style={{ fontSize: '0.65rem', color: '#a3e635', fontWeight: 600 }}>
-                CreditCores • Auto-Debit
-              </span>
-            </div>
+
+            {!isCollapsed && (
+              <div className="overflow-hidden text-truncate">
+                <h1 className="m-0 fs-6 fw-extrabold text-white lh-1 font-heading text-truncate">
+                  QTDND YÊN THỌ
+                </h1>
+                <span style={{ fontSize: '0.65rem', color: '#a3e635', fontWeight: 600 }}>
+                  CreditCores
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Close button for mobile */}
-          <button
-            className="btn btn-sm btn-link text-white d-lg-none p-1"
-            onClick={onCloseMobile}
-          >
-            <X size={20} />
-          </button>
+          <div className="d-flex align-items-center">
+            {/* Desktop Collapse / Expand Button */}
+            <button
+              className="btn btn-sm btn-link text-white d-none d-lg-flex p-1 align-items-center justify-content-center text-decoration-none"
+              onClick={onToggleCollapse}
+              title={isCollapsed ? 'Mở rộng Menu' : 'Thu gọn Menu'}
+              style={{ opacity: 0.8 }}
+            >
+              {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+
+            {/* Mobile Close Button */}
+            <button
+              className="btn btn-sm btn-link text-white d-lg-none p-1"
+              onClick={onCloseMobile}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
-        {/* Navigation Menu */}
-        <div style={{ flexGrow: 1, overflowY: 'auto', padding: '12px 10px' }}>
+        {/* Navigation Menu Items */}
+        <div style={{ flexGrow: 1, overflowY: 'auto', padding: isCollapsed ? '10px 6px' : '10px 8px' }}>
           {visibleMenuItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             const prevItem = index > 0 ? visibleMenuItems[index - 1] : null;
-            const showCategory = !prevItem || prevItem.category !== item.category;
+            const showCategory = !isCollapsed && (!prevItem || prevItem.category !== item.category);
 
             return (
               <React.Fragment key={item.id}>
                 {showCategory && (
                   <div
                     style={{
-                      fontSize: '0.62rem',
+                      fontSize: '0.6rem',
                       textTransform: 'uppercase',
-                      letterSpacing: '1.2px',
-                      color: 'rgba(163, 230, 53, 0.6)',
-                      padding: '12px 12px 4px 12px',
+                      letterSpacing: '1px',
+                      color: 'rgba(163, 230, 53, 0.65)',
+                      padding: '10px 10px 3px 10px',
                       fontWeight: 800
                     }}
                   >
@@ -144,92 +150,110 @@ export default function Sidebar({
                 )}
                 <div
                   onClick={() => handleSelectTab(item.id)}
+                  title={isCollapsed ? item.label : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '10px 14px',
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    padding: isCollapsed ? '10px 0' : '9px 12px',
                     margin: '2px 0',
-                    fontSize: '0.85rem',
+                    fontSize: '0.84rem',
                     fontWeight: isActive ? 800 : 500,
                     color: isActive ? '#ffffff' : '#cbd5e1',
                     background: isActive
                       ? 'linear-gradient(90deg, rgba(154, 205, 50, 0.25) 0%, rgba(154, 205, 50, 0.06) 100%)'
                       : 'transparent',
-                    borderRadius: '10px',
-                    borderLeft: isActive ? '3.5px solid #9acd32' : '3.5px solid transparent',
+                    borderRadius: '8px',
+                    borderLeft: isActive ? '3px solid #9acd32' : '3px solid transparent',
                     cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative'
+                    transition: 'all 0.15s ease'
                   }}
                   className="sidebar-link"
                 >
                   <Icon
                     size={18}
-                    className={`me-3 flex-shrink-0 ${isActive ? 'text-lime' : 'text-slate-400'}`}
-                    style={{ color: isActive ? '#9acd32' : undefined, filter: isActive ? 'drop-shadow(0 0 6px rgba(154, 205, 50, 0.6))' : 'none' }}
+                    className={`flex-shrink-0 ${!isCollapsed ? 'me-2' : ''}`}
+                    style={{
+                      color: isActive ? '#9acd32' : '#94a3b8',
+                      filter: isActive ? 'drop-shadow(0 0 5px rgba(154, 205, 50, 0.5))' : 'none'
+                    }}
                   />
-                  <span className="text-truncate">{item.label}</span>
+                  {!isCollapsed && <span className="text-truncate">{item.label}</span>}
                 </div>
               </React.Fragment>
             );
           })}
         </div>
 
-        {/* Authenticated User Footer & Profile Card */}
+        {/* User Footer */}
         <div
           style={{
-            padding: '16px',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
+            padding: isCollapsed ? '10px 6px' : '12px 14px',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
             backgroundColor: 'rgba(0,0,0,0.3)',
             fontSize: '0.78rem'
           }}
         >
-          <div className="d-flex align-items-center justify-content-between mb-2">
+          <div className="d-flex align-items-center justify-content-between">
             <div className="d-flex align-items-center overflow-hidden">
               <div
                 className="rounded-circle d-flex align-items-center justify-content-center fw-bold me-2 flex-shrink-0"
                 style={{
-                  width: 36,
-                  height: 36,
-                  fontSize: '0.82rem',
+                  width: 32,
+                  height: 32,
+                  fontSize: '0.8rem',
                   background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)',
                   color: '#0f172a',
-                  fontWeight: 900,
-                  boxShadow: '0 2px 10px rgba(154, 205, 50, 0.35)'
+                  fontWeight: 900
                 }}
               >
-                {currentUser?.username ? currentUser.username.substring(0, 2).toUpperCase() : 'US'}
+                {(currentUser?.fullName || currentUser?.username || 'U')[0].toUpperCase()}
               </div>
-              <div className="overflow-hidden">
-                <div className="fw-bold text-white text-truncate" style={{ fontSize: '0.85rem' }}>
-                  {currentUser?.fullName || currentUser?.username || 'Cán Bộ'}
+
+              {!isCollapsed && (
+                <div className="overflow-hidden text-truncate">
+                  <div className="fw-bold text-white text-truncate" style={{ fontSize: '0.82rem' }}>
+                    {currentUser?.fullName || currentUser?.username}
+                  </div>
+                  <div className="small" style={{ color: '#a3e635', fontSize: '0.7rem' }}>
+                    {roleInfo.label}
+                  </div>
                 </div>
-                <span className={`badge-status ${roleInfo.badgeClass}`} style={{ fontSize: '0.66rem', padding: '2px 8px' }}>
-                  {roleInfo.label}
-                </span>
-              </div>
+              )}
             </div>
+
+            {!isCollapsed && (
+              <div className="d-flex align-items-center gap-1">
+                <button
+                  className="btn btn-sm btn-link p-1 text-slate-400 hover-text-white"
+                  onClick={onOpenChangePass}
+                  title="Đổi mật khẩu"
+                  style={{ color: '#94a3b8' }}
+                >
+                  <KeyRound size={15} />
+                </button>
+                <button
+                  className="btn btn-sm btn-link p-1 text-danger"
+                  onClick={onLogout}
+                  title="Đăng xuất"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Quick Actions */}
-          <div className="d-flex gap-2 pt-2 border-top border-slate-800 mt-2">
-            <button
-              className="btn btn-sm btn-outline-light text-slate-300 flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1"
-              style={{ fontSize: '0.72rem', borderColor: 'rgba(255,255,255,0.15)', borderRadius: '6px' }}
-              onClick={onOpenChangePass}
-              title="Đổi mật khẩu tài khoản"
-            >
-              <KeyRound size={12} /> Đổi Pass
-            </button>
-            <button
-              className="btn btn-sm btn-outline-danger flex-grow-1 d-flex align-items-center justify-content-center gap-1 py-1"
-              style={{ fontSize: '0.72rem', borderRadius: '6px' }}
-              onClick={onLogout}
-              title="Đăng xuất khỏi hệ thống"
-            >
-              <LogOut size={12} /> Đăng Xuất
-            </button>
-          </div>
+          {isCollapsed && (
+            <div className="d-flex justify-content-center mt-2 pt-2 border-top border-slate-800">
+              <button
+                className="btn btn-sm btn-link p-1 text-danger"
+                onClick={onLogout}
+                title="Đăng xuất"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>
