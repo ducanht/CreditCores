@@ -1,6 +1,6 @@
 /**
  * ========================================================================================
- * DỊCH VỤ XÁC THỰC BẢO MẬT & PHÂN QUYỀN ĐA CHỨC NĂNG (AUTH & RBAC SERVICE)
+ * DỊCH VỤ XÁC THỰC BẢO MẬT & PHÂN QUYỀN 360° MỞ RỘNG (EXTENSIBLE AUTH & RBAC 360)
  * Hệ thống Quản lý Tín dụng & Trích nợ CreditCores
  * ========================================================================================
  */
@@ -11,7 +11,87 @@ const STORAGE_KEY_USER = 'CREDITCORES_AUTH_USER';
 const STORAGE_KEY_TOKEN = 'CREDITCORES_AUTH_TOKEN';
 
 /**
- * Mã hóa mật khẩu một chiều SHA-256 bằng Web Crypto API chuẩn ngân hàng
+ * DANH MỤC PHÂN HỆ NGHIỆP VỤ MỞ RỘNG (MODULE REGISTRY)
+ * Bất kỳ chức năng mới nào sau này chỉ cần khai báo thêm vào mảng này là hệ thống tự động nhận diện
+ */
+export const MODULE_REGISTRY = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard Quản trị',
+    category: 'Tổng quan',
+    description: 'Theo dõi tổng dư nợ, biểu đồ phân tích, dự thu lãi và cảnh báo nợ'
+  },
+  {
+    id: 'customer360',
+    label: 'Tra cứu KH & HĐ 360°',
+    category: 'Khách hàng',
+    description: 'Hồ sơ 360 độ khách hàng, khế ước tín dụng, tài khoản CASA và vốn góp'
+  },
+  {
+    id: 'appraisal',
+    label: 'Thẩm định Tín dụng & TSĐB',
+    category: 'Tín dụng',
+    description: 'Lập hồ sơ thẩm định, tính tỷ lệ LTV, chấm điểm CIC và duyệt hạn mức'
+  },
+  {
+    id: 'inspection',
+    label: 'Kiểm tra Sử dụng Vốn',
+    category: 'Tín dụng',
+    description: 'Lập biên bản kiểm tra thực địa / chứng từ sử dụng vốn sau giải ngân'
+  },
+  {
+    id: 'debit_register',
+    label: 'Đăng ký Dịch vụ Trích nợ',
+    category: 'Trích nợ',
+    description: 'Đăng ký, cập nhật và quản lý thỏa thuận ủy quyền trích nợ tự động'
+  },
+  {
+    id: 'debit_batch',
+    label: 'Khởi tạo & Chạy đợt Trích nợ',
+    category: 'Trích nợ',
+    description: 'Tính toán gốc + lãi + nợ tồn theo kỳ (05, 15, 25) và tạo lệnh trích'
+  },
+  {
+    id: 'reconciliation',
+    label: 'Đối soát Kết quả Core',
+    category: 'Kế toán',
+    description: 'Đối soát file CoreBanking, phân loại 3 trạng thái và ghi nhận hạch toán'
+  },
+  {
+    id: 'debt_warning',
+    label: 'Sổ Theo dõi Nợ tồn đọng',
+    category: 'Quản lý nợ',
+    description: 'Theo dõi nợ trích chưa thành công, phân tích nguyên nhân và đôn đốc'
+  },
+  {
+    id: 'reports',
+    label: 'Báo cáo Thống kê & Phân tích',
+    category: 'Báo cáo',
+    description: 'Báo cáo đa chiều theo 3 xã, sản phẩm tín dụng và tăng trưởng'
+  },
+  {
+    id: 'user_management',
+    label: 'Phân quyền 360° & Tài khoản',
+    category: 'Hệ thống',
+    description: 'Quản lý tài khoản, phân nhóm và tick chọn quyền chi tiết cho từng user/nhóm'
+  },
+  {
+    id: 'settings',
+    label: 'Cấu hình & Đồng bộ Core',
+    category: 'Hệ thống',
+    description: 'Điều khiển hàng đợi lệnh SETTING và theo dõi daemon SQL Server 24/7'
+  }
+];
+
+export const ROLE_LABELS = {
+  ADMIN: { label: 'Quản Trị Viên', badgeClass: 'badge-danger-soft', icon: 'fa-shield-halved' },
+  CBTD: { label: 'Cán Bộ Tín Dụng', badgeClass: 'badge-info-soft', icon: 'fa-user-tie' },
+  KETOAN: { label: 'Kế Toán Viên', badgeClass: 'badge-success-soft', icon: 'fa-calculator' },
+  LANHDAO: { label: 'Ban Lãnh Đạo / GĐ', badgeClass: 'badge-warning-soft', icon: 'fa-user-check' }
+};
+
+/**
+ * Mã hóa mật khẩu một chiều SHA-256
  */
 export async function hashPassword(password) {
   if (!password) return '';
@@ -21,65 +101,6 @@ export async function hashPassword(password) {
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   return hashHex;
 }
-
-/**
- * BẢNG ĐỊNH NGHĨA PHÂN QUYỀN TRUY CẬP (RBAC MATRIX)
- * Roles:
- * - ADMIN: Quản trị viên (Toàn quyền hệ thống, Quản lý tài khoản, Cấu hình & Đồng bộ)
- * - CBTD: Cán bộ Tín dụng (Dashboard, Tra cứu 360, Thẩm định TSĐB, Kiểm tra vốn, Sổ nợ tồn)
- * - KETOAN: Kế toán viên (Dashboard, Tra cứu 360, Đăng ký trích nợ, Chạy đợt, Đối soát, Báo cáo)
- * - LANHDAO: Ban Giám đốc / Lãnh đạo (Dashboard, Tra cứu 360, Phê duyệt, Đối soát, Báo cáo thống kê)
- */
-export const ROLE_PERMISSIONS = {
-  ADMIN: [
-    'dashboard',
-    'customer360',
-    'appraisal',
-    'inspection',
-    'debit_register',
-    'debit_batch',
-    'reconciliation',
-    'debt_warning',
-    'reports',
-    'settings',
-    'user_management'
-  ],
-  CBTD: [
-    'dashboard',
-    'customer360',
-    'appraisal',
-    'inspection',
-    'debit_register',
-    'debt_warning',
-    'reports'
-  ],
-  KETOAN: [
-    'dashboard',
-    'customer360',
-    'debit_register',
-    'debit_batch',
-    'reconciliation',
-    'debt_warning',
-    'reports'
-  ],
-  LANHDAO: [
-    'dashboard',
-    'customer360',
-    'appraisal',
-    'inspection',
-    'debit_batch',
-    'reconciliation',
-    'debt_warning',
-    'reports'
-  ]
-};
-
-export const ROLE_LABELS = {
-  ADMIN: { label: 'Quản Trị Viên', badgeClass: 'badge-danger-soft', icon: 'fa-shield-halved' },
-  CBTD: { label: 'Cán Bộ Tín Dụng', badgeClass: 'badge-info-soft', icon: 'fa-user-tie' },
-  KETOAN: { label: 'Kế Toán Viên', badgeClass: 'badge-success-soft', icon: 'fa-calculator' },
-  LANHDAO: { label: 'Ban Lãnh Đạo / GĐ', badgeClass: 'badge-warning-soft', icon: 'fa-user-check' }
-};
 
 export const AuthService = {
   /**
@@ -128,13 +149,33 @@ export const AuthService = {
   },
 
   /**
-   * Kiểm tra quyền truy cập module theo Role
+   * Kiểm tra quyền truy cập module theo Phân Quyền 360° (Effective Permissions)
    */
   hasPermission(moduleKey) {
     const user = this.getCurrentUser();
     if (!user) return false;
-    const role = user.role || 'CBTD';
-    const allowed = ROLE_PERMISSIONS[role] || [];
+
+    // Admin luôn có toàn quyền
+    if (user.role === 'ADMIN') return true;
+
+    // Kiểm tra danh sách quyền hiệu lực (hợp nhất giữa Role Permissions và Custom Permissions)
+    if (user.effectivePermissions && Array.isArray(user.effectivePermissions)) {
+      return user.effectivePermissions.includes(moduleKey);
+    }
+
+    // Fallback: nếu có customPermissions
+    if (user.customPermissions && Array.isArray(user.customPermissions)) {
+      if (user.customPermissions.includes(moduleKey)) return true;
+    }
+
+    // Default fallback theo role nếu chưa có effectivePermissions
+    const defaultRolePerms = {
+      CBTD: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports'],
+      KETOAN: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'],
+      LANHDAO: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']
+    };
+
+    const allowed = defaultRolePerms[user.role] || [];
     return allowed.includes(moduleKey);
   },
 

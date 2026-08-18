@@ -54,11 +54,13 @@ Repository GitHub chính thức: **[https://github.com/ducanht/CreditCores](http
 ### Bước 2: Tự động Triển khai trên Vercel
 1. Đăng nhập vào [Vercel Dashboard](https://vercel.com).
 2. Nhấn **Add New Project** $\to$ Chọn Repository **`ducanht/CreditCores`**.
-3. Framework Preset: **Vite**.
-4. Root Directory: `./`.
-5. *(Tùy chọn)* Trong phần **Environment Variables**, thêm biến:
+3. Project Name: **`qtdyentho-credit`** (Tự động cấp domain: **`https://qtdyentho-credit.vercel.app`**).
+4. Framework Preset: **Vite**.
+5. Root Directory: `./`.
+6. *(Tùy chọn)* Trong phần **Environment Variables**, thêm biến:
    - `VITE_GAS_API_URL`: Dán đường dẫn Web App URL của Google Apps Script từ Bước 1.
-6. Nhấn **Deploy**. Vercel sẽ tự động build và cung cấp liên kết truy cập trực tiếp `https://creditcores.vercel.app`.
+7. Nhấn **Deploy**.
+8. Trong **Project Settings $\to$ Domains**, bạn có thể cấu hình hoặc kiểm tra domain chính thức **`qtdyentho-credit.vercel.app`**.
 
 ---
 

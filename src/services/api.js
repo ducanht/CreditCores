@@ -200,10 +200,16 @@ const mockData = {
     message: 'Hệ thống vận hành bình thường. Sẵn sàng nhận lệnh.'
   },
   users: [
-    { username: 'admin', passwordHash: '7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '18/08/2026 08:00' },
-    { username: 'cbtd', passwordHash: '3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0', fullName: 'Lê Văn Tín (Cán Bộ Tín Dụng)', role: 'CBTD', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' },
-    { username: 'ketoan', passwordHash: 'fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e', fullName: 'Nguyễn Thị Hằng (Kế Toán Viên)', role: 'KETOAN', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' },
-    { username: 'lanhdao', passwordHash: 'cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d', fullName: 'Trần Đình Trọng (Giám Đốc Quỹ)', role: 'LANHDAO', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' }
+    { username: 'admin', passwordHash: '7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '18/08/2026 08:00' },
+    { username: 'cbtd', passwordHash: '3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0', fullName: 'Lê Văn Tín (Cán Bộ Tín Dụng)', role: 'CBTD', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' },
+    { username: 'ketoan', passwordHash: 'fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e', fullName: 'Nguyễn Thị Hằng (Kế Toán Viên)', role: 'KETOAN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' },
+    { username: 'lanhdao', passwordHash: 'cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d', fullName: 'Trần Đình Trọng (Giám Đốc Quỹ)', role: 'LANHDAO', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' }
+  ],
+  roles: [
+    { roleCode: 'ADMIN', roleName: 'Quản Trị Viên', permissions: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'user_management', 'settings'], description: 'Toàn quyền hệ thống' },
+    { roleCode: 'CBTD', roleName: 'Cán Bộ Tín Dụng', permissions: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports'], description: 'Thẩm định TSĐB & kiểm tra vốn' },
+    { roleCode: 'KETOAN', roleName: 'Kế Toán Viên', permissions: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'], description: 'Trích nợ & đối soát hạch toán' },
+    { roleCode: 'LANHDAO', roleName: 'Ban Lãnh Đạo / GĐ', permissions: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'], description: 'Phê duyệt & báo cáo quản trị' }
   ]
 };
 
@@ -250,12 +256,49 @@ async function requestApi(action, method = 'GET', data = null) {
       if (match.status !== 'ACTIVE') return { status: 'error', message: 'Tài khoản đang bị tạm khóa.' };
       if (match.passwordHash !== pHash) return { status: 'error', message: 'Mật khẩu không chính xác.' };
 
+      const roleObj = mockData.roles.find(r => r.roleCode === match.role);
+      const rolePerms = roleObj ? roleObj.permissions : [];
+      const effectiveSet = new Set([...rolePerms, ...(match.customPermissions || [])]);
+
       return {
         status: 'success',
         message: 'Đăng nhập thành công',
-        user: { username: match.username, fullName: match.fullName, role: match.role },
+        user: {
+          username: match.username,
+          fullName: match.fullName,
+          role: match.role,
+          customPermissions: match.customPermissions || [],
+          effectivePermissions: Array.from(effectiveSet)
+        },
         token: 'TOKEN-MOCK-' + Date.now()
       };
+    }
+
+    case 'getRolesAndPermissions':
+      return {
+        status: 'success',
+        data: {
+          roles: mockData.roles
+        }
+      };
+
+    case 'saveRolePermissions': {
+      const roleCode = String(data?.roleCode || '').toUpperCase();
+      const existing = mockData.roles.find(r => r.roleCode === roleCode);
+      if (existing) {
+        existing.roleName = data?.roleName || existing.roleName;
+        existing.permissions = data?.permissions || existing.permissions;
+        existing.description = data?.description || existing.description;
+        return { status: 'success', message: `Cập nhật nhóm quyền ${existing.roleName} thành công!` };
+      } else {
+        mockData.roles.push({
+          roleCode: roleCode,
+          roleName: data?.roleName || roleCode,
+          permissions: data?.permissions || [],
+          description: data?.description || ''
+        });
+        return { status: 'success', message: `Tạo mới nhóm quyền ${data?.roleName} thành công!` };
+      }
     }
 
     case 'changePassword': {
@@ -270,7 +313,15 @@ async function requestApi(action, method = 'GET', data = null) {
     case 'getUserList':
       return {
         status: 'success',
-        data: mockData.users.map(u => ({ username: u.username, fullName: u.fullName, role: u.role, status: u.status, createdAt: u.createdAt, lastLogin: u.lastLogin }))
+        data: mockData.users.map(u => ({
+          username: u.username,
+          fullName: u.fullName,
+          role: u.role,
+          customPermissions: u.customPermissions || [],
+          status: u.status,
+          createdAt: u.createdAt,
+          lastLogin: u.lastLogin
+        }))
       };
 
     case 'saveUser': {
@@ -278,15 +329,17 @@ async function requestApi(action, method = 'GET', data = null) {
       if (existing) {
         existing.fullName = data?.fullName || existing.fullName;
         existing.role = data?.role || existing.role;
+        existing.customPermissions = data?.customPermissions || existing.customPermissions || [];
         existing.status = data?.status || existing.status;
         if (data?.passwordHash) existing.passwordHash = data.passwordHash;
-        return { status: 'success', message: 'Cập nhật tài khoản thành công!' };
+        return { status: 'success', message: 'Cập nhật tài khoản & phân quyền thành công!' };
       } else {
         mockData.users.push({
           username: data?.username,
           passwordHash: data?.passwordHash || '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
           fullName: data?.fullName,
           role: data?.role || 'CBTD',
+          customPermissions: data?.customPermissions || [],
           status: data?.status || 'ACTIVE',
           createdAt: new Date().toLocaleDateString('vi-VN'),
           lastLogin: '---'
@@ -401,6 +454,8 @@ export const api = {
   getUserList: () => requestApi('getUserList'),
   saveUser: (data) => requestApi('saveUser', 'POST', { data }),
   resetPassword: (username, newPasswordHash) => requestApi('resetPassword', 'POST', { username, newPasswordHash }),
+  getRolesAndPermissions: () => requestApi('getRolesAndPermissions'),
+  saveRolePermissions: (data) => requestApi('saveRolePermissions', 'POST', { data }),
   getDashboardStats: () => requestApi('getDashboardStats'),
   searchCustomer360: (query) => requestApi('searchCustomer360', 'GET', { query }),
   getAppraisals: () => requestApi('getAppraisals'),

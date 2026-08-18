@@ -1,7 +1,7 @@
 /**
  * ========================================================================================
  * HỆ THỐNG QUẢN LÝ TÍN DỤNG & TRÍCH NỢ AUTOMATION (CREDITCORES)
- * TOÀN BỘ BACKEND REST API + XÁC THỰC AUTH + PHÂN QUYỀN RBAC + CSDL 10 SHEETS
+ * TOÀN BỘ BACKEND REST API + PHÂN QUYỀN 360° ĐA CHỨC NĂNG + TỰ ĐỘNG CẬP NHẬT CSDL GOOGLE SHEETS
  * Google Apps Script Web App Project:
  * https://script.google.com/d/1NI0PAQ56mfyrEALtn_MtaJ2EBwD0lS3TUOyHSOD72eiG8lEh9LlY_1vp/edit
  * Google Sheets Database:
@@ -13,43 +13,59 @@
 const DB_SPREADSHEET_ID = "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
 
 /**
- * HÀM KHỞI TẠO TOÀN BỘ 10 SHEETS CSDL TRỰC TIẾP TỪ APPS SCRIPT EDITOR
+ * DANH MỤC PHÂN HỆ NGHIỆP VỤ MỞ RỘNG (MODULE REGISTRY)
+ * Có thể mở rộng không giới hạn các chức năng về sau
  */
+const DEFAULT_SYSTEM_MODULES = [
+  { id: 'dashboard', label: 'Dashboard Quản trị', description: 'Xem tổng quan KPI, biểu đồ dư nợ, dự thu và tiến độ' },
+  { id: 'customer360', label: 'Tra cứu KH & HĐ 360°', description: 'Tra cứu thông tin khách hàng, khế ước, vốn góp và tài khoản' },
+  { id: 'appraisal', label: 'Thẩm định Tín dụng & TSĐB', description: 'Lập báo cáo thẩm định, định giá TSĐB, chấm điểm CIC và duyệt hạn mức' },
+  { id: 'inspection', label: 'Kiểm tra Sử dụng Vốn', description: 'Lập biên bản kiểm tra sử dụng vốn sau giải ngân (thực địa/chứng từ)' },
+  { id: 'debit_register', label: 'Đăng ký Dịch vụ Trích nợ', description: 'Tiếp nhận và quản lý thỏa thuận ủy quyền trích nợ theo kỳ' },
+  { id: 'debit_batch', label: 'Khởi tạo & Chạy đợt Trích nợ', description: 'Tự động tính nợ tồn + lãi + gốc và xuất file lệnh CoreBanking' },
+  { id: 'reconciliation', label: 'Đối soát Kết quả Core', description: 'Upload file kết quả, đối soát tự động và phân loại 3 trạng thái' },
+  { id: 'debt_warning', label: 'Sổ Theo dõi Nợ tồn đọng', description: 'Quản lý danh sách nợ chưa thu được và cảnh báo đôn đốc thu hồi' },
+  { id: 'reports', label: 'Báo cáo Thống kê & Phân tích', description: 'Báo cáo đa chiều theo địa bàn 3 xã và cơ cấu sản phẩm vay' },
+  { id: 'user_management', label: 'Phân quyền 360° & Tài khoản', description: 'Quản lý người dùng, phân nhóm và cấu hình quyền chi tiết từng chức năng' },
+  { id: 'settings', label: 'Cấu hình & Đồng bộ Core', description: 'Điều khiển hàng đợi SETTING và giám sát Python Daemon' }
+];
+
+/**
+ * TỰ ĐỘNG KIỂM TRA & NÂNG CẤP CẤU TRÚC SHEETS (SELF-HEALING AUTO-MIGRATION)
+ * Chạy ngầm trong mọi Request mà người dùng không cần bấm Script thủ công
+ */
+function getSpreadsheet() {
+  let ss;
+  if (DB_SPREADSHEET_ID) {
+    try {
+      ss = SpreadsheetApp.openById(DB_SPREADSHEET_ID);
+    } catch (e) {
+      Logger.log("Lỗi mở Spreadsheet theo ID: " + e.message);
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    }
+  } else {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+
+  if (ss) {
+    ensureDatabaseSchema(ss);
+  }
+  return ss;
+}
+
 function runSetupDirectly() {
   Logger.log(">>> Bắt đầu khởi tạo CSDL với Google Sheet ID: " + DB_SPREADSHEET_ID);
   setupAllSheets(DB_SPREADSHEET_ID);
 }
 
-/**
- * TỰ ĐỘNG TẠO MENU TRÊN GOOGLE SHEETS
- */
 function onOpen() {
   let ui;
-  try {
-    ui = SpreadsheetApp.getUi();
-  } catch (e) {
-    ui = null;
-  }
+  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
   if (ui) {
     ui.createMenu('Hệ thống Tín dụng')
-      .addItem('Khởi tạo / Định dạng lại 10 Sheets CSDL', 'runSetupDirectly')
+      .addItem('Khởi tạo / Tự động Đồng bộ CSDL', 'runSetupDirectly')
       .addToUi();
   }
-}
-
-/**
- * HÀM MỞ FILE SPREADSHEET CƠ SỞ DỮ LIỆU
- */
-function getSpreadsheet() {
-  if (DB_SPREADSHEET_ID) {
-    try {
-      return SpreadsheetApp.openById(DB_SPREADSHEET_ID);
-    } catch (e) {
-      Logger.log("Lỗi mở Spreadsheet theo ID: " + e.message);
-      return SpreadsheetApp.getActiveSpreadsheet();
-    }
-  }
-  return SpreadsheetApp.getActiveSpreadsheet();
 }
 
 /**
@@ -98,6 +114,9 @@ function doGet(e) {
       case 'getUserList':
         result = handleGetUserList();
         break;
+      case 'getRolesAndPermissions':
+        result = handleGetRolesAndPermissions();
+        break;
       default:
         result = { status: 'error', message: 'Hành động không hợp lệ: ' + action };
     }
@@ -137,6 +156,9 @@ function doPost(e) {
       case 'resetPassword':
         result = handleResetPassword(payload.username, payload.newPasswordHash);
         break;
+      case 'saveRolePermissions':
+        result = handleSaveRolePermissions(payload.data);
+        break;
       case 'initDatabase':
         result = handleInitDatabase();
         break;
@@ -170,174 +192,84 @@ function doPost(e) {
   }
 }
 
-/**
- * HÀM TẠO JSON OUTPUT CÓ HEADERS CORS
- */
 function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ========================================================================================
-// 2. XÁC THỰC NGƯỜI DÙNG & PHÂN QUYỀN (AUTH & RBAC ENGINE)
+// 2. TỰ ĐỘNG NÂNG CẤP VÀ ĐỒNG BỘ CẤU TRÚC 11 SHEETS (DYNAMIC SCHEMA MIGRATION)
 // ========================================================================================
 
-function handleLogin(username, passwordHash) {
-  if (!username || !passwordHash) {
-    return { status: 'error', message: 'Tên đăng nhập và mật khẩu không được để trống.' };
-  }
+function ensureDatabaseSchema(ss) {
+  try {
+    // 1. Kiểm tra sheet ROLES
+    if (!ss.getSheetByName("ROLES")) {
+      setupSheet(ss, "ROLES", [
+        { name: "RoleCode", width: 120, align: "center", format: "@" },
+        { name: "RoleName", width: 180, align: "left", format: "@" },
+        { name: "Permissions", width: 350, align: "left", format: "@" },
+        { name: "Description", width: 250, align: "left", format: "@" },
+        { name: "UpdatedAt", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" }
+      ], 1, 0, "#4a148c");
 
-  const ss = getSpreadsheet();
-  const userSheet = ss.getSheetByName('USERS');
-  if (!userSheet || userSheet.getLastRow() <= 1) {
-    // Nếu chưa khởi tạo USERS sheet, kiểm tra tài khoản mặc định
-    if (username.toLowerCase() === 'admin' && passwordHash === '7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358') {
-      return {
-        status: 'success',
-        message: 'Đăng nhập thành công (Default Admin)',
-        user: { username: 'admin', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN' },
-        token: 'TOKEN-' + Utilities.getUuid()
-      };
+      const roleSheet = ss.getSheetByName("ROLES");
+      roleSheet.getRange(2, 1, 4, 5).setValues([
+        ["ADMIN", "Quản Trị Viên Hệ Thống", JSON.stringify(DEFAULT_SYSTEM_MODULES.map(m => m.id)), "Toàn quyền trên toàn bộ các phân hệ", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
+        ["CBTD", "Cán Bộ Tín Dụng", JSON.stringify(['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports']), "Thẩm định, kiểm tra vốn và quản lý nợ", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
+        ["KETOAN", "Kế Toán Viên", JSON.stringify(['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']), "Trích nợ tự động và đối soát hạch toán", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
+        ["LANHDAO", "Ban Giám Đốc / Lãnh Đạo", JSON.stringify(['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']), "Phê duyệt, đối soát và báo cáo thống kê", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")]
+      ]);
     }
-    return { status: 'error', message: 'Tên đăng nhập hoặc mật khẩu không chính xác.' };
-  }
 
-  const usersData = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 7).getValues();
-  const uInput = String(username).trim().toLowerCase();
+    // 2. Kiểm tra sheet USERS
+    if (!ss.getSheetByName("USERS")) {
+      setupSheet(ss, "USERS", [
+        { name: "Username", width: 120, align: "center", format: "@" },
+        { name: "PasswordHash", width: 220, align: "center", format: "@" },
+        { name: "FullName", width: 180, align: "left", format: "@" },
+        { name: "Role", width: 120, align: "center", format: "@" },
+        { name: "CustomPermissions", width: 300, align: "left", format: "@" },
+        { name: "Status", width: 110, align: "center", format: "@" },
+        { name: "CreatedAt", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" },
+        { name: "LastLogin", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" }
+      ], 1, 0, "#0d47a1");
 
-  for (let i = 0; i < usersData.length; i++) {
-    const row = usersData[i];
-    const uDb = String(row[0]).trim().toLowerCase();
-    const pHashDb = String(row[1]).trim();
-    const fullName = row[2];
-    const role = row[3];
-    const status = row[4];
-
-    if (uDb === uInput) {
-      if (status !== 'ACTIVE') {
-        return { status: 'error', message: 'Tài khoản của bạn đang bị khóa hoặc tạm dừng.' };
-      }
-      if (pHashDb === String(passwordHash).trim()) {
-        // Cập nhật LastLogin
-        userSheet.getRange(i + 2, 7).setValue(Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss"));
-
-        return {
-          status: 'success',
-          message: 'Đăng nhập thành công',
-          user: {
-            username: row[0],
-            fullName: fullName,
-            role: role
-          },
-          token: 'TOKEN-' + Utilities.getUuid()
-        };
-      } else {
-        return { status: 'error', message: 'Mật khẩu không chính xác. Vui lòng thử lại.' };
+      const userSheet = ss.getSheetByName("USERS");
+      userSheet.getRange(2, 1, 4, 8).setValues([
+        ["admin", "7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358", "Quản Trị Viên Hệ Thống", "ADMIN", "[]", "ACTIVE", "18/08/2026 08:00:00", "18/08/2026 08:00:00"],
+        ["cbtd", "3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0", "Lê Văn Tín (Cán Bộ Tín Dụng)", "CBTD", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"],
+        ["ketoan", "fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e", "Nguyễn Thị Hằng (Kế Toán Viên)", "KETOAN", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"],
+        ["lanhdao", "cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d", "Trần Đình Trọng (Giám Đốc)", "LANHDAO", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"]
+      ]);
+    } else {
+      // Tự động thêm cột CustomPermissions nếu sheet USERS cũ chỉ có 7 cột
+      const uSheet = ss.getSheetByName("USERS");
+      if (uSheet.getLastColumn() === 7) {
+        uSheet.insertColumnAfter(4);
+        uSheet.getRange(1, 5).setValue("CustomPermissions").setFontWeight("bold").setFontColor("#fff").setBackground("#0d47a1").setHorizontalAlignment("center");
+        uSheet.setColumnWidth(5, 300);
       }
     }
-  }
 
-  return { status: 'error', message: 'Tài khoản không tồn tại trong hệ thống.' };
-}
+    // 3. Đảm bảo các sheet nghiệp vụ khác luôn tồn tại
+    const otherSheets = ["SETTING", "KH_CORE", "HDTD_CORE", "DS_TRICH_NO", "DOT_TRICH_NO", "LICH_SU_GIAO_DICH", "NO_TON_DONG", "BAO_CAO_THAM_DINH", "KIEM_TRA_VON"];
+    let needFullSetup = false;
+    otherSheets.forEach(sName => {
+      if (!ss.getSheetByName(sName)) needFullSetup = true;
+    });
 
-function handleChangePassword(username, oldPasswordHash, newPasswordHash) {
-  const ss = getSpreadsheet();
-  const userSheet = ss.getSheetByName('USERS');
-  if (!userSheet || userSheet.getLastRow() <= 1) throw new Error("Chưa khởi tạo bảng USERS");
-
-  const usersData = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 7).getValues();
-  const uInput = String(username).trim().toLowerCase();
-
-  for (let i = 0; i < usersData.length; i++) {
-    const row = usersData[i];
-    if (String(row[0]).trim().toLowerCase() === uInput) {
-      if (String(row[1]).trim() !== String(oldPasswordHash).trim()) {
-        return { status: 'error', message: 'Mật khẩu cũ không chính xác.' };
-      }
-      userSheet.getRange(i + 2, 2).setValue(newPasswordHash);
-      return { status: 'success', message: 'Đổi mật khẩu thành công!' };
+    if (needFullSetup) {
+      setupAllSheets(ss.getId());
     }
+  } catch (err) {
+    Logger.log("Lỗi tự động nâng cấp cấu trúc CSDL: " + err.message);
   }
-  return { status: 'error', message: 'Không tìm thấy người dùng.' };
 }
-
-function handleGetUserList() {
-  const ss = getSpreadsheet();
-  const userSheet = ss.getSheetByName('USERS');
-  if (!userSheet || userSheet.getLastRow() <= 1) return { status: 'success', data: [] };
-
-  const data = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 7).getValues();
-  const users = data.map(r => ({
-    username: r[0],
-    fullName: r[2],
-    role: r[3],
-    status: r[4],
-    createdAt: r[5],
-    lastLogin: r[6]
-  }));
-
-  return { status: 'success', data: users };
-}
-
-function handleSaveUser(userData) {
-  const ss = getSpreadsheet();
-  const userSheet = ss.getSheetByName('USERS');
-  if (!userSheet) throw new Error("Không tìm thấy sheet USERS");
-
-  const username = String(userData.username || '').trim();
-  const passwordHash = userData.passwordHash || '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // default: 123456
-  const fullName = userData.fullName || username;
-  const role = userData.role || 'CBTD';
-  const status = userData.status || 'ACTIVE';
-
-  if (userSheet.getLastRow() > 1) {
-    const data = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 7).getValues();
-    for (let i = 0; i < data.length; i++) {
-      if (String(data[i][0]).toLowerCase() === username.toLowerCase()) {
-        userSheet.getRange(i + 2, 3, 1, 3).setValues([[fullName, role, status]]);
-        if (userData.passwordHash) {
-          userSheet.getRange(i + 2, 2).setValue(userData.passwordHash);
-        }
-        return { status: 'success', message: 'Cập nhật thông tin người dùng thành công!' };
-      }
-    }
-  }
-
-  userSheet.appendRow([
-    username,
-    passwordHash,
-    fullName,
-    role,
-    status,
-    Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss"),
-    "---"
-  ]);
-
-  return { status: 'success', message: 'Tạo mới người dùng thành công!' };
-}
-
-function handleResetPassword(username, newPasswordHash) {
-  const ss = getSpreadsheet();
-  const userSheet = ss.getSheetByName('USERS');
-  if (!userSheet || userSheet.getLastRow() <= 1) throw new Error("Chưa khởi tạo USERS");
-
-  const data = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 2).getValues();
-  for (let i = 0; i < data.length; i++) {
-    if (String(data[i][0]).toLowerCase() === String(username).toLowerCase()) {
-      userSheet.getRange(i + 2, 2).setValue(newPasswordHash);
-      return { status: 'success', message: 'Đã reset mật khẩu cho người dùng: ' + username };
-    }
-  }
-  return { status: 'error', message: 'Không tìm thấy người dùng.' };
-}
-
-// ========================================================================================
-// 3. KHỞI TẠO CSDL 10 SHEETS & NẠP DỮ LIỆU MẪU (DATABASE SETUP ENGINE)
-// ========================================================================================
 
 function handleInitDatabase() {
   setupAllSheets(DB_SPREADSHEET_ID);
-  return { status: 'success', message: 'Đã khởi tạo thành công 10 bảng CSDL trên Google Sheets!' };
+  return { status: 'success', message: 'Đã khởi tạo thành công toàn bộ 11 bảng CSDL trên Google Sheets!' };
 }
 
 function setupAllSheets(targetSheetId) {
@@ -348,27 +280,34 @@ function setupAllSheets(targetSheetId) {
     try {
       ss = SpreadsheetApp.openById(finalSheetId);
     } catch (e) {
-      Logger.log("Lỗi không tìm thấy hoặc không có quyền truy cập Sheet ID: " + finalSheetId);
-      throw new Error("Không thể mở Google Sheet ID: " + finalSheetId + ". Kiểm tra quyền chia sẻ.");
+      throw new Error("Không thể mở Google Sheet ID: " + finalSheetId);
     }
   } else {
     ss = SpreadsheetApp.getActiveSpreadsheet();
   }
 
-  Logger.log("Đang khởi tạo toàn bộ CSDL trên file: " + ss.getName() + " [ID: " + ss.getId() + "]");
+  // 1. ROLES
+  setupSheet(ss, "ROLES", [
+    { name: "RoleCode", width: 120, align: "center", format: "@" },
+    { name: "RoleName", width: 180, align: "left", format: "@" },
+    { name: "Permissions", width: 350, align: "left", format: "@" },
+    { name: "Description", width: 250, align: "left", format: "@" },
+    { name: "UpdatedAt", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" }
+  ], 1, 0, "#4a148c");
 
-  // 1. USERS (Quản lý Người dùng & Phân quyền)
+  // 2. USERS
   setupSheet(ss, "USERS", [
     { name: "Username", width: 120, align: "center", format: "@" },
     { name: "PasswordHash", width: 220, align: "center", format: "@" },
     { name: "FullName", width: 180, align: "left", format: "@" },
     { name: "Role", width: 120, align: "center", format: "@" },
+    { name: "CustomPermissions", width: 300, align: "left", format: "@" },
     { name: "Status", width: 110, align: "center", format: "@" },
     { name: "CreatedAt", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" },
     { name: "LastLogin", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" }
   ], 1, 0, "#0d47a1");
 
-  // 2. SETTING (Cấu hình & Hàng đợi lệnh)
+  // 3. SETTING
   setupSheet(ss, "SETTING", [
     { name: "COMMAND", width: 130, align: "center", format: "@" },
     { name: "STATUS", width: 130, align: "center", format: "@" },
@@ -379,14 +318,7 @@ function setupAllSheets(targetSheetId) {
     { name: "MESSAGE", width: 250, align: "left", format: "@" }
   ], 1, 0, "#2c3e50");
 
-  const settingSheet = ss.getSheetByName("SETTING");
-  if (settingSheet.getLastRow() < 2) {
-    settingSheet.getRange("A2:G2").setValues([[
-      "IDLE", "SUCCESS", "18/08/2026 08:00:00", "18/08/2026 08:00:01", "18/08/2026 08:00:05", 342, "Hệ thống vận hành bình thường. Sẵn sàng nhận lệnh."
-    ]]);
-  }
-
-  // 3. KH_CORE (Khách hàng & Thành viên)
+  // 4. KH_CORE
   setupSheet(ss, "KH_CORE", [
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "HoTen", width: 180, align: "left", format: "@" },
@@ -405,7 +337,7 @@ function setupAllSheets(targetSheetId) {
     { name: "TongTienCP", width: 130, align: "right", format: "#,##0" }
   ], 1, 2, "#004d40");
 
-  // 4. HDTD_CORE (Hợp đồng Tín dụng / Khế ước)
+  // 5. HDTD_CORE
   setupSheet(ss, "HDTD_CORE", [
     { name: "SoHDTD", width: 120, align: "center", format: "@" },
     { name: "MaKH", width: 100, align: "center", format: "@" },
@@ -420,7 +352,7 @@ function setupAllSheets(targetSheetId) {
     { name: "MoTaVay", width: 200, align: "left", format: "@" }
   ], 1, 2, "#1b365d");
 
-  // 5. DS_TRICH_NO (Danh sách đăng ký trích nợ)
+  // 6. DS_TRICH_NO
   setupSheet(ss, "DS_TRICH_NO", [
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "HoTen", width: 180, align: "left", format: "@" },
@@ -432,7 +364,7 @@ function setupAllSheets(targetSheetId) {
     { name: "GhiChu", width: 200, align: "left", format: "@" }
   ], 1, 1, "#0f5132");
 
-  // 6. DOT_TRICH_NO (Quản lý các đợt trích nợ)
+  // 7. DOT_TRICH_NO
   setupSheet(ss, "DOT_TRICH_NO", [
     { name: "MaDot", width: 120, align: "center", format: "@" },
     { name: "ThangNam", width: 100, align: "center", format: "@" },
@@ -444,7 +376,7 @@ function setupAllSheets(targetSheetId) {
     { name: "TrangThai", width: 130, align: "center", format: "@" }
   ], 1, 1, "#4a148c");
 
-  // 7. LICH_SU_GIAO_DICH (Chi tiết kết quả trích nợ)
+  // 8. LICH_SU_GIAO_DICH
   setupSheet(ss, "LICH_SU_GIAO_DICH", [
     { name: "IDGiaoDich", width: 140, align: "center", format: "@" },
     { name: "MaDot", width: 120, align: "center", format: "@" },
@@ -462,7 +394,7 @@ function setupAllSheets(targetSheetId) {
     { name: "NgayCapNhat", width: 160, align: "center", format: "dd/MM/yyyy HH:mm" }
   ], 1, 1, "#b71c1c");
 
-  // 8. NO_TON_DONG (Sổ theo dõi nợ tồn chuyển kỳ sau)
+  // 9. NO_TON_DONG
   setupSheet(ss, "NO_TON_DONG", [
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "SoHDTD", width: 120, align: "center", format: "@" },
@@ -474,7 +406,7 @@ function setupAllSheets(targetSheetId) {
     { name: "NgayCapNhat", width: 160, align: "center", format: "dd/MM/yyyy HH:mm" }
   ], 1, 1, "#e65100");
 
-  // 9. BAO_CAO_THAM_DINH (Hồ sơ Thẩm định & TSĐB)
+  // 10. BAO_CAO_THAM_DINH
   setupSheet(ss, "BAO_CAO_THAM_DINH", [
     { name: "MaBCTD", width: 120, align: "center", format: "@" },
     { name: "MaKH", width: 100, align: "center", format: "@" },
@@ -498,7 +430,7 @@ function setupAllSheets(targetSheetId) {
     { name: "CanBoThamDinh", width: 140, align: "left", format: "@" }
   ], 1, 1, "#1a237e");
 
-  // 10. KIEM_TRA_VON (Biên bản Kiểm tra Sử dụng Vốn)
+  // 11. KIEM_TRA_VON
   setupSheet(ss, "KIEM_TRA_VON", [
     { name: "MaBBKT", width: 120, align: "center", format: "@" },
     { name: "SoHDTD", width: 120, align: "center", format: "@" },
@@ -513,11 +445,8 @@ function setupAllSheets(targetSheetId) {
     { name: "CanBoKiemTra", width: 140, align: "left", format: "@" }
   ], 1, 1, "#37474f");
 
-  // Nạp dữ liệu mẫu ban đầu
   seedSampleData(ss);
-
   SpreadsheetApp.flush();
-  Logger.log("--- ĐÃ KHỞI TẠO VÀ ĐỊNH DẠNG HOÀN TẤT 10 SHEETS CSDL ---");
 }
 
 function setupSheet(ss, sheetName, columns, freezeRows, freezeCols, headerBgColor) {
@@ -557,20 +486,39 @@ function setupSheet(ss, sheetName, columns, freezeRows, freezeCols, headerBgColo
 }
 
 function seedSampleData(ss) {
+  // ROLES
+  const roleSheet = ss.getSheetByName("ROLES");
+  if (roleSheet && roleSheet.getLastRow() < 2) {
+    roleSheet.getRange(2, 1, 4, 5).setValues([
+      ["ADMIN", "Quản Trị Viên Hệ Thống", JSON.stringify(DEFAULT_SYSTEM_MODULES.map(m => m.id)), "Toàn quyền trên toàn bộ các phân hệ", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
+      ["CBTD", "Cán Bộ Tín Dụng", JSON.stringify(['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports']), "Thẩm định, kiểm tra vốn và quản lý nợ", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
+      ["KETOAN", "Kế Toán Viên", JSON.stringify(['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']), "Trích nợ tự động và đối soát hạch toán", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")],
+      ["LANHDAO", "Ban Giám Đốc / Lãnh Đạo", JSON.stringify(['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']), "Phê duyệt, đối soát và báo cáo thống kê", Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")]
+    ]);
+  }
+
   // USERS
   const userSheet = ss.getSheetByName("USERS");
-  if (userSheet.getLastRow() < 2) {
-    userSheet.getRange(2, 1, 4, 7).setValues([
-      ["admin", "7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358", "Quản Trị Viên Hệ Thống", "ADMIN", "ACTIVE", "18/08/2026 08:00:00", "18/08/2026 08:00:00"],
-      ["cbtd", "3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0", "Lê Văn Tín (Cán Bộ Tín Dụng)", "CBTD", "ACTIVE", "18/08/2026 08:00:00", "---"],
-      ["ketoan", "fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e", "Nguyễn Thị Hằng (Kế Toán Viên)", "KETOAN", "ACTIVE", "18/08/2026 08:00:00", "---"],
-      ["lanhdao", "cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d", "Trần Đình Trọng (Giám Đốc)", "LANHDAO", "ACTIVE", "18/08/2026 08:00:00", "---"]
+  if (userSheet && userSheet.getLastRow() < 2) {
+    userSheet.getRange(2, 1, 4, 8).setValues([
+      ["admin", "7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358", "Quản Trị Viên Hệ Thống", "ADMIN", "[]", "ACTIVE", "18/08/2026 08:00:00", "18/08/2026 08:00:00"],
+      ["cbtd", "3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0", "Lê Văn Tín (Cán Bộ Tín Dụng)", "CBTD", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"],
+      ["ketoan", "fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e", "Nguyễn Thị Hằng (Kế Toán Viên)", "KETOAN", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"],
+      ["lanhdao", "cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d", "Trần Đình Trọng (Giám Đốc)", "LANHDAO", "[]", "ACTIVE", "18/08/2026 08:00:00", "---"]
     ]);
+  }
+
+  // SETTING
+  const settingSheet = ss.getSheetByName("SETTING");
+  if (settingSheet && settingSheet.getLastRow() < 2) {
+    settingSheet.getRange("A2:G2").setValues([[
+      "IDLE", "SUCCESS", "18/08/2026 08:00:00", "18/08/2026 08:00:01", "18/08/2026 08:00:05", 342, "Hệ thống vận hành bình thường. Sẵn sàng nhận lệnh."
+    ]]);
   }
 
   // KH_CORE
   const khSheet = ss.getSheetByName("KH_CORE");
-  if (khSheet.getLastRow() < 2) {
+  if (khSheet && khSheet.getLastRow() < 2) {
     khSheet.getRange(2, 1, 3, 15).setValues([
       ["KH008892", "NGUYỄN VĂN AN", "Thôn 3, Xã Yên Thọ", "15/05/1985", "038086012345", "15/05/2021", "Cục CSQLHC về TTXH", "02373850123", "0912345678", "3500205123456", "Thôn 3, Yên Thọ", "TV-0892", "CP-0412", "10/01/2018", 15000000],
       ["KH009102", "LÊ THỊ MAI", "Thôn 1, Xã Yên Trường", "20/10/1990", "038190098765", "10/08/2020", "CA Tỉnh Thanh Hóa", "02373850999", "0988123456", "3500205987654", "Thôn 1, Yên Trường", "TV-0910", "CP-0511", "15/03/2019", 20000000],
@@ -580,7 +528,7 @@ function seedSampleData(ss) {
 
   // HDTD_CORE
   const hdtdSheet = ss.getSheetByName("HDTD_CORE");
-  if (hdtdSheet.getLastRow() < 2) {
+  if (hdtdSheet && hdtdSheet.getLastRow() < 2) {
     hdtdSheet.getRange(2, 1, 4, 11).setValues([
       ["KU-2025-0982", "KH008892", 300000000, 250000000, 9.50, "15/08/2025", "15/08/2026", "15/07/2026", "LV01", 12, "Cho vay phát triển chăn nuôi bò sữa"],
       ["KU-2026-0145", "KH008892", 300000000, 200000000, 10.20, "10/02/2026", "10/02/2028", "10/07/2026", "LV03", 24, "Cho vay kinh doanh vật tư nông nghiệp"],
@@ -588,63 +536,231 @@ function seedSampleData(ss) {
       ["KU-2025-0811", "KH007415", 500000000, 420000000, 9.50, "20/11/2025", "20/11/2027", "20/07/2026", "LV03", 24, "Cho vay mua xe tải vận chuyển nông sản"]
     ]);
   }
-
-  // DS_TRICH_NO
-  const dsTrichSheet = ss.getSheetByName("DS_TRICH_NO");
-  if (dsTrichSheet.getLastRow() < 2) {
-    dsTrichSheet.getRange(2, 1, 3, 8).setValues([
-      ["KH008892", "NGUYỄN VĂN AN", "038086012345", "Thôn 3, Yên Thọ", "3500205123456", 1, "Hieu luc", "Đăng ký trích nợ tự động"],
-      ["KH009102", "LÊ THỊ MAI", "038190098765", "Thôn 1, Yên Trường", "3500205987654", 2, "Hieu luc", "Đăng ký trích nợ tự động"],
-      ["KH007415", "TRẦN VĂN QUÂN", "038079001122", "Thôn 5, Yên Bái", "3500205556677", 3, "Hieu luc", "Đăng ký trích nợ tự động"]
-    ]);
-  }
-
-  // DOT_TRICH_NO
-  const dotSheet = ss.getSheetByName("DOT_TRICH_NO");
-  if (dotSheet.getLastRow() < 2) {
-    dotSheet.getRange(2, 1, 2, 8).setValues([
-      ["DOT-202608-K1", "202608", 1, 145000000, 138500000, 6500000, "05/08/2026 08:30", "HOAN_TAT"],
-      ["DOT-202608-K2", "202608", 2, 120000000, 114000000, 6000000, "15/08/2026 08:30", "HOAN_TAT"]
-    ]);
-  }
-
-  // NO_TON_DONG
-  const noTonSheet = ss.getSheetByName("NO_TON_DONG");
-  if (noTonSheet.getLastRow() < 2) {
-    noTonSheet.getRange(2, 1, 2, 8).setValues([
-      ["KH008892", "KU-2025-0982", 0, 6500000, 6500000, "DOT-202608-K1", "CHUA_THU", "06/08/2026 09:00"],
-      ["KH009102", "KU-2026-0312", 0, 6000000, 6000000, "DOT-202608-K2", "CHUA_THU", "16/08/2026 09:00"]
-    ]);
-  }
-
-  // BAO_CAO_THAM_DINH
-  const tdSheet = ss.getSheetByName("BAO_CAO_THAM_DINH");
-  if (tdSheet.getLastRow() < 2) {
-    tdSheet.getRange(2, 1, 1, 20).setValues([
-      [
-        "BCTD-2026-081", "KH008892", "NGUYỄN VĂN AN", 300000000, 300000000, 12, 9.50, 25000000, "Hang A (Tot)",
-        "QSDĐ (Sổ đỏ / Sổ hồng)", "Nguyễn Văn An (Chính chủ)", "GCN QSDĐ số DT 123456, Thửa 42, TBĐ 08. DT: 150m2 tại Thôn 3, Yên Thọ.",
-        600000000, 0.50, "https://drive.google.com/drive/folders/tsbd_kh008892", "https://drive.google.com/drive/folders/thamdinh_kh008892",
-        "Thap", "Dong y cap tin dung", "10/08/2025", "Lê Văn Tín"
-      ]
-    ]);
-  }
-
-  // KIEM_TRA_VON
-  const ktSheet = ss.getSheetByName("KIEM_TRA_VON");
-  if (ktSheet.getLastRow() < 2) {
-    ktSheet.getRange(2, 1, 1, 11).setValues([
-      [
-        "BBKT-2026-0045", "KU-2025-0982", "KH008892", "NGUYỄN VĂN AN", "15/11/2025", "Thực địa",
-        "Đúng mục đích", "Thấp", "Đã mua 12 con bò sữa F1 đang sinh trưởng tốt, chuồng trại mở rộng đúng thiết kế.",
-        "https://drive.google.com/drive/folders/kiemtra_kh008892", "Lê Văn Tín"
-      ]
-    ]);
-  }
 }
 
 // ========================================================================================
-// 4. CÁC HÀM XỬ LÝ LOGIC NGHIỆP VỤ REST API (API ENDPOINT HANDLERS)
+// 3. XÁC THỰC VÀ PHÂN QUYỀN 360° CHI TIẾT (AUTH & RBAC 360 HANDLERS)
+// ========================================================================================
+
+function handleLogin(username, passwordHash) {
+  if (!username || !passwordHash) {
+    return { status: 'error', message: 'Tên đăng nhập và mật khẩu không được để trống.' };
+  }
+
+  const ss = getSpreadsheet();
+  const userSheet = ss.getSheetByName('USERS');
+  const roleSheet = ss.getSheetByName('ROLES');
+
+  const usersData = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 8).getValues();
+  const uInput = String(username).trim().toLowerCase();
+
+  // Load Roles Map
+  const rolesMap = {};
+  if (roleSheet && roleSheet.getLastRow() > 1) {
+    const rData = roleSheet.getRange(2, 1, roleSheet.getLastRow() - 1, 4).getValues();
+    rData.forEach(r => {
+      let perms = [];
+      try { perms = JSON.parse(r[2]); } catch (e) { perms = []; }
+      rolesMap[r[0]] = { roleCode: r[0], roleName: r[1], permissions: perms, description: r[3] };
+    });
+  }
+
+  for (let i = 0; i < usersData.length; i++) {
+    const row = usersData[i];
+    const uDb = String(row[0]).trim().toLowerCase();
+    const pHashDb = String(row[1]).trim();
+    const fullName = row[2];
+    const role = row[3];
+    let customPerms = [];
+    try { customPerms = JSON.parse(row[4] || '[]'); } catch (e) { customPerms = []; }
+    const status = row[5];
+
+    if (uDb === uInput) {
+      if (status !== 'ACTIVE') {
+        return { status: 'error', message: 'Tài khoản của bạn đang bị khóa hoặc tạm dừng.' };
+      }
+      if (pHashDb === String(passwordHash).trim()) {
+        userSheet.getRange(i + 2, 8).setValue(Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss"));
+
+        // Tính toán quyền hợp nhất: Role Permissions + Custom Permissions
+        const rolePerms = rolesMap[role] ? rolesMap[role].permissions : [];
+        const effectiveSet = new Set([...rolePerms, ...customPerms]);
+        const effectivePermissions = Array.from(effectiveSet);
+
+        return {
+          status: 'success',
+          message: 'Đăng nhập thành công',
+          user: {
+            username: row[0],
+            fullName: fullName,
+            role: role,
+            customPermissions: customPerms,
+            effectivePermissions: effectivePermissions
+          },
+          token: 'TOKEN-' + Utilities.getUuid()
+        };
+      } else {
+        return { status: 'error', message: 'Mật khẩu không chính xác. Vui lòng thử lại.' };
+      }
+    }
+  }
+
+  return { status: 'error', message: 'Tài khoản không tồn tại trong hệ thống.' };
+}
+
+function handleGetRolesAndPermissions() {
+  const ss = getSpreadsheet();
+  const roleSheet = ss.getSheetByName('ROLES');
+
+  const roles = [];
+  if (roleSheet && roleSheet.getLastRow() > 1) {
+    const data = roleSheet.getRange(2, 1, roleSheet.getLastRow() - 1, 5).getValues();
+    data.forEach(r => {
+      let perms = [];
+      try { perms = JSON.parse(r[2]); } catch (e) { perms = []; }
+      roles.push({
+        roleCode: r[0],
+        roleName: r[1],
+        permissions: perms,
+        description: r[3],
+        updatedAt: r[4]
+      });
+    });
+  }
+
+  return {
+    status: 'success',
+    data: {
+      modules: DEFAULT_SYSTEM_MODULES,
+      roles: roles
+    }
+  };
+}
+
+function handleSaveRolePermissions(roleData) {
+  const ss = getSpreadsheet();
+  const roleSheet = ss.getSheetByName('ROLES');
+  if (!roleSheet) throw new Error("Không tìm thấy bảng ROLES");
+
+  const roleCode = String(roleData.roleCode || '').trim().toUpperCase();
+  const roleName = roleData.roleName || roleCode;
+  const permissions = JSON.stringify(roleData.permissions || []);
+  const description = roleData.description || '';
+  const nowStr = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
+
+  if (roleSheet.getLastRow() > 1) {
+    const data = roleSheet.getRange(2, 1, roleSheet.getLastRow() - 1, 1).getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]).toUpperCase() === roleCode) {
+        roleSheet.getRange(i + 2, 2, 1, 4).setValues([[roleName, permissions, description, nowStr]]);
+        return { status: 'success', message: `Cập nhật quyền cho nhóm ${roleName} (${roleCode}) thành công!` };
+      }
+    }
+  }
+
+  roleSheet.appendRow([roleCode, roleName, permissions, description, nowStr]);
+  return { status: 'success', message: `Tạo mới nhóm quyền ${roleName} thành công!` };
+}
+
+function handleGetUserList() {
+  const ss = getSpreadsheet();
+  const userSheet = ss.getSheetByName('USERS');
+  if (!userSheet || userSheet.getLastRow() <= 1) return { status: 'success', data: [] };
+
+  const data = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 8).getValues();
+  const users = data.map(r => {
+    let customPerms = [];
+    try { customPerms = JSON.parse(r[4] || '[]'); } catch (e) { customPerms = []; }
+    return {
+      username: r[0],
+      fullName: r[2],
+      role: r[3],
+      customPermissions: customPerms,
+      status: r[5],
+      createdAt: r[6],
+      lastLogin: r[7]
+    };
+  });
+
+  return { status: 'success', data: users };
+}
+
+function handleSaveUser(userData) {
+  const ss = getSpreadsheet();
+  const userSheet = ss.getSheetByName('USERS');
+  if (!userSheet) throw new Error("Không tìm thấy sheet USERS");
+
+  const username = String(userData.username || '').trim();
+  const passwordHash = userData.passwordHash || '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // default: 123456
+  const fullName = userData.fullName || username;
+  const role = userData.role || 'CBTD';
+  const customPermsStr = JSON.stringify(userData.customPermissions || []);
+  const status = userData.status || 'ACTIVE';
+
+  if (userSheet.getLastRow() > 1) {
+    const data = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 8).getValues();
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase() === username.toLowerCase()) {
+        userSheet.getRange(i + 2, 3, 1, 4).setValues([[fullName, role, customPermsStr, status]]);
+        if (userData.passwordHash) {
+          userSheet.getRange(i + 2, 2).setValue(userData.passwordHash);
+        }
+        return { status: 'success', message: 'Cập nhật tài khoản & phân quyền thành công!' };
+      }
+    }
+  }
+
+  userSheet.appendRow([
+    username,
+    passwordHash,
+    fullName,
+    role,
+    customPermsStr,
+    status,
+    Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss"),
+    "---"
+  ]);
+
+  return { status: 'success', message: 'Tạo mới tài khoản người dùng thành công!' };
+}
+
+function handleChangePassword(username, oldPasswordHash, newPasswordHash) {
+  const ss = getSpreadsheet();
+  const userSheet = ss.getSheetByName('USERS');
+  if (!userSheet || userSheet.getLastRow() <= 1) throw new Error("Chưa khởi tạo bảng USERS");
+
+  const usersData = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 2).getValues();
+  const uInput = String(username).trim().toLowerCase();
+
+  for (let i = 0; i < usersData.length; i++) {
+    if (String(usersData[i][0]).trim().toLowerCase() === uInput) {
+      if (String(usersData[i][1]).trim() !== String(oldPasswordHash).trim()) {
+        return { status: 'error', message: 'Mật khẩu cũ không chính xác.' };
+      }
+      userSheet.getRange(i + 2, 2).setValue(newPasswordHash);
+      return { status: 'success', message: 'Đổi mật khẩu thành công!' };
+    }
+  }
+  return { status: 'error', message: 'Không tìm thấy người dùng.' };
+}
+
+function handleResetPassword(username, newPasswordHash) {
+  const ss = getSpreadsheet();
+  const userSheet = ss.getSheetByName('USERS');
+  if (!userSheet || userSheet.getLastRow() <= 1) throw new Error("Chưa khởi tạo USERS");
+
+  const data = userSheet.getRange(2, 1, userSheet.getLastRow() - 1, 2).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][0]).toLowerCase() === String(username).toLowerCase()) {
+      userSheet.getRange(i + 2, 2).setValue(newPasswordHash);
+      return { status: 'success', message: 'Đã reset mật khẩu cho: ' + username };
+    }
+  }
+  return { status: 'error', message: 'Không tìm thấy người dùng.' };
+}
+
+// ========================================================================================
+// 4. CÁC HÀM XỬ LÝ NGHIỆP VỤ KHÁC (DASHBOARD, 360, THẨM ĐỊNH, TRÍCH NỢ, ĐỐI SOÁT)
 // ========================================================================================
 
 function handleGetDashboardStats() {
