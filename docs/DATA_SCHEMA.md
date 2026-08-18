@@ -176,13 +176,22 @@ Tài liệu này định nghĩa chi tiết 11 bảng CSDL của hệ thống **C
 | B | `SoHDTD` | String | Số hợp đồng tín dụng được kiểm tra |
 | C | `MaKH` | String | Mã khách hàng |
 | D | `HoTen` | String | Tên khách hàng |
-| E | `NgayKiemTra` | Date | Ngày tiến hành kiểm tra |
-| F | `HinhThuc` | String | Hình thức (`Thực địa` / `Hóa đơn chứng từ`) |
-| G | `DanhGiaMucDich`| String | Đánh giá (`Đúng mục đích` / `Sai mục đích một phần` / `Sai mục đích`) |
-| H | `MucDoRuiRo` | String | `Thấp` / `Trung bình` / `Cao` |
-| I | `MoTaThucTe` | String | Mô tả hiện trạng thực tế sử dụng vốn vay |
-| J | `HinhAnhKiemTra`| String (URL) | Link thư mục ảnh kiểm tra thực địa trên Google Drive |
-| K | `CanBoKiemTra` | String | Cán bộ tín dụng thực hiện |
+| E | `LoaiDoanKT` | String | Đoàn kiểm tra: `CBTD` (Cán bộ tín dụng), `BKS` (Ban kiểm soát), `HDQT` (Hội đồng quản trị) |
+| F | `ThanhPhanDoan` | String | Danh sách các thành viên tham gia đoàn kiểm tra |
+| G | `NgayKiemTra` | Date (`dd/MM/yyyy`)| Ngày tiến hành kiểm tra thực tế |
+| H | `LanKiemTra` | String | Lần kiểm tra: `Lần 1 (Sau giải ngân 30 ngày)` / `Lần 2 (Định kỳ 6 tháng)` / `Đột xuất` |
+| I | `NgayKTNext` | Date (`dd/MM/yyyy`)| Ngày dự kiến kiểm tra tiếp theo (định kỳ +3T, +6T, +12T) |
+| J | `HinhThuc` | String | Hình thức: `Thực địa tại cơ sở` / `Kiểm tra hóa đơn chứng từ` / `Kết hợp` |
+| K | `DiaDiemKT` | String | Địa điểm kiểm tra thực tế (Thôn/Xã/Nơi SXKD) |
+| L | `DanhGiaMucDich` | String | Đánh giá mục đích: `Đúng mục đích 100%` / `Sai mục đích một phần` / `Chưa đưa vào sử dụng` |
+| M | `TienDoSuDungVon`| String | Tiến độ giải ngân và đưa vốn vào SXKD thực tế |
+| N | `MucDoRuiRo` | String | Mức độ rủi ro: `Thấp` / `Trung bình` / `Cao` |
+| O | `MoTaThucTe` | String | Ghi nhận chi tiết hiện trạng hiện trường, chuồng trại, máy móc, hóa đơn |
+| P | `KienNghi` | String | Kết luận & Kiến nghị của đoàn kiểm tra (Duy trì / Nâng hạn mức / Thu hồi trước hạn) |
+| Q | `FileBienBanUrl` | String (URL) | Link tải / xem tệp Biên bản kiểm tra đã ký (Google Drive PDF / DOC) |
+| R | `HinhAnhKiemTra` | String (URL) | Link thư mục hình ảnh hiện trường thực địa trên Google Drive |
+| S | `TrangThai` | String | `ĐÃ_DUYỆT` / `CHỜ_DUYỆT` |
+| T | `NgayTao` | DateTime | Ngày giờ lập biên bản trên hệ thống |
 
 ---
 
