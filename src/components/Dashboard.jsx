@@ -12,31 +12,30 @@ import {
   ArrowLeftRight,
   FileCheck2
 } from 'lucide-react';
+import { formatCurrencyVN } from '../utils/dateUtils';
 
 export default function Dashboard({ stats, onNavigate }) {
-  const formatCurrency = (val) => (val || 0).toLocaleString('vi-VN') + ' đ';
-
   return (
     <div className="d-flex flex-column gap-4">
       {/* 4 Core Metric Bento KPI Cards */}
       <div className="row g-3">
         {/* 1. Tổng Dư Nợ */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="kpi-bento-card" style={{ '--card-accent-color': '#2563eb' }}>
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#9acd32', borderLeft: '4px solid #9acd32' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
                 Tổng Dư Nợ Tín Dụng
               </span>
               <div
                 className="kpi-icon-wrapper"
-                style={{ '--icon-bg': 'rgba(37, 99, 235, 0.1)', '--icon-color': '#2563eb' }}
+                style={{ '--icon-bg': 'rgba(154, 205, 50, 0.15)', '--icon-color': '#4d7c0f' }}
               >
                 <Landmark size={22} />
               </div>
             </div>
             <div>
               <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular">
-                {formatCurrency(stats?.totalDuNo)}
+                {formatCurrencyVN(stats?.totalDuNo)}
               </h3>
               <div className="d-flex align-items-center gap-1 text-success small fw-semibold">
                 <TrendingUp size={14} />
@@ -48,21 +47,21 @@ export default function Dashboard({ stats, onNavigate }) {
 
         {/* 2. Dự Thu Lãi Kỳ Này */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="kpi-bento-card" style={{ '--card-accent-color': '#059669' }}>
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#047857', borderLeft: '4px solid #047857' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
                 Dự Thu Lãi Kỳ Này
               </span>
               <div
                 className="kpi-icon-wrapper"
-                style={{ '--icon-bg': 'rgba(5, 150, 105, 0.1)', '--icon-color': '#059669' }}
+                style={{ '--icon-bg': 'rgba(4, 120, 87, 0.15)', '--icon-color': '#047857' }}
               >
                 <TrendingUp size={22} />
               </div>
             </div>
             <div>
               <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular text-gradient-emerald">
-                {formatCurrency(stats?.totalDuThuLai)}
+                {formatCurrencyVN(stats?.totalDuThuLai)}
               </h3>
               <span className="text-muted small">Ước tính theo lãi suất từng HĐ</span>
             </div>
@@ -71,14 +70,14 @@ export default function Dashboard({ stats, onNavigate }) {
 
         {/* 3. Đăng Ký Trích Nợ */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="kpi-bento-card" style={{ '--card-accent-color': '#7c3aed' }}>
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#0284c7', borderLeft: '4px solid #0284c7' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
                 Đăng Ký Trích Nợ
               </span>
               <div
                 className="kpi-icon-wrapper"
-                style={{ '--icon-bg': 'rgba(124, 58, 237, 0.1)', '--icon-color': '#7c3aed' }}
+                style={{ '--icon-bg': 'rgba(2, 132, 199, 0.15)', '--icon-color': '#0284c7' }}
               >
                 <Users size={22} />
               </div>
@@ -95,25 +94,23 @@ export default function Dashboard({ stats, onNavigate }) {
 
         {/* 4. Tổng Nợ Tồn Đọng */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="kpi-bento-card" style={{ '--card-accent-color': '#e11d48' }}>
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#e11d48', borderLeft: '4px solid #e11d48' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
-                Tổng Nợ Tồn Đọng
+                Nợ Tồn Đọng Chờ Thu
               </span>
               <div
                 className="kpi-icon-wrapper"
-                style={{ '--icon-bg': 'rgba(225, 29, 72, 0.1)', '--icon-color': '#e11d48' }}
+                style={{ '--icon-bg': 'rgba(225, 29, 72, 0.15)', '--icon-color': '#e11d48' }}
               >
                 <AlertCircle size={22} />
               </div>
             </div>
             <div>
               <h3 className="fw-bold text-danger mb-1 fs-4 num-tabular">
-                {formatCurrency(stats?.totalNoTon)}
+                {formatCurrencyVN(stats?.totalNoTon)}
               </h3>
-              <span className="badge-status badge-danger-soft" style={{ fontSize: '0.72rem' }}>
-                Chuyển tiếp đôn đốc kỳ sau
-              </span>
+              <span className="text-muted small">Cần đôn đốc trước kỳ tiếp theo</span>
             </div>
           </div>
         </div>

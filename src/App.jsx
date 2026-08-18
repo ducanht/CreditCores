@@ -35,6 +35,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChangePassModal, setShowChangePassModal] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('CREDITCORES_THEME') === 'dark');
 
   const [stats, setStats] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -43,6 +44,20 @@ export default function App() {
   // Cross-module prefill states
   const [prefilledCustomer, setPrefilledCustomer] = useState(null);
   const [prefilledContract, setPrefilledContract] = useState(null);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('CREDITCORES_THEME', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('CREDITCORES_THEME', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(prev => !prev);
+  };
 
   const fetchInitialData = async () => {
     try {
@@ -138,7 +153,9 @@ export default function App() {
           isSyncing={isSyncing}
           onTriggerSync={handleTriggerSync}
           currentUser={currentUser}
-          onToggleMobile={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onToggleMobile={() => setIsMobileSidebarOpen(prev => !prev)}
+          isDarkMode={isDarkMode}
+          onToggleTheme={toggleTheme}
         />
 
         <main className="content-area">

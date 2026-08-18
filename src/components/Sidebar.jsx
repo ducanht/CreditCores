@@ -70,14 +70,14 @@ export default function Sidebar({
           position: 'fixed',
           left: 0,
           top: 0,
-          backgroundColor: 'var(--brand-navy-900)',
-          backgroundImage: 'linear-gradient(180deg, #0b192c 0%, #06111f 100%)',
+          backgroundColor: '#06261c',
+          backgroundImage: 'linear-gradient(180deg, #06281e 0%, #091722 100%)',
           color: '#fff',
           zIndex: 1000,
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '4px 0 20px rgba(0,0,0,0.25)',
-          borderRight: '1px solid rgba(255,255,255,0.06)'
+          boxShadow: '4px 0 25px rgba(0,0,0,0.35)',
+          borderRight: '1.5px solid rgba(154, 205, 50, 0.2)'
         }}
       >
         {/* Brand Header */}
@@ -87,24 +87,24 @@ export default function Sidebar({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 20px',
-            backgroundColor: 'rgba(255,255,255,0.02)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)'
+            padding: '0 18px',
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderBottom: '1.5px solid rgba(154, 205, 50, 0.2)'
           }}
         >
           <div className="d-flex align-items-center gap-2">
             <div
-              className="p-2 rounded-3 text-dark d-flex align-items-center justify-content-center"
-              style={{ background: 'linear-gradient(135deg, #00d2d3 0%, #38bdf8 100%)', width: 38, height: 38 }}
+              className="p-2 rounded-3 text-dark d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)', width: 40, height: 40, boxShadow: '0 0 12px rgba(154, 205, 50, 0.4)' }}
             >
-              <Landmark size={20} className="text-dark" />
+              <Landmark size={22} className="text-white" />
             </div>
             <div>
-              <h1 className="m-0 fs-6 fw-bold text-white lh-1 font-heading" style={{ letterSpacing: '0.5px' }}>
-                CreditCores
+              <h1 className="m-0 fs-6 fw-extrabold text-white lh-1 font-heading" style={{ letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                QTDND YÊN THỌ
               </h1>
-              <span style={{ fontSize: '0.66rem', color: '#94a3b8', fontWeight: 500 }}>
-                Core Credit & Auto-Debit
+              <span style={{ fontSize: '0.65rem', color: '#a3e635', fontWeight: 600 }}>
+                CreditCores • Auto-Debit
               </span>
             </div>
           </div>
@@ -134,7 +134,7 @@ export default function Sidebar({
                       fontSize: '0.62rem',
                       textTransform: 'uppercase',
                       letterSpacing: '1.2px',
-                      color: 'rgba(255,255,255,0.35)',
+                      color: 'rgba(163, 230, 53, 0.6)',
                       padding: '12px 12px 4px 12px',
                       fontWeight: 800
                     }}
@@ -150,13 +150,13 @@ export default function Sidebar({
                     padding: '10px 14px',
                     margin: '2px 0',
                     fontSize: '0.85rem',
-                    fontWeight: isActive ? 700 : 500,
+                    fontWeight: isActive ? 800 : 500,
                     color: isActive ? '#ffffff' : '#cbd5e1',
                     background: isActive
-                      ? 'linear-gradient(90deg, rgba(37, 99, 235, 0.28) 0%, rgba(37, 99, 235, 0.05) 100%)'
+                      ? 'linear-gradient(90deg, rgba(154, 205, 50, 0.25) 0%, rgba(154, 205, 50, 0.06) 100%)'
                       : 'transparent',
                     borderRadius: '10px',
-                    borderLeft: isActive ? '3.5px solid #00d2d3' : '3.5px solid transparent',
+                    borderLeft: isActive ? '3.5px solid #9acd32' : '3.5px solid transparent',
                     cursor: 'pointer',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative'
@@ -165,8 +165,8 @@ export default function Sidebar({
                 >
                   <Icon
                     size={18}
-                    className={`me-3 flex-shrink-0 ${isActive ? 'text-info' : 'text-slate-400'}`}
-                    style={{ filter: isActive ? 'drop-shadow(0 0 6px rgba(0, 210, 211, 0.5))' : 'none' }}
+                    className={`me-3 flex-shrink-0 ${isActive ? 'text-lime' : 'text-slate-400'}`}
+                    style={{ color: isActive ? '#9acd32' : undefined, filter: isActive ? 'drop-shadow(0 0 6px rgba(154, 205, 50, 0.6))' : 'none' }}
                   />
                   <span className="text-truncate">{item.label}</span>
                 </div>
@@ -192,9 +192,10 @@ export default function Sidebar({
                   width: 36,
                   height: 36,
                   fontSize: '0.82rem',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: '#fff',
-                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+                  background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)',
+                  color: '#0f172a',
+                  fontWeight: 900,
+                  boxShadow: '0 2px 10px rgba(154, 205, 50, 0.35)'
                 }}
               >
                 {currentUser?.username ? currentUser.username.substring(0, 2).toUpperCase() : 'US'}
