@@ -6,7 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clasp-login": "clasp login",
+    "clasp-status": "clasp status",
+    "clasp-push": "clasp push -f",
+    "clasp-deploy": "clasp deploy -d \"CreditCores WebApp Auto-Deploy v1.2\"",
+    "clasp-deployments": "clasp deployments",
+    "gas-deploy": "clasp push -f ; clasp deploy -d \"CreditCores Auto-Deploy\""
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
@@ -14,6 +20,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@google/clasp": "^3.3.0",
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^5.1.4"
   }
