@@ -5,7 +5,7 @@
  * ========================================================================================
  */
 
-import { api } from './api';
+import { api } from './api.js';
 
 const STORAGE_KEY_USER = 'CREDITCORES_AUTH_USER';
 const STORAGE_KEY_TOKEN = 'CREDITCORES_AUTH_TOKEN';
@@ -108,12 +108,14 @@ export const AuthService = {
    */
   async login(username, password) {
     const pHash = await hashPassword(password);
-    const res = await api.login(username, pHash);
+    const res = await api.login({ username: username.trim(), passwordHash: pHash });
 
     if (res.status === 'success' && res.user) {
-      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(res.user));
-      if (res.token) {
-        localStorage.setItem(STORAGE_KEY_TOKEN, res.token);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(res.user));
+        if (res.token) {
+          localStorage.setItem(STORAGE_KEY_TOKEN, res.token);
+        }
       }
       return { success: true, user: res.user };
     } else {
@@ -125,8 +127,10 @@ export const AuthService = {
    * Đăng xuất
    */
   logout() {
-    localStorage.removeItem(STORAGE_KEY_USER);
-    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_USER);
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+    }
   },
 
   /**
@@ -134,6 +138,7 @@ export const AuthService = {
    */
   getCurrentUser() {
     try {
+      if (typeof localStorage === 'undefined') return null;
       const u = localStorage.getItem(STORAGE_KEY_USER);
       return u ? JSON.parse(u) : null;
     } catch (e) {

@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { Landmark, Lock, User, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Landmark, Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
 import { AuthService } from '../services/auth';
 
 export default function LoginModal({ onLoginSuccess }) {
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin@123');
+  const [password, setPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
+    if (!username.trim() || !password) {
+      setErrorMsg('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+      return;
+    }
+
     setErrorMsg('');
     setLoading(true);
 
@@ -19,7 +24,7 @@ export default function LoginModal({ onLoginSuccess }) {
       if (res.success) {
         onLoginSuccess(res.user);
       } else {
-        setErrorMsg(res.message || 'Đăng nhập không thành công. Vui lòng kiểm tra lại thông tin.');
+        setErrorMsg(res.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
       }
     } catch (err) {
       setErrorMsg('Lỗi kết nối máy chủ: ' + err.message);
@@ -28,8 +33,7 @@ export default function LoginModal({ onLoginSuccess }) {
     }
   };
 
-  // Quick Demo Login Helper
-  const quickLogin = (u, p) => {
+  const quickSelectAccount = (u, p) => {
     setUsername(u);
     setPassword(p);
     setErrorMsg('');
@@ -40,13 +44,13 @@ export default function LoginModal({ onLoginSuccess }) {
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: '#0f172a',
-        backgroundImage: 'radial-gradient(circle at 15% 50%, rgba(27, 54, 93, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)',
+        backgroundColor: '#070a12',
+        backgroundImage: 'radial-gradient(at 100% 0%, rgba(154, 205, 50, 0.12) 0px, transparent 50%), radial-gradient(at 0% 100%, rgba(4, 120, 87, 0.12) 0px, transparent 50%)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: '16px',
         overflowY: 'auto'
       }}
     >
@@ -54,186 +58,179 @@ export default function LoginModal({ onLoginSuccess }) {
         className="card-modern shadow-2xl overflow-hidden"
         style={{
           width: '100%',
-          maxWidth: '920px',
-          borderRadius: '18px',
-          border: '1px solid rgba(255,255,255,0.15)',
-          background: 'rgba(255, 255, 255, 0.98)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)'
+          maxWidth: '860px',
+          borderRadius: '16px',
+          border: '1.5px solid rgba(154, 205, 50, 0.35)',
+          background: '#ffffff',
+          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)'
         }}
       >
         <div className="row g-0">
-          {/* Left Hero Panel (Banking Brand & Security features) */}
+          {/* Cột trái: Thông tin nhận diện Quỹ */}
           <div
             className="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-between text-white"
             style={{
-              backgroundColor: 'var(--primary-color)',
-              backgroundImage: 'linear-gradient(145deg, #1b365d 0%, #0f2341 100%)'
+              backgroundColor: '#06281e',
+              backgroundImage: 'linear-gradient(160deg, #06281e 0%, #091a26 100%)',
+              borderRight: '1px solid rgba(154, 205, 50, 0.2)'
             }}
           >
             <div>
-              <div className="d-flex align-items-center gap-2 mb-4">
-                <div className="p-2 rounded-3 bg-info text-dark">
-                  <Landmark size={26} />
+              <div className="d-flex align-items-center gap-3 mb-4">
+                <div
+                  className="p-2 rounded-3 text-dark d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)', width: 44, height: 44 }}
+                >
+                  <Landmark size={24} className="text-white" />
                 </div>
                 <div>
-                  <h4 className="fw-bold m-0 text-white lh-1">CreditCores</h4>
-                  <span className="small text-info-emphasis" style={{ fontSize: '0.75rem', color: '#93c5fd' }}>
-                    Core Credit & Auto-Debit
+                  <h5 className="fw-extrabold m-0 text-white lh-1 font-heading" style={{ letterSpacing: '0.5px' }}>
+                    QTDND YÊN THỌ
+                  </h5>
+                  <span style={{ fontSize: '0.72rem', color: '#a3e635', fontWeight: 600 }}>
+                    Thành lập: 01/12/2003
                   </span>
                 </div>
               </div>
 
-              <h5 className="fw-bold mb-3 lh-base">
-                Hệ Thống Quản Lý Tín Dụng & Trích Nợ Tự Động Nội Bộ
-              </h5>
-              <p className="small text-slate-300 mb-4 lh-lg" style={{ color: '#cbd5e1' }}>
-                Hệ thống bảo mật ngân hàng cấp cao dành riêng cho Quỹ Tín dụng Nhân dân & Co-opBank. 
-                Vui lòng đăng nhập tài khoản được cấp quyền để truy cập phân hệ nghiệp vụ.
+              <h6 className="fw-bold mb-2 text-white" style={{ fontSize: '1.05rem', lineHeight: '1.4' }}>
+                Hệ Thống Quản Lý Tín Dụng & Trích Nợ Tự Động
+              </h6>
+              <p className="small mb-4" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
+                Phần mềm quản trị nội bộ phục vụ thẩm định hồ sơ vay vốn, kiểm tra thực địa, lập đợt trích nợ tự động và đối soát số liệu.
               </p>
             </div>
 
-            <div className="d-flex flex-column gap-2 pt-3 border-top border-slate-700">
-              <div className="d-flex align-items-center gap-2 small text-slate-300" style={{ color: '#94a3b8' }}>
-                <ShieldCheck size={16} className="text-success" />
-                <span>Mã hóa mật khẩu SHA-256 một chiều</span>
+            <div className="pt-3 border-top border-slate-800">
+              <div className="d-flex align-items-center gap-2 small mb-2" style={{ color: '#a3e635' }}>
+                <ShieldCheck size={16} />
+                <span>Bảo mật dữ liệu chuẩn ngân hàng</span>
               </div>
-              <div className="d-flex align-items-center gap-2 small text-slate-300" style={{ color: '#94a3b8' }}>
-                <ShieldCheck size={16} className="text-info" />
-                <span>Phân quyền 4 cấp (Admin, CBTD, Kế toán, Lãnh đạo)</span>
+              <div className="text-muted small" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                Hỗ trợ kỹ thuật: 0237.8770.793
               </div>
             </div>
           </div>
 
-          {/* Right Form Panel */}
-          <div className="col-lg-7 p-4 p-md-5 d-flex flex-column justify-content-between">
+          {/* Cột phải: Khung đăng nhập */}
+          <div className="col-lg-7 p-4 p-md-5 bg-white d-flex flex-column justify-content-between">
             <div>
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <h4 className="fw-bold m-0 text-slate-800">Đăng Nhập Hệ Thống</h4>
-                <span className="badge bg-primary-subtle text-primary fw-semibold px-2 py-1">v1.0 Internal</span>
+              <div className="mb-4">
+                <h4 className="fw-bold text-slate-900 font-heading mb-1">
+                  Đăng Nhập
+                </h4>
+                <p className="text-muted small m-0">
+                  Nhập thông tin tài khoản cán bộ để truy cập hệ thống.
+                </p>
               </div>
 
               {errorMsg && (
-                <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small mb-4">
+                <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3 small" role="alert">
                   <AlertCircle size={16} className="flex-shrink-0" />
-                  <span>{errorMsg}</span>
+                  <div>{errorMsg}</div>
                 </div>
               )}
 
               <form onSubmit={handleLogin}>
-                {/* Username Input */}
+                {/* Tên đăng nhập */}
                 <div className="mb-3">
-                  <label className="form-label small fw-bold text-muted text-uppercase">Tên Đăng Nhập</label>
+                  <label className="form-label small fw-bold text-slate-700">
+                    Tên đăng nhập
+                  </label>
                   <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0">
-                      <User size={18} className="text-muted" />
+                    <span className="input-group-text bg-light border-end-0 text-muted">
+                      <User size={16} />
                     </span>
                     <input
                       type="text"
-                      className="form-control border-start-0 ps-1 fw-semibold"
-                      placeholder="admin, cbtd, ketoan, lanhdao..."
+                      className="form-control border-start-0"
+                      placeholder="Nhập tên đăng nhập (vd: admin, cbtd...)"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
+                      autoComplete="username"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Password Input */}
-                <div className="mb-4">
-                  <label className="form-label small fw-bold text-muted text-uppercase">Mật Khẩu</label>
+                {/* Mật khẩu */}
+                <div className="mb-3">
+                  <label className="form-label small fw-bold text-slate-700">
+                    Mật khẩu
+                  </label>
                   <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0">
-                      <Lock size={18} className="text-muted" />
+                    <span className="input-group-text bg-light border-end-0 text-muted">
+                      <Lock size={16} />
                     </span>
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      className="form-control border-start-0 border-end-0 ps-1 fw-semibold"
+                      className="form-control border-start-0 border-end-0"
                       placeholder="Nhập mật khẩu..."
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
                       required
                     />
                     <button
                       type="button"
-                      className="input-group-text bg-light border-start-0 text-muted"
+                      className="btn btn-outline-secondary border-start-0 text-muted"
                       onClick={() => setShowPassword(!showPassword)}
+                      tabIndex="-1"
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
 
-                {/* Submit Button */}
+                {/* Nút Đăng nhập */}
                 <button
                   type="submit"
-                  className="btn btn-primary w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 mb-4 shadow-sm"
+                  className="btn btn-brand w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 mb-3"
                   disabled={loading}
                 >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                      <span>Đang xác thực bảo mật...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Đăng Nhập Vào Hệ Thống</span>
-                      <ArrowRight size={18} />
-                    </>
-                  )}
+                  {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
+                  {!loading && <ArrowRight size={18} />}
                 </button>
               </form>
             </div>
 
-            {/* Quick Demo Accounts Selection */}
-            <div className="pt-3 border-top">
-              <div className="d-flex align-items-center gap-1 small text-muted fw-bold mb-2">
-                <Sparkles size={14} className="text-warning" />
-                <span>CHỌN NHANH TÀI KHOẢN MẪU PHÂN QUYỀN (DEMO):</span>
+            {/* Chọn nhanh tài khoản cán bộ */}
+            <div className="pt-3 border-top border-slate-200">
+              <div className="text-muted small fw-semibold mb-2" style={{ fontSize: '0.72rem' }}>
+                TÀI KHOẢN NGHIỆP VỤ MẪU:
               </div>
-
-              <div className="d-grid gap-2 d-md-flex justify-content-between flex-wrap">
+              <div className="d-flex flex-wrap gap-1">
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-danger flex-grow-1 text-start"
-                  onClick={() => quickLogin('admin', 'admin@123')}
-                  title="Quản trị viên: Toàn quyền 10 phân hệ + Quản lý User"
+                  className={`btn btn-sm ${username === 'admin' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                  onClick={() => quickSelectAccount('admin', '123456')}
                 >
-                  <i className="fa-solid fa-shield-halved me-1"></i>
-                  <strong>admin</strong>
-                  <div style={{ fontSize: '0.68rem' }}>Quản trị viên</div>
+                  Quản trị viên (admin)
                 </button>
-
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-primary flex-grow-1 text-start"
-                  onClick={() => quickLogin('cbtd', 'cbtd@123')}
-                  title="Cán bộ tín dụng: Thẩm định, Kiểm tra vốn, Nợ tồn"
+                  className={`btn btn-sm ${username === 'cbtd' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                  onClick={() => quickSelectAccount('cbtd', '123456')}
                 >
-                  <i className="fa-solid fa-user-tie me-1"></i>
-                  <strong>cbtd</strong>
-                  <div style={{ fontSize: '0.68rem' }}>Tín dụng</div>
+                  Cán bộ tín dụng (cbtd)
                 </button>
-
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-success flex-grow-1 text-start"
-                  onClick={() => quickLogin('ketoan', 'ketoan@123')}
-                  title="Kế toán: Đăng ký trích nợ, Chạy đợt, Đối soát"
+                  className={`btn btn-sm ${username === 'ketoan' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                  onClick={() => quickSelectAccount('ketoan', '123456')}
                 >
-                  <i className="fa-solid fa-calculator me-1"></i>
-                  <strong>ketoan</strong>
-                  <div style={{ fontSize: '0.68rem' }}>Kế toán</div>
+                  Kế toán (ketoan)
                 </button>
-
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-warning text-dark flex-grow-1 text-start"
-                  onClick={() => quickLogin('lanhdao', 'lanhdao@123')}
-                  title="Lãnh đạo: Dashboard, Phê duyệt, Báo cáo thống kê"
+                  className={`btn btn-sm ${username === 'lanhdao' ? 'btn-dark' : 'btn-outline-secondary'}`}
+                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                  onClick={() => quickSelectAccount('lanhdao', '123456')}
                 >
-                  <i className="fa-solid fa-user-check me-1"></i>
-                  <strong>lanhdao</strong>
-                  <div style={{ fontSize: '0.68rem' }}>Lãnh đạo</div>
+                  Ban giám đốc (lanhdao)
                 </button>
               </div>
             </div>
