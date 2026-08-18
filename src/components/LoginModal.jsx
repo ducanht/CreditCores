@@ -3,8 +3,8 @@ import { Landmark, Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowRight
 import { AuthService } from '../services/auth';
 
 export default function LoginModal({ onLoginSuccess }) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('123456');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -20,7 +20,7 @@ export default function LoginModal({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const res = await AuthService.login(username, password);
+      const res = await AuthService.login(username.trim(), password);
       if (res.success) {
         onLoginSuccess(res.user);
       } else {
@@ -31,12 +31,6 @@ export default function LoginModal({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const quickSelectAccount = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMsg('');
   };
 
   return (
@@ -58,7 +52,7 @@ export default function LoginModal({ onLoginSuccess }) {
         className="card-modern shadow-2xl overflow-hidden"
         style={{
           width: '100%',
-          maxWidth: '860px',
+          maxWidth: '820px',
           borderRadius: '16px',
           border: '1.5px solid rgba(154, 205, 50, 0.35)',
           background: '#ffffff',
@@ -112,128 +106,86 @@ export default function LoginModal({ onLoginSuccess }) {
             </div>
           </div>
 
-          {/* Cột phải: Khung đăng nhập */}
-          <div className="col-lg-7 p-4 p-md-5 bg-white d-flex flex-column justify-content-between">
-            <div>
+          {/* Cột phải: Form đăng nhập sạch sẽ */}
+          <div className="col-lg-7 p-4 p-md-5 bg-white d-flex flex-column justify-content-center">
+            <div className="mb-4">
+              <h4 className="fw-bold text-slate-900 font-heading mb-1">
+                Đăng Nhập
+              </h4>
+              <p className="text-muted small m-0">
+                Nhập thông tin tài khoản cán bộ để truy cập hệ thống.
+              </p>
+            </div>
+
+            {errorMsg && (
+              <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3 small" role="alert">
+                <AlertCircle size={16} className="flex-shrink-0" />
+                <div>{errorMsg}</div>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin}>
+              {/* Tên đăng nhập */}
+              <div className="mb-3">
+                <label className="form-label small fw-bold text-slate-700">
+                  Tên đăng nhập
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0 text-muted">
+                    <User size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control border-start-0"
+                    placeholder="Nhập tên đăng nhập..."
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Mật khẩu */}
               <div className="mb-4">
-                <h4 className="fw-bold text-slate-900 font-heading mb-1">
-                  Đăng Nhập
-                </h4>
-                <p className="text-muted small m-0">
-                  Nhập thông tin tài khoản cán bộ để truy cập hệ thống.
-                </p>
+                <label className="form-label small fw-bold text-slate-700">
+                  Mật khẩu
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0 text-muted">
+                    <Lock size={16} />
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-control border-start-0 border-end-0"
+                    placeholder="Nhập mật khẩu..."
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary border-start-0 text-muted"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex="-1"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
-              {errorMsg && (
-                <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 mb-3 small" role="alert">
-                  <AlertCircle size={16} className="flex-shrink-0" />
-                  <div>{errorMsg}</div>
-                </div>
-              )}
-
-              <form onSubmit={handleLogin}>
-                {/* Tên đăng nhập */}
-                <div className="mb-3">
-                  <label className="form-label small fw-bold text-slate-700">
-                    Tên đăng nhập
-                  </label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0 text-muted">
-                      <User size={16} />
-                    </span>
-                    <input
-                      type="text"
-                      className="form-control border-start-0"
-                      placeholder="Nhập tên đăng nhập (vd: admin, cbtd...)"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      autoComplete="username"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Mật khẩu */}
-                <div className="mb-3">
-                  <label className="form-label small fw-bold text-slate-700">
-                    Mật khẩu
-                  </label>
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0 text-muted">
-                      <Lock size={16} />
-                    </span>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="form-control border-start-0 border-end-0"
-                      placeholder="Nhập mật khẩu..."
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="current-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary border-start-0 text-muted"
-                      onClick={() => setShowPassword(!showPassword)}
-                      tabIndex="-1"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Nút Đăng nhập */}
-                <button
-                  type="submit"
-                  className="btn btn-brand w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 mb-3"
-                  disabled={loading}
-                >
-                  {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
-                  {!loading && <ArrowRight size={18} />}
-                </button>
-              </form>
-            </div>
-
-            {/* Chọn nhanh tài khoản cán bộ */}
-            <div className="pt-3 border-top border-slate-200">
-              <div className="text-muted small fw-semibold mb-2" style={{ fontSize: '0.72rem' }}>
-                TÀI KHOẢN NGHIỆP VỤ MẪU:
-              </div>
-              <div className="d-flex flex-wrap gap-1">
-                <button
-                  type="button"
-                  className={`btn btn-sm ${username === 'admin' ? 'btn-dark' : 'btn-outline-secondary'}`}
-                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                  onClick={() => quickSelectAccount('admin', '123456')}
-                >
-                  Quản trị viên (admin)
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${username === 'cbtd' ? 'btn-dark' : 'btn-outline-secondary'}`}
-                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                  onClick={() => quickSelectAccount('cbtd', '123456')}
-                >
-                  Cán bộ tín dụng (cbtd)
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${username === 'ketoan' ? 'btn-dark' : 'btn-outline-secondary'}`}
-                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                  onClick={() => quickSelectAccount('ketoan', '123456')}
-                >
-                  Kế toán (ketoan)
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${username === 'lanhdao' ? 'btn-dark' : 'btn-outline-secondary'}`}
-                  style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-                  onClick={() => quickSelectAccount('lanhdao', '123456')}
-                >
-                  Ban giám đốc (lanhdao)
-                </button>
-              </div>
-            </div>
+              {/* Nút Đăng nhập */}
+              <button
+                type="submit"
+                className="btn btn-brand w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
+                disabled={loading}
+              >
+                {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
+                {!loading && <ArrowRight size={18} />}
+              </button>
+            </form>
           </div>
         </div>
       </div>

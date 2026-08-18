@@ -237,6 +237,13 @@ export const initialMockData = {
       updatedAt: '18/08/2026 14:00:00'
     },
     {
+      roleCode: 'BKS',
+      roleName: 'Ban Kiểm Soát',
+      permissions: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports'],
+      description: 'Kiểm soát, giám sát rủi ro và báo cáo',
+      updatedAt: '18/08/2026 14:00:00'
+    },
+    {
       roleCode: 'LANHDAO',
       roleName: 'Ban Giám Đốc / HĐQT',
       permissions: ['dashboard', 'customer360', 'debt_warning', 'reports'],
@@ -246,9 +253,13 @@ export const initialMockData = {
   ],
 
   users: [
-    { username: 'admin', passwordHash: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', fullName: 'Nguyễn Quản Trị', role: 'ADMIN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
-    { username: 'cbtd', passwordHash: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', fullName: 'Lê Văn Tín', role: 'CBTD', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
-    { username: 'ketoan', passwordHash: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', fullName: 'Trần Thị Toán', role: 'KETOAN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
-    { username: 'lanhdao', passwordHash: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', fullName: 'Phạm Giám Đốc', role: 'LANHDAO', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' }
+    { username: 'qtdyentho.admin', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'qtdyentho.cbtd', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Cán Bộ Tín Dụng', role: 'CBTD', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'qtdyentho.ketoan', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Kế Toán Viên', role: 'KETOAN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'qtdyentho.bks', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Ban Kiểm Soát', role: 'BKS', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'admin', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Nguyễn Quản Trị', role: 'ADMIN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'cbtd', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Lê Văn Tín', role: 'CBTD', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'ketoan', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Trần Thị Toán', role: 'KETOAN', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' },
+    { username: 'lanhdao', passwordHash: 'ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9', fullName: 'Phạm Giám Đốc', role: 'LANHDAO', customPermissions: [], status: 'ACTIVE', createdAt: '18/08/2026 08:00:00', lastLogin: '---' }
   ]
 };

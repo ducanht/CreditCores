@@ -128,3 +128,6 @@ export function getTodayISO() {
 export function formatCurrencyVN(amount) {
   return (Number(amount) || 0).toLocaleString('vi-VN') + ' đ';
 }
+
+export const formatCurrency = formatCurrencyVN;
+

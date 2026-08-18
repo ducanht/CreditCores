@@ -18,6 +18,7 @@ var SchemaSetup = {
         ["ADMIN", "Quản Trị Viên Toàn Quyền", JSON.stringify(["dashboard", "customer360", "appraisal", "inspection", "debit_register", "debit_batch", "reconciliation", "debt_warning", "reports", "user_management", "settings"]), "Toàn quyền quản trị hệ thống và người dùng", new Date()],
         ["CBTD", "Cán Bộ Tín Dụng", JSON.stringify(["dashboard", "customer360", "appraisal", "inspection", "debit_register", "reports"]), "Thẩm định, kiểm tra vốn và theo dõi khách hàng", new Date()],
         ["KETOAN", "Kế Toán Viên / Thủ Quỹ", JSON.stringify(["dashboard", "customer360", "debit_register", "debit_batch", "reconciliation", "debt_warning", "reports"]), "Quản lý trích nợ, đối soát và sổ theo dõi nợ", new Date()],
+        ["BKS", "Ban Kiểm Soát", JSON.stringify(["dashboard", "customer360", "appraisal", "inspection", "debt_warning", "reports"]), "Kiểm soát, giám sát rủi ro và báo cáo", new Date()],
         ["LANHDAO", "Ban Giám Đốc / HĐQT", JSON.stringify(["dashboard", "customer360", "debt_warning", "reports"]), "Giám sát tổng quan báo cáo và phê duyệt rủi ro", new Date()]
       ];
       sRoles.getRange(2, 1, defaultRoles.length, headers.length).setValues(defaultRoles);
@@ -34,10 +35,10 @@ var SchemaSetup = {
       sUsers.getRange(1, 1, 1, uHeaders.length).setBackground("#0B192C").setFontColor("#FFFFFF").setFontWeight("bold");
 
       var defaultUsers = [
-        ["admin", "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92", "Nguyễn Quản Trị", "ADMIN", "[]", "ACTIVE", new Date(), ""],
-        ["cbtd", "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92", "Lê Văn Tín", "CBTD", "[]", "ACTIVE", new Date(), ""],
-        ["ketoan", "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92", "Trần Thị Toán", "KETOAN", "[]", "ACTIVE", new Date(), ""],
-        ["lanhdao", "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92", "Phạm Giám Đốc", "LANHDAO", "[]", "ACTIVE", new Date(), ""]
+        ["qtdyentho.admin", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Quản Trị Viên Hệ Thống", "ADMIN", "[]", "ACTIVE", new Date(), ""],
+        ["qtdyentho.cbtd", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Cán Bộ Tín Dụng", "CBTD", "[]", "ACTIVE", new Date(), ""],
+        ["qtdyentho.ketoan", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Kế Toán Viên", "KETOAN", "[]", "ACTIVE", new Date(), ""],
+        ["qtdyentho.bks", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Ban Kiểm Soát", "BKS", "[]", "ACTIVE", new Date(), ""]
       ];
       sUsers.getRange(2, 1, defaultUsers.length, uHeaders.length).setValues(defaultUsers);
       sUsers.getRange("G:H").setNumberFormat("dd/MM/yyyy HH:mm:ss");

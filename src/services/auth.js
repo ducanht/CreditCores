@@ -87,6 +87,7 @@ export const ROLE_LABELS = {
   ADMIN: { label: 'Quản Trị Viên', badgeClass: 'badge-danger-soft', icon: 'fa-shield-halved' },
   CBTD: { label: 'Cán Bộ Tín Dụng', badgeClass: 'badge-info-soft', icon: 'fa-user-tie' },
   KETOAN: { label: 'Kế Toán Viên', badgeClass: 'badge-success-soft', icon: 'fa-calculator' },
+  BKS: { label: 'Ban Kiểm Soát', badgeClass: 'badge-warning-soft', icon: 'fa-user-check' },
   LANHDAO: { label: 'Ban Lãnh Đạo / GĐ', badgeClass: 'badge-warning-soft', icon: 'fa-user-check' }
 };
 
@@ -177,6 +178,7 @@ export const AuthService = {
     const defaultRolePerms = {
       CBTD: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports'],
       KETOAN: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'],
+      BKS: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports'],
       LANHDAO: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']
     };
 

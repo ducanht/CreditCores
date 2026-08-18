@@ -12,7 +12,7 @@ import {
   ArrowLeftRight,
   FileCheck2
 } from 'lucide-react';
-import { formatCurrencyVN } from '../utils/dateUtils';
+import { formatCurrencyVN, formatCurrency } from '../utils/dateUtils';
 
 export default function Dashboard({ stats, onNavigate }) {
   return (

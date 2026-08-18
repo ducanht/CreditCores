@@ -272,7 +272,7 @@ export default function Appraisal({ prefilledCustomer }) {
                       <input
                         type="text"
                         className="form-control fw-bold text-success bg-light"
-                        value={formatCurrency(thangDu)}
+                        value={formatCurrencyVN(thangDu)}
                         readOnly
                       />
                     </div>

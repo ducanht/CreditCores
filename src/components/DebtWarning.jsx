@@ -99,7 +99,7 @@ export default function DebtWarning() {
                     <td className="text-center">
                       <button
                         className="btn btn-sm btn-outline-danger fw-semibold d-inline-flex align-items-center gap-1"
-                        onClick={() => alert(`Gọi điện đôn đốc khách hàng ${w.maKH} thanh toán nợ tồn ${formatCurrency(w.tongNoTon)}...`)}
+                        onClick={() => alert(`Gọi điện đôn đốc khách hàng ${w.maKH} thanh toán nợ tồn ${formatCurrencyVN(w.tongNoTon)}...`)}
                       >
                         <PhoneCall size={13} /> Đôn Đốc
                       </button>
