@@ -1,80 +1,139 @@
 import React from 'react';
-import { Landmark, TrendingUp, Users, AlertCircle, CheckCircle2, Clock, ArrowUpRight } from 'lucide-react';
+import {
+  Landmark,
+  TrendingUp,
+  Users,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ArrowUpRight,
+  ShieldCheck,
+  Zap,
+  ArrowLeftRight,
+  FileCheck2
+} from 'lucide-react';
 
 export default function Dashboard({ stats, onNavigate }) {
   const formatCurrency = (val) => (val || 0).toLocaleString('vi-VN') + ' đ';
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* 4 Core Metric KPI Cards */}
+      {/* 4 Core Metric Bento KPI Cards */}
       <div className="row g-3">
-        <div className="col-md-3">
-          <div className="card-modern p-3" style={{ borderLeft: '4px solid #0d6efd' }}>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted small fw-semibold text-uppercase">Tổng Dư Nợ Tín Dụng</span>
-              <div className="p-2 rounded-3 bg-primary-subtle text-primary">
-                <Landmark size={18} />
+        {/* 1. Tổng Dư Nợ */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#2563eb' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                Tổng Dư Nợ Tín Dụng
+              </span>
+              <div
+                className="kpi-icon-wrapper"
+                style={{ '--icon-bg': 'rgba(37, 99, 235, 0.1)', '--icon-color': '#2563eb' }}
+              >
+                <Landmark size={22} />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-1 fs-4">{formatCurrency(stats?.totalDuNo)}</h3>
-            <span className="text-success small fw-medium d-flex align-items-center gap-1">
-              <TrendingUp size={13} /> {stats?.totalHopDong || 0} khế ước đang hoạt động
-            </span>
+            <div>
+              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular">
+                {formatCurrency(stats?.totalDuNo)}
+              </h3>
+              <div className="d-flex align-items-center gap-1 text-success small fw-semibold">
+                <TrendingUp size={14} />
+                <span>{stats?.totalHopDong || 0} khế ước đang hoạt động</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card-modern p-3" style={{ borderLeft: '4px solid #0f5132' }}>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted small fw-semibold text-uppercase">Dự Thu Lãi Kỳ Này</span>
-              <div className="p-2 rounded-3 bg-success-subtle text-success">
-                <TrendingUp size={18} />
+        {/* 2. Dự Thu Lãi Kỳ Này */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#059669' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                Dự Thu Lãi Kỳ Này
+              </span>
+              <div
+                className="kpi-icon-wrapper"
+                style={{ '--icon-bg': 'rgba(5, 150, 105, 0.1)', '--icon-color': '#059669' }}
+              >
+                <TrendingUp size={22} />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-1 fs-4">{formatCurrency(stats?.totalDuThuLai)}</h3>
-            <span className="text-muted small">Ước tính theo lãi suất từng HĐ</span>
+            <div>
+              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular text-gradient-emerald">
+                {formatCurrency(stats?.totalDuThuLai)}
+              </h3>
+              <span className="text-muted small">Ước tính theo lãi suất từng HĐ</span>
+            </div>
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card-modern p-3" style={{ borderLeft: '4px solid #7c3aed' }}>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted small fw-semibold text-uppercase">Đăng Ký Trích Nợ</span>
-              <div className="p-2 rounded-3 bg-purple-subtle text-purple" style={{ backgroundColor: '#f3e8ff', color: '#7c3aed' }}>
-                <Users size={18} />
+        {/* 3. Đăng Ký Trích Nợ */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#7c3aed' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                Đăng Ký Trích Nợ
+              </span>
+              <div
+                className="kpi-icon-wrapper"
+                style={{ '--icon-bg': 'rgba(124, 58, 237, 0.1)', '--icon-color': '#7c3aed' }}
+              >
+                <Users size={22} />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-1 fs-4">{stats?.totalKhachHangTrichNo || 0}</h3>
-            <span className="text-muted small">Khách hàng ủy quyền Auto-Debit</span>
+            <div>
+              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular">
+                {stats?.totalKhachHangTrichNo || 0}{' '}
+                <span className="fs-6 fw-normal text-muted">khách hàng</span>
+              </h3>
+              <span className="text-muted small">Ủy quyền Auto-Debit (Kỳ 1, 2, 3)</span>
+            </div>
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card-modern p-3" style={{ borderLeft: '4px solid #be123c' }}>
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted small fw-semibold text-uppercase">Tổng Nợ Tồn Đọng</span>
-              <div className="p-2 rounded-3 bg-danger-subtle text-danger">
-                <AlertCircle size={18} />
+        {/* 4. Tổng Nợ Tồn Đọng */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="kpi-bento-card" style={{ '--card-accent-color': '#e11d48' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                Tổng Nợ Tồn Đọng
+              </span>
+              <div
+                className="kpi-icon-wrapper"
+                style={{ '--icon-bg': 'rgba(225, 29, 72, 0.1)', '--icon-color': '#e11d48' }}
+              >
+                <AlertCircle size={22} />
               </div>
             </div>
-            <h3 className="fw-bold text-danger mb-1 fs-4">{formatCurrency(stats?.totalNoTon)}</h3>
-            <span className="text-danger small fw-medium">Chuyển tiếp sang kỳ sau</span>
+            <div>
+              <h3 className="fw-bold text-danger mb-1 fs-4 num-tabular">
+                {formatCurrency(stats?.totalNoTon)}
+              </h3>
+              <span className="badge-status badge-danger-soft" style={{ fontSize: '0.72rem' }}>
+                Chuyển tiếp đôn đốc kỳ sau
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Progress & Recent Batches Section */}
-      <div className="row g-3">
-        {/* Recent Debit Batches */}
-        <div className="col-lg-8">
-          <div className="card-modern p-4">
+      {/* Main Grid: Recent Batches + Quick Action Shortcuts */}
+      <div className="row g-4">
+        {/* Left Col: Recent Debit Batches */}
+        <div className="col-12 col-lg-8">
+          <div className="card-modern p-4 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="fw-bold m-0 text-slate-800">Các Đợt Trích Nợ Gần Nhất</h5>
+              <div>
+                <h5 className="fw-bold m-0 text-slate-900 font-heading">Các Đợt Trích Nợ Gần Nhất</h5>
+                <span className="text-muted small">Theo dõi tiến độ thu nợ tự động theo các kỳ</span>
+              </div>
               <button
-                className="btn btn-sm btn-link text-primary fw-semibold text-decoration-none d-flex align-items-center gap-1 p-0"
+                className="btn btn-sm btn-link text-primary fw-bold text-decoration-none d-flex align-items-center gap-1 p-0"
                 onClick={() => onNavigate('debit_batch')}
               >
-                Xem chi tiết <ArrowUpRight size={14} />
+                Xem tất cả <ArrowUpRight size={14} />
               </button>
             </div>
 
@@ -92,26 +151,49 @@ export default function Dashboard({ stats, onNavigate }) {
                 </thead>
                 <tbody>
                   {stats?.recentBatches && stats.recentBatches.length > 0 ? (
-                    stats.recentBatches.map(batch => {
-                      const rate = batch.tongPhaiThu > 0 ? Math.round((batch.tongDaTrich / batch.tongPhaiThu) * 100) : 0;
+                    stats.recentBatches.map((batch) => {
+                      const rate =
+                        batch.tongPhaiThu > 0
+                          ? Math.round((batch.tongDaTrich / batch.tongPhaiThu) * 100)
+                          : 0;
                       return (
                         <tr key={batch.maDot}>
-                          <td className="fw-bold text-primary">{batch.maDot}</td>
-                          <td>Kỳ {batch.kyTrich} (Tháng {batch.thangNam})</td>
-                          <td className="text-end fw-semibold">{formatCurrency(batch.tongPhaiThu)}</td>
-                          <td className="text-end text-success fw-semibold">{formatCurrency(batch.tongDaTrich)}</td>
-                          <td className="text-end text-danger fw-semibold">{formatCurrency(batch.tongConNo)}</td>
+                          <td className="fw-bold text-primary font-monospace">{batch.maDot}</td>
+                          <td>
+                            <span className="badge bg-light text-dark border fw-bold">
+                              Kỳ {batch.kyTrich}
+                            </span>{' '}
+                            <span className="text-muted small">({batch.thangNam})</span>
+                          </td>
+                          <td className="text-end fw-semibold num-tabular">
+                            {formatCurrency(batch.tongPhaiThu)}
+                          </td>
+                          <td className="text-end fw-bold text-success num-tabular">
+                            {formatCurrency(batch.tongDaTrich)}
+                            <div className="text-muted small font-monospace" style={{ fontSize: '0.7rem' }}>
+                              {rate}%
+                            </div>
+                          </td>
+                          <td className="text-end fw-bold text-danger num-tabular">
+                            {formatCurrency(batch.tongConNo)}
+                          </td>
                           <td className="text-center">
                             <span
                               className={`badge-status ${
                                 batch.trangThai === 'HOAN_TAT'
                                   ? 'badge-success-soft'
-                                  : batch.trangThai === 'DANG_XU_LY'
-                                  ? 'badge-warning-soft'
-                                  : 'badge-info-soft'
+                                  : 'badge-warning-soft'
                               }`}
                             >
-                              {batch.trangThai} ({rate}%)
+                              {batch.trangThai === 'HOAN_TAT' ? (
+                                <>
+                                  <CheckCircle2 size={12} /> Hoàn tất
+                                </>
+                              ) : (
+                                <>
+                                  <Clock size={12} /> Khởi tạo
+                                </>
+                              )}
                             </span>
                           </td>
                         </tr>
@@ -119,8 +201,8 @@ export default function Dashboard({ stats, onNavigate }) {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="6" className="text-center text-muted py-4">
-                        Chưa có dữ liệu đợt trích nợ nào.
+                      <td colSpan="6" className="text-center py-4 text-muted">
+                        Chưa có đợt trích nợ nào được lập.
                       </td>
                     </tr>
                   )}
@@ -130,39 +212,92 @@ export default function Dashboard({ stats, onNavigate }) {
           </div>
         </div>
 
-        {/* Quick Operations Guide */}
-        <div className="col-lg-4">
-          <div className="card-modern p-4 d-flex flex-column gap-3">
-            <h5 className="fw-bold m-0 text-slate-800">Quy Trình Thu Nợ Tự Động</h5>
+        {/* Right Col: Quick Actions & Operations Shortcuts */}
+        <div className="col-12 col-lg-4">
+          <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+              <h5 className="fw-bold m-0 text-slate-900 font-heading mb-1">Thao Tác Nhanh</h5>
+              <p className="text-muted small mb-3">Lối tắt đến các nghiệp vụ trọng tâm</p>
 
-            <div className="d-flex align-items-start gap-3 p-3 rounded-3 bg-light">
-              <div className="p-2 rounded-circle bg-primary text-white mt-1">
-                <span className="fw-bold small px-1">1</span>
-              </div>
-              <div>
-                <h6 className="fw-bold mb-1">Khởi tạo Đợt Trích Nợ</h6>
-                <p className="text-muted small m-0">Tự động quét số dư, tính lãi phát sinh và gộp nợ tồn của khách hàng.</p>
+              <div className="d-flex flex-column gap-2">
+                <button
+                  className="btn btn-outline-primary text-start p-3 rounded-3 d-flex align-items-center justify-content-between border-subtle"
+                  onClick={() => onNavigate('customer360')}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="p-2 rounded-3 bg-primary-subtle text-primary">
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <div className="fw-bold text-dark small">Tra Cứu Khách Hàng 360°</div>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                        Xem hợp đồng, tài khoản CASA & vốn góp
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowUpRight size={16} className="text-muted" />
+                </button>
+
+                <button
+                  className="btn btn-outline-success text-start p-3 rounded-3 d-flex align-items-center justify-content-between border-subtle"
+                  onClick={() => onNavigate('appraisal')}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="p-2 rounded-3 bg-success-subtle text-success">
+                      <FileCheck2 size={18} />
+                    </div>
+                    <div>
+                      <div className="fw-bold text-dark small">Lập Hồ Sơ Thẩm Định TSĐB</div>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                        Tính tỷ lệ LTV & chấm điểm CIC
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowUpRight size={16} className="text-muted" />
+                </button>
+
+                <button
+                  className="btn btn-outline-warning text-dark text-start p-3 rounded-3 d-flex align-items-center justify-content-between border-subtle"
+                  onClick={() => onNavigate('debit_batch')}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="p-2 rounded-3 bg-warning-subtle text-warning-emphasis">
+                      <Zap size={18} />
+                    </div>
+                    <div>
+                      <div className="fw-bold text-dark small">Khởi Tạo Đợt Trích Nợ</div>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                        Tự động tính lãi + gốc + nợ tồn
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowUpRight size={16} className="text-muted" />
+                </button>
+
+                <button
+                  className="btn btn-outline-info text-dark text-start p-3 rounded-3 d-flex align-items-center justify-content-between border-subtle"
+                  onClick={() => onNavigate('reconciliation')}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="p-2 rounded-3 bg-info-subtle text-info-emphasis">
+                      <ArrowLeftRight size={18} />
+                    </div>
+                    <div>
+                      <div className="fw-bold text-dark small">Đối Soát Kết Quả Core</div>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                        Nạp kết quả và phân loại nợ tồn
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowUpRight size={16} className="text-muted" />
+                </button>
               </div>
             </div>
 
-            <div className="d-flex align-items-start gap-3 p-3 rounded-3 bg-light">
-              <div className="p-2 rounded-circle bg-warning text-white mt-1">
-                <span className="fw-bold small px-1">2</span>
-              </div>
-              <div>
-                <h6 className="fw-bold mb-1">Xuất Lệnh Trích Core</h6>
-                <p className="text-muted small m-0">Kết xuất file danh sách lệnh trích nợ nạp vào hệ thống CoreBanking.</p>
-              </div>
-            </div>
-
-            <div className="d-flex align-items-start gap-3 p-3 rounded-3 bg-light">
-              <div className="p-2 rounded-circle bg-success text-white mt-1">
-                <span className="fw-bold small px-1">3</span>
-              </div>
-              <div>
-                <h6 className="fw-bold mb-1">Đối Soát & Xử Lý Nợ Tồn</h6>
-                <p className="text-muted small m-0">Nạp file kết quả, phân loại thành công và lưu nợ thiếu vào sổ theo dõi.</p>
-              </div>
+            {/* Bottom Security Assurance Chip */}
+            <div className="pt-3 border-top mt-3 d-flex align-items-center gap-2 text-muted" style={{ fontSize: '0.74rem' }}>
+              <ShieldCheck size={16} className="text-success flex-shrink-0" />
+              <span>Hệ thống bảo vệ giao dịch theo chuẩn an toàn QTDND.</span>
             </div>
           </div>
         </div>

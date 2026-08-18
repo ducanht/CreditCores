@@ -26,7 +26,7 @@ const TAB_TITLES = {
   reconciliation: 'Đối Soát Kết Quả Trích Nợ Từ CoreBanking',
   debt_warning: 'Sổ Theo Dõi Nợ Tồn Đọng & Cảnh Báo',
   reports: 'Báo Cáo Thống Kê & Phân Tích Dư Nợ',
-  user_management: 'Quản Lý Người Dùng & Phân Quyền Hệ Thống',
+  user_management: 'Phân Quyền 360° & Quản Lý Tài Khoản',
   settings: 'Cấu Hình & Giám Sát Đồng Bộ Dữ Liệu Core'
 };
 
@@ -34,6 +34,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showChangePassModal, setShowChangePassModal] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [stats, setStats] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -126,6 +127,8 @@ export default function App() {
         currentUser={currentUser}
         onOpenChangePass={() => setShowChangePassModal(true)}
         onLogout={handleLogout}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       <div className="main-wrapper">
@@ -135,6 +138,7 @@ export default function App() {
           isSyncing={isSyncing}
           onTriggerSync={handleTriggerSync}
           currentUser={currentUser}
+          onToggleMobile={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
         <main className="content-area">

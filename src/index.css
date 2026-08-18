@@ -1,54 +1,113 @@
+/* ========================================================================================
+   CREDITCORES - WORLD-CLASS TIER-1 BANKING DESIGN SYSTEM (UI/UX PRO MAX)
+   Standardized for Microfinance, Credit Fund (QTDND) & Co-opBank
+   ======================================================================================== */
+
 :root {
-  --primary-color: #1b365d;
-  --primary-dark: #0f2341;
-  --primary-light: #294b7a;
-  --accent-color: #0d6efd;
-  --accent-green: #0f5132;
-  --accent-amber: #b45309;
-  --accent-rose: #be123c;
-  --bg-body: #f4f6fa;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --sidebar-width: 275px;
-  --header-height: 64px;
+  /* Core Banking Brand Tokens */
+  --brand-navy-950: #06111f;
+  --brand-navy-900: #0b192c;
+  --brand-navy-800: #132a4a;
+  --brand-navy-700: #1e3e62;
+  --brand-blue-600: #2563eb;
+  --brand-blue-500: #3b82f6;
+  --brand-cyan-500: #00d2d3;
+  --brand-cyan-400: #38bdf8;
+  
+  /* Semantic Accent Accents */
+  --accent-emerald: #059669;
+  --accent-emerald-light: #ecfdf5;
+  --accent-amber: #d97706;
+  --accent-amber-light: #fffbeb;
+  --accent-rose: #e11d48;
+  --accent-rose-light: #fff1f2;
+  --accent-indigo: #4f46e5;
+  --accent-indigo-light: #eef2ff;
+
+  /* Surfaces & Backgrounds */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-glass: rgba(255, 255, 255, 0.88);
+  --border-subtle: #e2e8f0;
+  --border-glass: rgba(255, 255, 255, 0.6);
+
+  /* Typography */
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+
+  /* Layout Dimensions */
+  --sidebar-width: 280px;
+  --header-height: 70px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.25);
+  --shadow-glow-emerald: 0 0 20px rgba(5, 150, 105, 0.25);
 }
 
-* {
+/* Base Resets */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--bg-body);
-  color: var(--text-main);
+  font-family: var(--font-body);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  background-image: 
+    radial-gradient(at 100% 0%, rgba(37, 99, 235, 0.04) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(5, 150, 105, 0.04) 0px, transparent 50%);
+  background-attachment: fixed;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbars */
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Custom Slim Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 4px;
+  border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* Layout */
+/* ========================================================================================
+   LAYOUT STRUCTURE & RESPONSIVE DRAWER
+   ======================================================================================== */
 .app-container {
   display: flex;
   min-height: 100vh;
+  position: relative;
 }
 
 .main-wrapper {
@@ -57,97 +116,309 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  width: calc(100% - var(--sidebar-width));
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .content-area {
-  padding: 24px;
+  padding: 24px 32px;
   flex-grow: 1;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
 }
 
-/* Card Styling */
+/* Mobile Sidebar Backdrop Overlay */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(11, 25, 44, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1040;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ========================================================================================
+   CARDS & BENTO GRID LAYOUTS
+   ======================================================================================== */
 .card-modern {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .card-modern:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-md);
 }
 
-.kpi-card {
-  padding: 20px;
+.card-modern.card-hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.glass-card {
+  background: var(--bg-surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-md);
+}
+
+/* KPI Bento Stat Card */
+.kpi-bento-card {
+  padding: 24px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.kpi-bento-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--card-accent-color, var(--brand-blue-600));
+  border-radius: 4px 0 0 4px;
+}
+
+.kpi-bento-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.kpi-icon-wrapper {
+  width: 48px;
+  height: 48px;
   border-radius: 12px;
-  background: #fff;
-  border: 1px solid var(--card-border);
-  border-left: 4px solid var(--accent-color);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: var(--icon-bg, rgba(37, 99, 235, 0.1));
+  color: var(--icon-color, var(--brand-blue-600));
 }
 
-/* Status Badges */
+/* ========================================================================================
+   STATUS BADGES & CHIPS (PILL TAGS)
+   ======================================================================================== */
 .badge-status {
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  letter-spacing: 0.02em;
+  transition: all 0.2s ease;
+  line-height: 1.2;
 }
 
 .badge-success-soft {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: var(--accent-emerald-light);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(5, 150, 105, 0.2);
 }
 
 .badge-warning-soft {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: var(--accent-amber-light);
+  color: var(--accent-amber);
+  border: 1px solid rgba(217, 119, 6, 0.2);
 }
 
 .badge-danger-soft {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--accent-rose-light);
+  color: var(--accent-rose);
+  border: 1px solid rgba(225, 29, 72, 0.2);
 }
 
 .badge-info-soft {
-  background-color: #e0f2fe;
-  color: #0369a1;
+  background-color: var(--accent-indigo-light);
+  color: var(--accent-indigo);
+  border: 1px solid rgba(79, 70, 229, 0.2);
 }
 
-/* Tables */
+.badge-neutral-soft {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* Status Dot with Pulse Animation */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+
+.status-dot.dot-success { background-color: #10b981; }
+.status-dot.dot-warning { background-color: #f59e0b; }
+.status-dot.dot-danger  { background-color: #ef4444; }
+
+.status-dot.pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.6;
+  animation: dotPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes dotPulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* ========================================================================================
+   TABLES & FINANCIAL ROWS
+   ======================================================================================== */
 .table-custom {
   margin-bottom: 0;
+  width: 100%;
 }
 
 .table-custom thead th {
   background-color: #f8fafc;
   color: #475569;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 14px;
-  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.6px;
+  padding: 14px 16px;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 .table-custom tbody td {
-  padding: 12px 14px;
+  padding: 14px 16px;
   vertical-align: middle;
   font-size: 0.88rem;
+  color: var(--text-primary);
   border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.15s ease;
 }
 
-.table-custom tbody tr:hover {
+.table-custom tbody tr:hover td {
   background-color: #f8fafc;
 }
 
-/* Glassmorphism details */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.table-custom tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ========================================================================================
+   BUTTONS & MICRO-INTERACTIONS
+   ======================================================================================== */
+.btn-primary {
+  background-color: var(--brand-navy-800);
+  border-color: var(--brand-navy-800);
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--brand-navy-900);
+  border-color: var(--brand-navy-900);
+  box-shadow: 0 4px 12px rgba(11, 25, 44, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-pill {
+  border-radius: var(--radius-full);
+}
+
+/* Gradient Text Utilities */
+.text-gradient-primary {
+  background: linear-gradient(135deg, var(--brand-navy-900) 0%, var(--brand-blue-600) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========================================================================================
+   RESPONSIVE DESIGN BREAKPOINTS
+   ======================================================================================== */
+@media (max-width: 991.98px) {
+  :root {
+    --sidebar-width: 280px;
+    --header-height: 60px;
+  }
+
+  .main-wrapper {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar-drawer {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1050 !important;
+  }
+
+  .sidebar-drawer.open {
+    transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+  }
+
+  .content-area {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .content-area {
+    padding: 12px;
+  }
+
+  .kpi-bento-card {
+    padding: 16px;
+  }
+
+  .badge-status {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
 }
