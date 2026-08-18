@@ -18,6 +18,7 @@ import {
 import { api } from '../services/api';
 import { AuthService } from '../services/auth';
 import { formatDateVN, formatCurrencyVN, getTodayISO } from '../utils/dateUtils';
+import ThousandInput from './ThousandInput';
 
 export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }) {
   const currentUser = AuthService.getCurrentUser();
@@ -155,7 +156,6 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
         setShowOpinionModal(false);
         setOpinionForm({ decision: 'Đồng ý cấp tín dụng', approvedAmount: selectedAppraisal.duyetVay, note: '' });
         fetchAppraisals();
-        // Cập nhật lại selectedAppraisal trong modal
         const updatedList = (await api.getAppraisals()).data || [];
         const currentUpdated = updatedList.find(a => a.maBCTD === selectedAppraisal.maBCTD);
         if (currentUpdated) setSelectedAppraisal(currentUpdated);
@@ -294,11 +294,11 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                           {item.xepHangCIC || 'Hạng 1 (Tốt)'}
                         </span>
                         {item.ghiChuCIC && (
-                          <div className="small text-muted text-truncate mt-1" style={{ maxWidth: 200 }} title={item.ghiChuCIC}>
+                          <div className="small text-muted text-truncate mt-1" style={{ maxWidth: 220 }} title={item.ghiChuCIC}>
                             {item.ghiChuCIC}
                           </div>
                         )}
-                        <div className="small text-muted" style={{ fontSize: '0.7rem' }}>
+                        <div className="small text-muted" style={{ fontSize: '0.72rem' }}>
                           Dư nợ TCTD khác: {formatCurrencyVN(item.duNoCICNgoai || 0)}
                         </div>
                       </td>
@@ -419,28 +419,26 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
 
                     {/* Phương án vay */}
                     <div className="col-md-3">
-                      <label className="form-label small fw-bold text-dark">Đề Xuất Vay (VNĐ)</label>
-                      <input
-                        type="number"
-                        className="form-control num-tabular"
+                      <label className="form-label small fw-bold text-dark">Đề Xuất Vay (*)</label>
+                      <ThousandInput
                         value={formData.deXuatVay}
-                        onChange={(e) => setFormData({ ...formData, deXuatVay: Number(e.target.value) })}
+                        onChange={(v) => setFormData({ ...formData, deXuatVay: v })}
+                        required
                       />
                     </div>
                     <div className="col-md-3">
-                      <label className="form-label small fw-bold text-dark">Duyệt Vay (VNĐ)</label>
-                      <input
-                        type="number"
-                        className="form-control num-tabular"
+                      <label className="form-label small fw-bold text-dark">Duyệt Vay (*)</label>
+                      <ThousandInput
                         value={formData.duyetVay}
-                        onChange={(e) => setFormData({ ...formData, duyetVay: Number(e.target.value) })}
+                        onChange={(v) => setFormData({ ...formData, duyetVay: v })}
+                        required
                       />
                     </div>
                     <div className="col-md-3">
                       <label className="form-label small fw-bold text-dark">Thời Hạn (Tháng)</label>
                       <input
                         type="number"
-                        className="form-control"
+                        className="form-control form-control-sm"
                         value={formData.thoiHanThang}
                         onChange={(e) => setFormData({ ...formData, thoiHanThang: Number(e.target.value) })}
                       />
@@ -450,9 +448,25 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                       <input
                         type="number"
                         step="0.1"
-                        className="form-control"
+                        className="form-control form-control-sm"
                         value={formData.laiSuatDuyet}
                         onChange={(e) => setFormData({ ...formData, laiSuatDuyet: Number(e.target.value) })}
+                      />
+                    </div>
+
+                    {/* Thu nhập & Chi phí */}
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-dark">Thu Nhập Bình Quân Hàng Tháng</label>
+                      <ThousandInput
+                        value={formData.thuNhapThang}
+                        onChange={(v) => setFormData({ ...formData, thuNhapThang: v })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-dark">Chi Phí Sinh Hoạt / Kinh Doanh Tháng</label>
+                      <ThousandInput
+                        value={formData.chiPhiThang}
+                        onChange={(v) => setFormData({ ...formData, chiPhiThang: v })}
                       />
                     </div>
 
@@ -483,11 +497,9 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                           </div>
                           <div className="col-md-4">
                             <label className="form-label small text-muted">Dư Nợ Tại TCTD Khác (VNĐ)</label>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm num-tabular"
+                            <ThousandInput
                               value={formData.duNoCICNgoai}
-                              onChange={(e) => setFormData({ ...formData, duNoCICNgoai: Number(e.target.value) })}
+                              onChange={(v) => setFormData({ ...formData, duNoCICNgoai: v })}
                             />
                           </div>
                           <div className="col-12 mt-2">
@@ -508,7 +520,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                     <div className="col-md-6">
                       <label className="form-label small fw-bold text-dark">Loại Tài Sản Bảo Đảm</label>
                       <select
-                        className="form-select"
+                        className="form-select form-select-sm"
                         value={formData.loaiTSBD}
                         onChange={(e) => setFormData({ ...formData, loaiTSBD: e.target.value })}
                       >
@@ -520,12 +532,11 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label small fw-bold text-dark">Giá Trị Định Giá TSBD (VNĐ)</label>
-                      <input
-                        type="number"
-                        className="form-control num-tabular"
+                      <label className="form-label small fw-bold text-dark">Giá Trị Định Giá TSBD (*)</label>
+                      <ThousandInput
                         value={formData.giaTriTSBD}
-                        onChange={(e) => setFormData({ ...formData, giaTriTSBD: Number(e.target.value) })}
+                        onChange={(v) => setFormData({ ...formData, giaTriTSBD: v })}
+                        required
                       />
                     </div>
 
@@ -533,7 +544,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                       <label className="form-label small fw-bold text-dark">Mô Tả Chi Tiết TSBD</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="form-control form-control-sm"
                         placeholder="Số GCN, thửa đất, tờ bản đồ, địa chỉ tài sản..."
                         value={formData.moTaTSBD}
                         onChange={(e) => setFormData({ ...formData, moTaTSBD: e.target.value })}
@@ -544,7 +555,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                     <div className="col-md-6">
                       <label className="form-label small fw-bold text-dark">Kết Luận Thẩm Định Ban Đầu</label>
                       <select
-                        className="form-select fw-bold text-success"
+                        className="form-select form-select-sm fw-bold text-success"
                         value={formData.ketLuan}
                         onChange={(e) => setFormData({ ...formData, ketLuan: e.target.value })}
                       >
@@ -556,7 +567,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
 
                     <div className="col-md-6">
                       <label className="form-label small fw-bold text-dark">Tỷ Lệ Cho Vay / TSBD (LTV)</label>
-                      <div className="p-2 border rounded-2 bg-light fw-bold text-primary">
+                      <div className="p-2 border rounded-2 bg-light fw-bold text-primary small">
                         {ltvPercent} (Định giá: {formatCurrencyVN(formData.giaTriTSBD)})
                       </div>
                     </div>
@@ -735,12 +746,11 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-bold text-dark">Hạn Mức Đề Xuất Phê Duyệt (VNĐ)</label>
-                    <input
-                      type="number"
-                      className="form-control num-tabular fw-bold"
+                    <label className="form-label small fw-bold text-dark">Hạn Mức Đề Xuất Phê Duyệt (*)</label>
+                    <ThousandInput
                       value={opinionForm.approvedAmount}
-                      onChange={(e) => setOpinionForm({ ...opinionForm, approvedAmount: Number(e.target.value) })}
+                      onChange={(v) => setOpinionForm({ ...opinionForm, approvedAmount: v })}
+                      required
                     />
                   </div>
 
