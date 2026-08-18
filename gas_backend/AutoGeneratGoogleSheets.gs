@@ -4,17 +4,11 @@
 // =========================================================================================
 const DIRECT_SHEET_ID = "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
 
-/**
- * HÀM CHÍNH ĐỂ BẤM "RUN" (CHẠY) TRỰC TIẾP TỪ EDITOR APPS SCRIPT
- */
 function runSetupDirectly() {
-  Logger.log(">>> Bắt đầu khởi tạo CSDL với Google Sheet ID cấu hình trong Code: " + DIRECT_SHEET_ID);
+  Logger.log(">>> Bắt đầu khởi tạo CSDL với Google Sheet ID: " + DIRECT_SHEET_ID);
   setupAllSheets(DIRECT_SHEET_ID);
 }
 
-/**
- * HÀM TỰ ĐỘNG TẠO MENU TRÊN GOOGLE SHEETS
- */
 function onOpen() {
   let ui;
   try {
@@ -24,44 +18,11 @@ function onOpen() {
   }
   if (ui) {
     ui.createMenu('Hệ thống Tín dụng')
-      .addItem('Khởi tạo CSDL (Nhập Sheet ID)', 'promptAndSetupSheets')
-      .addItem('Khởi tạo CSDL với Sheet ID mặc định', 'runSetupDirectly')
+      .addItem('Khởi tạo / Cập nhật 10 Sheets CSDL', 'runSetupDirectly')
       .addToUi();
   }
 }
 
-/**
- * HÀM HIỂN THỊ HỘP THOẠI NHẬP SHEET ID DÀNH CHO DỰ ÁN STANDALONE
- */
-function promptAndSetupSheets() {
-  let ui;
-  try {
-    ui = SpreadsheetApp.getUi();
-  } catch (e) {
-    ui = null;
-  }
-
-  if (ui) {
-    const response = ui.prompt(
-      'Khởi tạo Cơ sở Dữ liệu Tín dụng & Trích nợ',
-      'Nhập Google Sheet ID (Để trống nếu muốn sử dụng Sheet ID trong Code: ' + DIRECT_SHEET_ID + '):',
-      ui.ButtonSet.OK_CANCEL
-    );
-
-    if (response.getSelectedButton() === ui.Button.OK) {
-      let sheetId = response.getResponseText().trim();
-      if (!sheetId) sheetId = DIRECT_SHEET_ID;
-      setupAllSheets(sheetId);
-      ui.alert('Thành công', 'Đã khởi tạo và định dạng hoàn tất toàn bộ CSDL!', ui.ButtonSet.OK);
-    }
-  } else {
-    runSetupDirectly();
-  }
-}
-
-/**
- * KHỞI TẠO TOÀN BỘ CƠ SỞ DỮ LIỆU HỆ THỐNG TRÍCH NỢ & QUẢN LÝ TÍN DỤNG
- */
 function setupAllSheets(targetSheetId) {
   let ss;
   const finalSheetId = targetSheetId || DIRECT_SHEET_ID;
@@ -71,15 +32,26 @@ function setupAllSheets(targetSheetId) {
       ss = SpreadsheetApp.openById(finalSheetId);
     } catch (e) {
       Logger.log("Lỗi không tìm thấy hoặc không có quyền truy cập Sheet ID: " + finalSheetId);
-      throw new Error("Không thể mở Google Sheet với ID: " + finalSheetId + ". Vui lòng kiểm tra lại ID và quyền chia sẻ.");
+      throw new Error("Không thể mở Google Sheet với ID: " + finalSheetId);
     }
   } else {
     ss = SpreadsheetApp.getActiveSpreadsheet();
   }
   
-  Logger.log("Đang khởi tạo toàn bộ CSDL trên file Google Sheet: " + ss.getName() + " [ID: " + ss.getId() + "]");
+  Logger.log("Đang khởi tạo toàn bộ 10 Bảng CSDL trên file: " + ss.getName() + " [ID: " + ss.getId() + "]");
 
-  // 1. Cấu hình bảng SETTING (Cấu hình & Hàng đợi lệnh)
+  // 1. USERS (Quản lý Người dùng & Phân quyền)
+  setupSheet(ss, "USERS", [
+    { name: "Username", width: 120, align: "center", format: "@" },
+    { name: "PasswordHash", width: 220, align: "center", format: "@" },
+    { name: "FullName", width: 180, align: "left", format: "@" },
+    { name: "Role", width: 120, align: "center", format: "@" },
+    { name: "Status", width: 110, align: "center", format: "@" },
+    { name: "CreatedAt", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" },
+    { name: "LastLogin", width: 160, align: "center", format: "dd/MM/yyyy HH:mm:ss" }
+  ], 1, 0, "#0d47a1");
+
+  // 2. SETTING (Cấu hình & Hàng đợi lệnh)
   setupSheet(ss, "SETTING", [
     { name: "COMMAND", width: 130, align: "center", format: "@" },
     { name: "STATUS", width: 130, align: "center", format: "@" },
@@ -97,7 +69,7 @@ function setupAllSheets(targetSheetId) {
     ]]);
   }
 
-  // 2. Cấu hình bảng KH_CORE (Thông tin Khách hàng & Thành viên)
+  // 3. KH_CORE (Thông tin Khách hàng & Thành viên)
   setupSheet(ss, "KH_CORE", [
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "HoTen", width: 180, align: "left", format: "@" },
@@ -116,7 +88,7 @@ function setupAllSheets(targetSheetId) {
     { name: "TongTienCP", width: 130, align: "right", format: "#,##0" }
   ], 1, 2, "#004d40");
 
-  // 3. Cấu hình bảng HDTD_CORE (Hợp đồng Tín dụng / Khế ước từ Core SQL)
+  // 4. HDTD_CORE (Hợp đồng Tín dụng / Khế ước từ Core SQL)
   setupSheet(ss, "HDTD_CORE", [
     { name: "SoHDTD", width: 120, align: "center", format: "@" },
     { name: "MaKH", width: 100, align: "center", format: "@" },
@@ -131,7 +103,7 @@ function setupAllSheets(targetSheetId) {
     { name: "MoTaVay", width: 200, align: "left", format: "@" }
   ], 1, 2, "#1b365d");
 
-  // 4. Cấu hình bảng DS_TRICH_NO (Danh sách đăng ký trích nợ tự động)
+  // 5. DS_TRICH_NO (Danh sách đăng ký trích nợ tự động)
   setupSheet(ss, "DS_TRICH_NO", [
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "HoTen", width: 180, align: "left", format: "@" },
@@ -143,7 +115,7 @@ function setupAllSheets(targetSheetId) {
     { name: "GhiChu", width: 200, align: "left", format: "@" }
   ], 1, 1, "#0f5132");
 
-  // 5. Cấu hình bảng DOT_TRICH_NO (Quản lý các đợt/kỳ trích nợ)
+  // 6. DOT_TRICH_NO (Quản lý các đợt/kỳ trích nợ)
   setupSheet(ss, "DOT_TRICH_NO", [
     { name: "MaDot", width: 120, align: "center", format: "@" },
     { name: "ThangNam", width: 100, align: "center", format: "@" },
@@ -155,7 +127,7 @@ function setupAllSheets(targetSheetId) {
     { name: "TrangThai", width: 130, align: "center", format: "@" }
   ], 1, 1, "#4a148c");
 
-  // 6. Cấu hình bảng LICH_SU_GIAO_DICH (Chi tiết kết quả từng hợp đồng trong đợt)
+  // 7. LICH_SU_GIAO_DICH (Chi tiết kết quả từng hợp đồng trong đợt)
   setupSheet(ss, "LICH_SU_GIAO_DICH", [
     { name: "IDGiaoDich", width: 140, align: "center", format: "@" },
     { name: "MaDot", width: 120, align: "center", format: "@" },
@@ -173,7 +145,7 @@ function setupAllSheets(targetSheetId) {
     { name: "NgayCapNhat", width: 160, align: "center", format: "dd/MM/yyyy HH:mm" }
   ], 1, 1, "#b71c1c");
 
-  // 7. Cấu hình bảng NO_TON_DONG (Sổ theo dõi nợ tồn chuyển kỳ sau)
+  // 8. NO_TON_DONG (Sổ theo dõi nợ tồn chuyển kỳ sau)
   setupSheet(ss, "NO_TON_DONG", [
     { name: "MaKH", width: 100, align: "center", format: "@" },
     { name: "SoHDTD", width: 120, align: "center", format: "@" },
@@ -185,7 +157,7 @@ function setupAllSheets(targetSheetId) {
     { name: "NgayCapNhat", width: 160, align: "center", format: "dd/MM/yyyy HH:mm" }
   ], 1, 1, "#e65100");
 
-  // 8. Cấu hình bảng BAO_CAO_THAM_DINH (Hồ sơ Thẩm định & Tài sản đảm bảo chi tiết)
+  // 9. BAO_CAO_THAM_DINH (Hồ sơ Thẩm định & Tài sản đảm bảo chi tiết)
   setupSheet(ss, "BAO_CAO_THAM_DINH", [
     { name: "MaBCTD", width: 120, align: "center", format: "@" },
     { name: "MaKH", width: 100, align: "center", format: "@" },
@@ -209,7 +181,7 @@ function setupAllSheets(targetSheetId) {
     { name: "CanBoThamDinh", width: 140, align: "left", format: "@" }
   ], 1, 1, "#1a237e");
 
-  // 9. Cấu hình bảng KIEM_TRA_VON (Biên bản Kiểm tra Sử dụng Vốn vay)
+  // 10. KIEM_TRA_VON (Biên bản Kiểm tra Sử dụng Vốn vay)
   setupSheet(ss, "KIEM_TRA_VON", [
     { name: "MaBBKT", width: 120, align: "center", format: "@" },
     { name: "SoHDTD", width: 120, align: "center", format: "@" },
@@ -224,7 +196,6 @@ function setupAllSheets(targetSheetId) {
     { name: "CanBoKiemTra", width: 140, align: "left", format: "@" }
   ], 1, 1, "#37474f");
 
-  // Populating sample data
   seedSampleData(ss);
 
   SpreadsheetApp.flush();
@@ -268,6 +239,18 @@ function setupSheet(ss, sheetName, columns, freezeRows, freezeCols, headerBgColo
 }
 
 function seedSampleData(ss) {
+  // USERS
+  const userSheet = ss.getSheetByName("USERS");
+  if (userSheet.getLastRow() < 2) {
+    userSheet.getRange(2, 1, 4, 7).setValues([
+      ["admin", "7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358", "Quản Trị Viên Hệ Thống", "ADMIN", "ACTIVE", "18/08/2026 08:00:00", "18/08/2026 08:00:00"],
+      ["cbtd", "3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0", "Lê Văn Tín (Cán Bộ Tín Dụng)", "CBTD", "ACTIVE", "18/08/2026 08:00:00", "---"],
+      ["ketoan", "fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e", "Nguyễn Thị Hằng (Kế Toán Viên)", "KETOAN", "ACTIVE", "18/08/2026 08:00:00", "---"],
+      ["lanhdao", "cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d", "Trần Đình Trọng (Giám Đốc)", "LANHDAO", "ACTIVE", "18/08/2026 08:00:00", "---"]
+    ]);
+  }
+
+  // KH_CORE
   const khSheet = ss.getSheetByName("KH_CORE");
   if (khSheet.getLastRow() < 2) {
     khSheet.getRange(2, 1, 3, 15).setValues([
@@ -277,6 +260,7 @@ function seedSampleData(ss) {
     ]);
   }
 
+  // HDTD_CORE
   const hdtdSheet = ss.getSheetByName("HDTD_CORE");
   if (hdtdSheet.getLastRow() < 2) {
     hdtdSheet.getRange(2, 1, 4, 11).setValues([

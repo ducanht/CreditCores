@@ -10,11 +10,16 @@ import {
   AlertTriangle,
   FileBarChart2,
   Settings,
-  Landmark
+  ShieldAlert,
+  UserCog,
+  Landmark,
+  LogOut,
+  KeyRound
 } from 'lucide-react';
+import { AuthService, ROLE_LABELS } from '../services/auth';
 
-export default function Sidebar({ activeTab, setActiveTab }) {
-  const menuItems = [
+export default function Sidebar({ activeTab, setActiveTab, currentUser, onOpenChangePass, onLogout }) {
+  const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard Quản trị', icon: LayoutDashboard },
     { id: 'customer360', label: 'Tra cứu KH & HĐ 360°', icon: Users },
     { id: 'appraisal', label: 'Thẩm định Tín dụng & TSĐB', icon: FileCheck2 },
@@ -24,8 +29,17 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'reconciliation', label: 'Đối soát & Kết quả', icon: ArrowLeftRight },
     { id: 'debt_warning', label: 'Cảnh báo Nợ tồn đọng', icon: AlertTriangle },
     { id: 'reports', label: 'Báo cáo Thống kê', icon: FileBarChart2 },
+    { id: 'user_management', label: 'Quản lý Tài khoản (Admin)', icon: UserCog },
     { id: 'settings', label: 'Cấu hình & Đồng bộ Core', icon: Settings }
   ];
+
+  // Role-based filtering
+  const visibleMenuItems = allMenuItems.filter((item) => AuthService.hasPermission(item.id));
+
+  const roleInfo = ROLE_LABELS[currentUser?.role] || {
+    label: currentUser?.role || 'Cán Bộ',
+    badgeClass: 'badge-info-soft'
+  };
 
   return (
     <aside
@@ -76,7 +90,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           Phân hệ Nghiệp vụ
         </div>
 
-        {menuItems.map(item => {
+        {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -104,26 +118,52 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         })}
       </div>
 
-      {/* User Footer */}
+      {/* Authenticated User Footer & Actions */}
       <div
         style={{
-          padding: '14px 20px',
+          padding: '14px 16px',
           borderTop: '1px solid rgba(255,255,255,0.08)',
-          backgroundColor: 'rgba(0,0,0,0.12)',
+          backgroundColor: 'rgba(0,0,0,0.22)',
           fontSize: '0.78rem'
         }}
       >
-        <div className="d-flex align-items-center">
-          <div
-            className="rounded-circle bg-info text-dark d-flex align-items-center justify-content-center fw-bold me-2"
-            style={{ width: 32, height: 32, fontSize: '0.8rem' }}
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <div className="d-flex align-items-center overflow-hidden">
+            <div
+              className="rounded-circle bg-info text-dark d-flex align-items-center justify-content-center fw-bold me-2 flex-shrink-0"
+              style={{ width: 34, height: 34, fontSize: '0.82rem' }}
+            >
+              {currentUser?.username ? currentUser.username.substring(0, 2).toUpperCase() : 'US'}
+            </div>
+            <div className="overflow-hidden">
+              <div className="fw-bold text-white text-truncate" style={{ fontSize: '0.85rem' }}>
+                {currentUser?.fullName || currentUser?.username || 'Cán Bộ'}
+              </div>
+              <span className={`badge-status ${roleInfo.badgeClass}`} style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                {roleInfo.label}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* User Quick Actions: Change Pass & Logout */}
+        <div className="d-flex gap-1 pt-1 border-top border-slate-700 mt-2">
+          <button
+            className="btn btn-sm btn-outline-light text-slate-300 w-50 d-flex align-items-center justify-content-center gap-1 py-1"
+            style={{ fontSize: '0.72rem', borderColor: 'rgba(255,255,255,0.2)' }}
+            onClick={onOpenChangePass}
+            title="Đổi mật khẩu tài khoản"
           >
-            TD
-          </div>
-          <div className="overflow-hidden">
-            <div className="fw-semibold text-white text-truncate">Cán bộ Tín dụng</div>
-            <div className="text-muted" style={{ fontSize: '0.7rem' }}>Co-opBank / QTDND</div>
-          </div>
+            <KeyRound size={12} /> Đổi Pass
+          </button>
+          <button
+            className="btn btn-sm btn-outline-danger w-50 d-flex align-items-center justify-content-center gap-1 py-1"
+            style={{ fontSize: '0.72rem' }}
+            onClick={onLogout}
+            title="Đăng xuất khỏi hệ thống"
+          >
+            <LogOut size={12} /> Đăng Xuất
+          </button>
         </div>
       </div>
     </aside>

@@ -198,7 +198,13 @@ const mockData = {
     finishTime: '18/08/2026 08:00:05',
     totalRows: 342,
     message: 'Hệ thống vận hành bình thường. Sẵn sàng nhận lệnh.'
-  }
+  },
+  users: [
+    { username: 'admin', passwordHash: '7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358', fullName: 'Quản Trị Viên Hệ Thống', role: 'ADMIN', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '18/08/2026 08:00' },
+    { username: 'cbtd', passwordHash: '3e00a18bcfd6744fee22728d750f00c48dfa75a3bde2002f9ce53480d72d2cc0', fullName: 'Lê Văn Tín (Cán Bộ Tín Dụng)', role: 'CBTD', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' },
+    { username: 'ketoan', passwordHash: 'fad6fda10dd6d54384c03532eb64b86b7ab3bfba4b258a83646ca8ef0d4be98e', fullName: 'Nguyễn Thị Hằng (Kế Toán Viên)', role: 'KETOAN', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' },
+    { username: 'lanhdao', passwordHash: 'cbe973fb461f4ab4007d2a1c2da904992d41db551702603c5f7a93e16da4750d', fullName: 'Trần Đình Trọng (Giám Đốc Quỹ)', role: 'LANHDAO', status: 'ACTIVE', createdAt: '18/08/2026', lastLogin: '---' }
+  ]
 };
 
 // --- HÀM GỌI API CHUNG ---
@@ -219,7 +225,7 @@ async function requestApi(action, method = 'GET', data = null) {
         }
       } else {
         options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-        options.body = JSON.stringify({ action: action, data: data });
+        options.body = JSON.stringify({ action: action, ...(data || {}) });
       }
 
       const res = await fetch(url, options);
@@ -232,9 +238,70 @@ async function requestApi(action, method = 'GET', data = null) {
   }
 
   // --- XỬ LÝ MOCK DATA FALLBACK ---
-  await new Promise(resolve => setTimeout(resolve, 250)); // Simulating network latency
+  await new Promise(resolve => setTimeout(resolve, 200));
 
   switch (action) {
+    case 'login': {
+      const u = String(data?.username || '').trim().toLowerCase();
+      const pHash = String(data?.passwordHash || '').trim();
+      const match = mockData.users.find(usr => usr.username.toLowerCase() === u);
+
+      if (!match) return { status: 'error', message: 'Tài khoản không tồn tại trong hệ thống.' };
+      if (match.status !== 'ACTIVE') return { status: 'error', message: 'Tài khoản đang bị tạm khóa.' };
+      if (match.passwordHash !== pHash) return { status: 'error', message: 'Mật khẩu không chính xác.' };
+
+      return {
+        status: 'success',
+        message: 'Đăng nhập thành công',
+        user: { username: match.username, fullName: match.fullName, role: match.role },
+        token: 'TOKEN-MOCK-' + Date.now()
+      };
+    }
+
+    case 'changePassword': {
+      const u = String(data?.username || '').trim().toLowerCase();
+      const match = mockData.users.find(usr => usr.username.toLowerCase() === u);
+      if (!match) return { status: 'error', message: 'Không tìm thấy người dùng.' };
+      if (match.passwordHash !== data?.oldPasswordHash) return { status: 'error', message: 'Mật khẩu cũ không chính xác.' };
+      match.passwordHash = data?.newPasswordHash;
+      return { status: 'success', message: 'Đổi mật khẩu thành công!' };
+    }
+
+    case 'getUserList':
+      return {
+        status: 'success',
+        data: mockData.users.map(u => ({ username: u.username, fullName: u.fullName, role: u.role, status: u.status, createdAt: u.createdAt, lastLogin: u.lastLogin }))
+      };
+
+    case 'saveUser': {
+      const existing = mockData.users.find(u => u.username.toLowerCase() === (data?.username || '').toLowerCase());
+      if (existing) {
+        existing.fullName = data?.fullName || existing.fullName;
+        existing.role = data?.role || existing.role;
+        existing.status = data?.status || existing.status;
+        if (data?.passwordHash) existing.passwordHash = data.passwordHash;
+        return { status: 'success', message: 'Cập nhật tài khoản thành công!' };
+      } else {
+        mockData.users.push({
+          username: data?.username,
+          passwordHash: data?.passwordHash || '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+          fullName: data?.fullName,
+          role: data?.role || 'CBTD',
+          status: data?.status || 'ACTIVE',
+          createdAt: new Date().toLocaleDateString('vi-VN'),
+          lastLogin: '---'
+        });
+        return { status: 'success', message: 'Tạo mới tài khoản thành công!' };
+      }
+    }
+
+    case 'resetPassword': {
+      const u = mockData.users.find(usr => usr.username.toLowerCase() === (data?.username || '').toLowerCase());
+      if (!u) return { status: 'error', message: 'Không tìm thấy người dùng.' };
+      u.passwordHash = data?.newPasswordHash;
+      return { status: 'success', message: 'Đã reset mật khẩu cho người dùng: ' + data?.username };
+    }
+
     case 'getDashboardStats':
       return { status: 'success', data: mockData.stats };
 
@@ -329,17 +396,22 @@ async function requestApi(action, method = 'GET', data = null) {
 }
 
 export const api = {
+  login: (username, passwordHash) => requestApi('login', 'POST', { username, passwordHash }),
+  changePassword: (username, oldPasswordHash, newPasswordHash) => requestApi('changePassword', 'POST', { username, oldPasswordHash, newPasswordHash }),
+  getUserList: () => requestApi('getUserList'),
+  saveUser: (data) => requestApi('saveUser', 'POST', { data }),
+  resetPassword: (username, newPasswordHash) => requestApi('resetPassword', 'POST', { username, newPasswordHash }),
   getDashboardStats: () => requestApi('getDashboardStats'),
   searchCustomer360: (query) => requestApi('searchCustomer360', 'GET', { query }),
   getAppraisals: () => requestApi('getAppraisals'),
-  saveAppraisalReport: (data) => requestApi('saveAppraisalReport', 'POST', data),
+  saveAppraisalReport: (data) => requestApi('saveAppraisalReport', 'POST', { data }),
   getInspections: () => requestApi('getInspections'),
-  saveLoanInspection: (data) => requestApi('saveLoanInspection', 'POST', data),
+  saveLoanInspection: (data) => requestApi('saveLoanInspection', 'POST', { data }),
   getDebitRegistrations: () => requestApi('getDebitRegistrations'),
-  saveDebitRegister: (data) => requestApi('saveDebitRegister', 'POST', data),
+  saveDebitRegister: (data) => requestApi('saveDebitRegister', 'POST', { data }),
   getDebitBatches: () => requestApi('getDebitBatches'),
-  createDebitBatch: (data) => requestApi('createDebitBatch', 'POST', data),
-  reconcileUpload: (data) => requestApi('reconcileUpload', 'POST', data),
+  createDebitBatch: (data) => requestApi('createDebitBatch', 'POST', { data }),
+  reconcileUpload: (data) => requestApi('reconcileUpload', 'POST', { data }),
   getDebtWarnings: () => requestApi('getDebtWarnings'),
   triggerSqlSync: () => requestApi('triggerSqlSync', 'POST', {}),
   getSyncStatus: () => requestApi('getSyncStatus')

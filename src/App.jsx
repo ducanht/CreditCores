@@ -10,7 +10,11 @@ import Reconciliation from './components/Reconciliation';
 import DebtWarning from './components/DebtWarning';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
+import UserManagement from './components/UserManagement';
+import LoginModal from './components/LoginModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import { api } from './services/api';
+import { AuthService } from './services/auth';
 
 const TAB_TITLES = {
   dashboard: 'Dashboard Quản Trị Tín Dụng',
@@ -22,11 +26,15 @@ const TAB_TITLES = {
   reconciliation: 'Đối Soát Kết Quả Trích Nợ Từ CoreBanking',
   debt_warning: 'Sổ Theo Dõi Nợ Tồn Đọng & Cảnh Báo',
   reports: 'Báo Cáo Thống Kê & Phân Tích Dư Nợ',
+  user_management: 'Quản Lý Người Dùng & Phân Quyền Hệ Thống',
   settings: 'Cấu Hình & Giám Sát Đồng Bộ Dữ Liệu Core'
 };
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showChangePassModal, setShowChangePassModal] = useState(false);
+
   const [stats, setStats] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -49,15 +57,29 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchInitialData();
-    const interval = setInterval(async () => {
-      try {
-        const resSync = await api.getSyncStatus();
-        if (resSync.status === 'success') setSyncStatus(resSync.data);
-      } catch (e) {}
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    if (currentUser) {
+      fetchInitialData();
+      const interval = setInterval(async () => {
+        try {
+          const resSync = await api.getSyncStatus();
+          if (resSync.status === 'success') setSyncStatus(resSync.data);
+        } catch (e) {}
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
+
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    setActiveTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống CreditCores?')) {
+      AuthService.logout();
+      setCurrentUser(null);
+    }
+  };
 
   const handleTriggerSync = async () => {
     setIsSyncing(true);
@@ -91,9 +113,20 @@ export default function App() {
     setActiveTab('debit_register');
   };
 
+  // IF NOT AUTHENTICATED -> SHOW LOGIN SCREEN
+  if (!currentUser) {
+    return <LoginModal onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="app-container">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        onOpenChangePass={() => setShowChangePassModal(true)}
+        onLogout={handleLogout}
+      />
 
       <div className="main-wrapper">
         <TopHeader
@@ -101,6 +134,7 @@ export default function App() {
           syncStatus={syncStatus}
           isSyncing={isSyncing}
           onTriggerSync={handleTriggerSync}
+          currentUser={currentUser}
         />
 
         <main className="content-area">
@@ -128,6 +162,8 @@ export default function App() {
 
           {activeTab === 'reports' && <Reports />}
 
+          {activeTab === 'user_management' && <UserManagement />}
+
           {activeTab === 'settings' && (
             <Settings
               syncStatus={syncStatus}
@@ -137,6 +173,10 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {showChangePassModal && (
+        <ChangePasswordModal onClose={() => setShowChangePassModal(false)} />
+      )}
     </div>
   );
 }

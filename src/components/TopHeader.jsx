@@ -1,9 +1,14 @@
 import React from 'react';
-import { RefreshCw, CheckCircle2, AlertCircle, Database } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Database, UserCheck, Shield } from 'lucide-react';
 import { getGasApiUrl } from '../services/api';
+import { ROLE_LABELS } from '../services/auth';
 
-export default function TopHeader({ activeTabTitle, syncStatus, isSyncing, onTriggerSync }) {
+export default function TopHeader({ activeTabTitle, syncStatus, isSyncing, onTriggerSync, currentUser }) {
   const isLiveMode = Boolean(getGasApiUrl());
+  const roleInfo = ROLE_LABELS[currentUser?.role] || {
+    label: currentUser?.role || 'Cán Bộ',
+    badgeClass: 'badge-info-soft'
+  };
 
   return (
     <header
@@ -26,6 +31,12 @@ export default function TopHeader({ activeTabTitle, syncStatus, isSyncing, onTri
       </div>
 
       <div className="d-flex align-items-center gap-3">
+        {/* User Role Tag */}
+        <div className={`badge-status ${roleInfo.badgeClass}`} title="Vai trò người dùng hiện tại">
+          <Shield size={13} />
+          <span>{currentUser?.fullName || currentUser?.username} ({roleInfo.label})</span>
+        </div>
+
         {/* Mode Indicator */}
         <div
           className={`badge-status ${isLiveMode ? 'badge-success-soft' : 'badge-info-soft'}`}
