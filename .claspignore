@@ -1,4 +1,3 @@
 **/*
-!Code.gs
-!AutoGeneratGoogleSheets.gs
+!**/*.gs
 !appsscript.json

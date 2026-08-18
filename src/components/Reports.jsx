@@ -1,21 +1,33 @@
-import React from 'react';
-import { FileBarChart2, Download, MapPin, PieChart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileBarChart2, Download, MapPin, PieChart, RefreshCw } from 'lucide-react';
+import { api } from '../services/api';
 import { formatCurrencyVN } from '../utils/dateUtils';
 
 export default function Reports() {
-  const formatCurrency = (val) => (val || 0).toLocaleString('vi-VN') + ' đ';
+  const [reportsData, setReportsData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const areaData = [
-    { area: 'Xã Yên Thọ (Thôn 1, 2, 3, 4)', countKH: 142, countLoans: 156, duNo: 22500000000, rate: '46.4%' },
-    { area: 'Xã Yên Trường (Thôn 1, 2, 3)', countKH: 110, countLoans: 118, duNo: 16800000000, rate: '34.6%' },
-    { area: 'Xã Yên Bái (Thôn 5, 6, 7)', countKH: 68, countLoans: 68, duNo: 9200000000, rate: '19.0%' }
-  ];
+  const fetchReports = async () => {
+    setLoading(true);
+    try {
+      const res = await api.getReportsData();
+      if (res.status === 'success' && res.data) {
+        setReportsData(res.data);
+      }
+    } catch (e) {
+      console.error('Lỗi nạp báo cáo:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const loanTypes = [
-    { type: 'Nông nghiệp & Chăn nuôi', count: 184, amount: 26000000000, color: 'bg-success' },
-    { type: 'Thương mại & Dịch vụ', count: 98, amount: 14500000000, color: 'bg-primary' },
-    { type: 'Tiêu dùng & Đời sống', count: 60, amount: 8000000000, color: 'bg-warning' }
-  ];
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const areaData = reportsData?.areaData || [];
+  const loanTypes = reportsData?.loanTypes || [];
+  const totalDuNo = reportsData?.totalDuNo || 0;
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -25,15 +37,25 @@ export default function Reports() {
           <h5 className="fw-bold m-0 text-slate-800 d-flex align-items-center gap-2">
             <FileBarChart2 size={20} className="text-primary" /> Báo Cáo Thống Kê & Phân Tích Quản Trị Tín Dụng
           </h5>
-          <span className="text-muted small">Số liệu cập nhật theo thời gian thực từ CSDL</span>
+          <span className="text-muted small">Số liệu cập nhật tự động thời gian thực từ CSDL Google Sheets</span>
         </div>
 
-        <button
-          className="btn btn-outline-success fw-semibold d-flex align-items-center gap-2"
-          onClick={() => alert('Đang kết xuất Báo cáo Quản trị Tín dụng định dạng Excel...')}
-        >
-          <Download size={16} /> Xuất Báo Cáo Excel
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            onClick={fetchReports}
+            disabled={loading}
+            title="Tải lại số liệu báo cáo"
+          >
+            <RefreshCw size={14} className={loading ? 'fa-spin' : ''} /> Làm mới
+          </button>
+          <button
+            className="btn btn-sm btn-brand fw-bold d-flex align-items-center gap-2"
+            onClick={() => alert('Đang kết xuất Báo cáo Quản trị Tín dụng định dạng Excel...')}
+          >
+            <Download size={16} /> Xuất Báo Cáo Excel
+          </button>
+        </div>
       </div>
 
       {/* Grid: 2 Report Cards */}
@@ -56,14 +78,22 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {areaData.map((a, idx) => (
-                    <tr key={idx}>
-                      <td className="fw-semibold text-dark">{a.area}</td>
-                      <td className="text-center num-tabular">{a.countKH}</td>
-                      <td className="text-end fw-bold text-primary num-tabular">{formatCurrencyVN(a.duNo)}</td>
-                      <td className="text-end fw-bold text-success num-tabular">{a.rate}</td>
+                  {areaData.length > 0 ? (
+                    areaData.map((a, idx) => (
+                      <tr key={idx}>
+                        <td className="fw-semibold text-dark">{a.area}</td>
+                        <td className="text-center num-tabular">{a.countKH}</td>
+                        <td className="text-end fw-bold text-primary num-tabular">{formatCurrencyVN(a.duNo)}</td>
+                        <td className="text-end fw-bold text-success num-tabular">{a.rate}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center text-muted py-4">
+                        {loading ? 'Đang tổng hợp số liệu...' : 'Chưa có dữ liệu địa bàn.'}
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -87,16 +117,24 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loanTypes.map((lt, idx) => (
-                    <tr key={idx}>
-                      <td className="fw-semibold text-dark d-flex align-items-center gap-2">
-                        <span className={`badge p-1 rounded-circle ${lt.color}`}> </span>
-                        {lt.type}
+                  {loanTypes.length > 0 ? (
+                    loanTypes.map((lt, idx) => (
+                      <tr key={idx}>
+                        <td className="fw-semibold text-dark d-flex align-items-center gap-2">
+                          <span className={`badge p-1 rounded-circle ${lt.color || 'bg-primary'}`}> </span>
+                          {lt.type}
+                        </td>
+                        <td className="text-center num-tabular">{lt.count}</td>
+                        <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(lt.amount)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center text-muted py-4">
+                        {loading ? 'Đang tổng hợp cơ cấu sản phẩm...' : 'Chưa có dữ liệu sản phẩm.'}
                       </td>
-                      <td className="text-center num-tabular">{lt.count}</td>
-                      <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(lt.amount)}</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
