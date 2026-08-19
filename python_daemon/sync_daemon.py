@@ -157,6 +157,23 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     return df
 
 # --- 6. GHI DỮ LIỆU BATCH LÊN GOOGLE SHEETS ---
+def get_or_create_worksheet(spreadsheet, title, headers):
+    """
+    Tự động tìm hoặc tạo mới worksheet nếu chưa tồn tại trên Google Spreadsheet.
+    """
+    try:
+        sheet = spreadsheet.worksheet(title)
+        # Kiểm tra dòng header
+        cur_headers = sheet.row_values(1)
+        if not cur_headers or len(cur_headers) < len(headers):
+            sheet.update(range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}", values=[headers])
+        return sheet
+    except gspread.exceptions.WorksheetNotFound:
+        logger.info(f"⚡ Sheet '{title}' chưa có, tự động tạo mới...")
+        sheet = spreadsheet.add_worksheet(title=title, rows=100, cols=len(headers) + 5)
+        sheet.update(range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}", values=[headers])
+        return sheet
+
 def sync_dataframe_to_sheet(sheet, df, start_row=2):
     """
     Xóa dữ liệu cũ và ghi toàn bộ dữ liệu mới vào sheet chỉ bằng 1 lệnh batch duy nhất.
@@ -188,7 +205,10 @@ def sync_dataframe_to_sheet(sheet, df, start_row=2):
 def process_sync_request(spreadsheet, sql_cfg):
     start_time = datetime.now()
     sync_timestamp_str = start_time.strftime("%d/%m/%Y %H:%M:%S")
-    setting_sheet = spreadsheet.worksheet("SETTING")
+    
+    # Đảm bảo bảng SETTING tồn tại
+    setting_headers = ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE"]
+    setting_sheet = get_or_create_worksheet(spreadsheet, "SETTING", setting_headers)
     
     # Cập nhật trạng thái SETTING -> PROCESSING
     setting_sheet.update(
@@ -202,12 +222,14 @@ def process_sync_request(spreadsheet, sql_cfg):
         with get_sql_connection(sql_cfg) as sql_conn:
             # 1. Đồng bộ Khách hàng & Thành viên
             df_kh = fetch_customer_core_data(sql_conn, sync_timestamp_str)
-            kh_sheet = spreadsheet.worksheet("KH_CORE")
+            kh_headers = ["MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat"]
+            kh_sheet = get_or_create_worksheet(spreadsheet, "KH_CORE", kh_headers)
             rows_kh = sync_dataframe_to_sheet(kh_sheet, df_kh, start_row=2)
 
             # 2. Đồng bộ Khế ước & Dư nợ Tín dụng
             df_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
-            hdtd_sheet = spreadsheet.worksheet("HDTD_CORE")
+            hdtd_headers = ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "NgayCapNhat"]
+            hdtd_sheet = get_or_create_worksheet(spreadsheet, "HDTD_CORE", hdtd_headers)
             rows_hdtd = sync_dataframe_to_sheet(hdtd_sheet, df_hdtd, start_row=2)
 
         finish_time = datetime.now()

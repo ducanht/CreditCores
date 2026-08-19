@@ -1,5 +1,5 @@
-# LỘ TRÌNH PHÁT TRIỂN & KẾ HOẠCH MỞ RỘNG (ROADMAP)
-# CreditCores - Core Credit & Auto-Debit System
+# 📈 LỘ TRÌNH PHÁT TRIỂN & KẾ HOẠCH MỞ RỘNG (ROADMAP)
+# CreditCores - Core Credit & Auto-Debit System (v3.0)
 
 Tài liệu này theo dõi các mốc phát triển của dự án, các phiên bản đã hoàn thành và định hướng mở rộng trong tương lai.
 
@@ -11,7 +11,8 @@ Tài liệu này theo dõi các mốc phát triển của dự án, các phiên 
 | :---: | :---: | :--- |
 | **v1.0.0** | 18/08/2026 | • Phân tích & thiết kế hệ thống phân tán 3 tầng.<br>• Viết mã nguồn Python Daemon 24/7 kết nối SQL Server Core qua `pyodbc`.<br>• Khởi tạo CSDL 9 Sheets Google Sheets & REST API Google Apps Script (`Code.gs`).<br>• Xây dựng Frontend SPA 10 phân hệ nghiệp vụ hoàn chỉnh.<br>• Đẩy mã nguồn lên GitHub `ducanht/CreditCores`. |
 | **v1.1.0** | 18/08/2026 | • Tích hợp phân hệ Xác thực Bảo mật & Mã hóa Mật khẩu SHA-256.<br>• Thêm màn hình Đăng nhập Banking chuyên nghiệp kèm 1-Click Demo Login.<br>• Thiết lập ma trận phân quyền 4 vai trò (Admin, CBTD, Kế toán, Lãnh đạo).<br>• Thêm tính năng Đổi mật khẩu và Quản lý tài khoản cán bộ. |
-| **v1.2.0** | 18/08/2026 | • **Phân Quyền 360° Đa Chức Năng**: Cho phép tick chọn từng phân hệ riêng lẻ cho từng User và cấu hình ma trận Nhóm quyền.<br>• **Cơ chế Self-Healing Auto-Migration**: Tự động kiểm tra và nâng cấp cấu trúc 11 Sheets CSDL trên Google Sheets trong mọi request.<br>• Đổi tên dự án thành `qtdyentho-credit` hướng tới domain Vercel `https://qtdyentho-credit.vercel.app`.<br>• Xây dựng bộ tài liệu kiến trúc chuẩn theo phương pháp luận Superpowers. |
+| **v1.2.0** | 18/08/2026 | • **Phân Quyền 360° Đa Chức Năng**: Cho phép tick chọn từng phân hệ riêng lẻ cho từng User và cấu hình ma trận Nhóm quyền.<br>• **Cơ chế Self-Healing Auto-Migration**: Tự động kiểm tra và nâng cấp cấu trúc 11 Sheets CSDL trên Google Sheets.<br>• Đổi tên dự án thành `qtdyentho-credit` hướng tới domain Vercel `https://qtdyentho-credit.vercel.app`.<br>• Xây dựng bộ tài liệu kiến trúc chuẩn theo phương pháp luận Superpowers. |
+| **v1.3.0** | 19/08/2026 | • **Tính Lãi Chi Tiết Theo Ngày Thực Tế**: Áp dụng chuẩn Thông tư 14/2017/TT-NHNN ("Tính ngày đầu, bỏ ngày cuối", mẫu số $36500$, phân tách khế ước và cộng dồn nợ tồn).<br>• **Responsive Modal System Toàn Diện**: Chuẩn hóa 11 cửa sổ modal co giãn tự động trên mọi thiết bị (Mobile 375px, Tablet 768px, Desktop).<br>• **Quản Trị CSDL 12 Bảng Chuẩn Hóa**: Bổ sung `CAU_HINH_BIEU_MAU`, chuẩn hóa header auto-migration bảo toàn 100% dữ liệu cũ.<br>• **CBI-MCP Multi-Project Integration**: Tích hợp và lập chỉ mục đồ thị mã nguồn độc lập vào CBI Engine. |
 
 ---
 

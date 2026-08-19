@@ -10,7 +10,6 @@ import {
   Printer,
   FileCheck,
   CheckCircle2,
-  Sparkles,
   Link2,
   FolderOpen,
   Eye,
@@ -486,9 +485,9 @@ export default function TemplateManager() {
                             setSelectedTemplate(tpl);
                             setShowMergeModal(true);
                           }}
-                          title="Trộn dữ liệu thử nghiệm (Mail Merge)"
+                          title="Trộn dữ liệu tài liệu (Mail Merge)"
                         >
-                          <Sparkles size={13} /> Trộn Dữ Liệu
+                          <Printer size={13} /> Trộn Dữ Liệu
                         </button>
                         <button
                           className="btn btn-sm btn-outline-secondary p-1 px-2"
@@ -546,7 +545,7 @@ export default function TemplateManager() {
               <form onSubmit={handleSaveTemplate}>
                 <div className="modal-body py-3">
                   <div className="row g-3">
-                    <div className="col-md-4">
+                    <div className="col-12 col-md-4">
                       <label className="form-label small fw-bold text-dark">Mã Biểu Mẫu (*)</label>
                       <input
                         type="text"
@@ -558,7 +557,7 @@ export default function TemplateManager() {
                       />
                     </div>
 
-                    <div className="col-md-8">
+                    <div className="col-12 col-md-8">
                       <label className="form-label small fw-bold text-dark">Tên Biểu Mẫu (*)</label>
                       <input
                         type="text"
@@ -570,7 +569,7 @@ export default function TemplateManager() {
                       />
                     </div>
 
-                    <div className="col-md-4">
+                    <div className="col-12 col-md-4">
                       <label className="form-label small fw-bold text-dark">Phân Hệ Nghiệp Vụ</label>
                       <select
                         className="form-select form-select-sm"
@@ -586,7 +585,7 @@ export default function TemplateManager() {
                       </select>
                     </div>
 
-                    <div className="col-md-4">
+                    <div className="col-12 col-md-4">
                       <label className="form-label small fw-bold text-dark">Loại Nguồn Mẫu</label>
                       <select
                         className="form-select form-select-sm"
@@ -599,8 +598,8 @@ export default function TemplateManager() {
                       </select>
                     </div>
 
-                    <div className="col-md-4">
-                      <label className="form-label small fw-bold text-dark">Trạng Thái</label>
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-bold text-dark">Trạng Thái Sử Dụng</label>
                       <select
                         className="form-select form-select-sm"
                         value={formData.trangThai}

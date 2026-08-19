@@ -19,18 +19,18 @@ import { api } from './services/api';
 import { AuthService } from './services/auth';
 
 const TAB_TITLES = {
-  dashboard: 'Dashboard Quản Trị Tín Dụng',
-  customer360: 'Tra Cứu Khách Hàng & Hợp Đồng 360°',
-  appraisal: 'Thẩm Định Tín Dụng & Tài Sản Đảm Bảo',
-  inspection: 'Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân',
-  debit_register: 'Quản Lý Đăng Ký Dịch Vụ Trích Nợ',
-  debit_batch: 'Khởi Tạo & Quản Lý Đợt Trích Nợ Tự Động',
-  reconciliation: 'Đối Soát Kết Quả Trích Nợ Từ CoreBanking',
-  debt_warning: 'Sổ Theo Dõi Nợ Tồn Đọng & Cảnh Báo',
-  reports: 'Báo Cáo Thống Kê & Phân Tích Dư Nợ',
-  templates: 'Trung Tâm Cấu Hình Biểu Mẫu & Mail Merge',
-  user_management: 'Phân Quyền 360° & Quản Lý Tài Khoản',
-  settings: 'Cấu Hình & Giám Sát Đồng Bộ Dữ Liệu Core'
+  dashboard: 'Tổng Quan',
+  customer360: 'Tra Cứu Khách Hàng & Hợp Đồng',
+  appraisal: 'Thẩm Định Tín Dụng & TSĐB',
+  inspection: 'Kiểm Tra Sử Dụng Vốn',
+  debit_register: 'Đăng Ký Dịch Vụ Trích Nợ',
+  debit_batch: 'Đợt Trích Nợ Tự Động',
+  reconciliation: 'Đối Soát Kết Quả CoreBanking',
+  debt_warning: 'Sổ Theo Dõi Nợ Tồn Đọng',
+  reports: 'Báo Cáo Thống Kê Dư Nợ',
+  templates: 'Quản Lý Biểu Mẫu Trộn Tài Liệu',
+  user_management: 'Phân Quyền & Quản Lý Tài Khoản',
+  settings: 'Cấu Hình & Giám Sát Đồng Bộ Core'
 };
 
 export default function App() {
@@ -189,7 +189,10 @@ export default function App() {
           {activeTab === 'dashboard' && (
             <Dashboard 
               stats={stats} 
-              onNavigate={setActiveTab} 
+              onNavigate={handleSelectTab} 
+              onRefresh={fetchInitialData}
+              syncStatus={syncStatus}
+              currentUser={currentUser}
               onOpenCustomerQuickView={handleOpenCustomerQuickView}
             />
           )}

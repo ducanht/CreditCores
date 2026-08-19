@@ -100,7 +100,7 @@ export default function InspectionFormModal({
               )}
 
               <div className="row g-3">
-                <div className="col-md-4">
+                <div className="col-12 col-sm-6 col-md-4">
                   <label className="form-label small fw-bold text-dark">Mã Biên Bản (*)</label>
                   <input
                     type="text"
@@ -111,7 +111,7 @@ export default function InspectionFormModal({
                   />
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-12 col-sm-6 col-md-4">
                   <label className="form-label small fw-bold text-dark">Số Khế Ước / HĐTD (*)</label>
                   <input
                     type="text"
@@ -127,7 +127,7 @@ export default function InspectionFormModal({
                   />
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-12 col-sm-6 col-md-4">
                   <label className="form-label small fw-bold text-dark">Mã Khách Hàng (*)</label>
                   <input
                     type="text"
@@ -139,7 +139,7 @@ export default function InspectionFormModal({
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng</label>
                   <input
                     type="text"
@@ -150,7 +150,7 @@ export default function InspectionFormModal({
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Đoàn Kiểm Tra Của</label>
                   <select
                     className="form-select form-select-sm fw-bold"
@@ -164,7 +164,7 @@ export default function InspectionFormModal({
                   </select>
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Thành Phần Đoàn Kiểm Tra</label>
                   <input
                     type="text"
@@ -175,52 +175,63 @@ export default function InspectionFormModal({
                   />
                 </div>
 
-                <div className="col-md-3">
+                <div className="col-12 col-sm-6 col-md-3">
                   <label className="form-label small fw-bold text-dark">Ngày Kiểm Tra (dd/MM/yyyy)</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm font-monospace"
-                    placeholder="19/08/2026"
+                    className="form-control form-control-sm"
+                    placeholder="18/08/2026"
                     value={formData.ngayKiemTra}
                     onChange={(e) => setFormData({ ...formData, ngayKiemTra: e.target.value })}
-                    required
                   />
                 </div>
 
-                <div className="col-md-3">
-                  <label className="form-label small fw-bold text-dark">Lần Kiểm Tra</label>
+                <div className="col-12 col-sm-6 col-md-3">
+                  <label className="form-label small fw-bold text-dark">Lần Kiểm Tra Thứ</label>
                   <input
                     type="number"
                     className="form-control form-control-sm text-center fw-bold"
-                    min={1}
                     value={formData.lanKiemTra}
                     onChange={(e) => setFormData({ ...formData, lanKiemTra: Number(e.target.value) })}
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Địa Điểm Kiểm Tra Thực Tế</label>
                   <input
                     type="text"
                     className="form-control form-control-sm"
-                    placeholder="Trang trại chăn nuôi, Thôn 3 Xã Yên Thọ..."
+                    placeholder="Thôn 3, Xã Yên Thọ..."
                     value={formData.diaDiemKT}
                     onChange={(e) => setFormData({ ...formData, diaDiemKT: e.target.value })}
                   />
                 </div>
 
-                <div className="col-md-6">
-                  <label className="form-label small fw-bold text-dark">Ngày Kiểm Tra Lần Tới (dd/MM/yyyy)</label>
+                <div className="col-12 col-sm-6 col-md-3">
+                  <label className="form-label small fw-bold text-dark">Hình Thức Kiểm Tra</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={formData.hinhThuc}
+                    onChange={(e) => setFormData({ ...formData, hinhThuc: e.target.value })}
+                  >
+                    <option value="Thực địa">Trực tiếp tại thực địa</option>
+                    <option value="Hồ sơ chứng từ">Kiểm tra hồ sơ chứng từ</option>
+                    <option value="Kết hợp cả hai">Kết hợp thực địa & chứng từ</option>
+                  </select>
+                </div>
+
+                <div className="col-12 col-sm-6 col-md-3">
+                  <label className="form-label small fw-bold text-dark">Lần KT Kế Tiếp</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm font-monospace text-primary fw-bold"
-                    placeholder="19/11/2026"
+                    className="form-control form-control-sm"
+                    placeholder="18/11/2026"
                     value={formData.ngayKTNext}
                     onChange={(e) => setFormData({ ...formData, ngayKTNext: e.target.value })}
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Đánh Giá Mục Đích Sử Dụng Vốn</label>
                   <select
                     className="form-select form-select-sm"
@@ -233,7 +244,7 @@ export default function InspectionFormModal({
                   </select>
                 </div>
 
-                <div className="col-md-3">
+                <div className="col-12 col-sm-6 col-md-3">
                   <label className="form-label small fw-bold text-dark">Mức Độ Rủi Ro</label>
                   <select
                     className="form-select form-select-sm"
@@ -246,7 +257,7 @@ export default function InspectionFormModal({
                   </select>
                 </div>
 
-                <div className="col-md-3">
+                <div className="col-12 col-sm-6 col-md-3">
                   <label className="form-label small fw-bold text-dark">Kết Luận</label>
                   <select
                     className="form-select form-select-sm fw-bold"

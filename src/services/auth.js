@@ -121,13 +121,16 @@ export const AuthService = {
     const passwordHash = await hashPassword(password);
     const res = await api.login(username, passwordHash);
 
-    if (res.status === 'success' && res.data) {
-      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(res.data.user));
-      localStorage.setItem(STORAGE_KEY_TOKEN, res.data.token || 'LOCAL_TOKEN');
-      return res.data.user;
-    } else {
-      throw new Error(res.message || 'Tên đăng nhập hoặc mật khẩu không chính xác');
+    if (res && res.status === 'success') {
+      const user = (res.data && res.data.user) ? res.data.user : (res.user || res.data);
+      const token = (res.data && res.data.token) ? res.data.token : (res.token || 'LOCAL_TOKEN_' + Date.now());
+      if (user && typeof user === 'object') {
+        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+        localStorage.setItem(STORAGE_KEY_TOKEN, token);
+        return user;
+      }
     }
+    throw new Error((res && res.message) || 'Tên đăng nhập hoặc mật khẩu không chính xác');
   },
 
   /**

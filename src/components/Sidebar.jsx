@@ -33,17 +33,17 @@ export default function Sidebar({
   onToggleCollapse
 }) {
   const allMenuItems = [
-    { id: 'dashboard', label: 'Dashboard Quản trị', icon: LayoutDashboard, category: 'TỔNG QUAN' },
-    { id: 'customer360', label: 'Tra cứu KH & HĐ 360°', icon: Users, category: 'KHÁCH HÀNG' },
+    { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard, category: 'TỔNG QUAN' },
+    { id: 'customer360', label: 'Tra cứu Khách hàng & HĐ', icon: Users, category: 'KHÁCH HÀNG' },
     { id: 'appraisal', label: 'Thẩm định Tín dụng & TSĐB', icon: FileCheck2, category: 'TÍN DỤNG' },
     { id: 'inspection', label: 'Kiểm tra Sử dụng Vốn', icon: ClipboardList, category: 'TÍN DỤNG' },
     { id: 'debit_register', label: 'Đăng ký Trích nợ', icon: UserCheck, category: 'TRÍCH NỢ' },
-    { id: 'debit_batch', label: 'Chạy đợt Trích nợ', icon: Zap, category: 'TRÍCH NỢ' },
+    { id: 'debit_batch', label: 'Đợt Trích nợ', icon: Zap, category: 'TRÍCH NỢ' },
     { id: 'reconciliation', label: 'Đối soát & Kết quả', icon: ArrowLeftRight, category: 'KẾ TOÁN' },
     { id: 'debt_warning', label: 'Cảnh báo Nợ tồn đọng', icon: AlertTriangle, category: 'QUẢN LÝ NỢ' },
     { id: 'reports', label: 'Báo cáo Thống kê', icon: FileBarChart2, category: 'BÁO CÁO' },
-    { id: 'templates', label: 'Cấu hình Biểu mẫu & Merge', icon: Layers, category: 'HỆ THỐNG' },
-    { id: 'user_management', label: 'Phân quyền 360° & User', icon: UserCog, category: 'HỆ THỐNG' },
+    { id: 'templates', label: 'Quản lý Biểu mẫu', icon: Layers, category: 'HỆ THỐNG' },
+    { id: 'user_management', label: 'Phân quyền & Người dùng', icon: UserCog, category: 'HỆ THỐNG' },
     { id: 'settings', label: 'Cấu hình & Đồng bộ Core', icon: Settings, category: 'HỆ THỐNG' }
   ];
 

@@ -134,7 +134,7 @@ export default function DebtWarning({ onOpenCustomerQuickView }) {
                             onOpenCustomerQuickView({ maKH: w.maKH, hoTen: w.maKH });
                           }
                         }}
-                        title="Xem nhanh thông tin 360° khách hàng"
+                        title="Xem chi tiết khách hàng"
                       >
                         {w.maKH}
                       </div>

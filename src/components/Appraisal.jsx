@@ -7,13 +7,20 @@ import {
   AlertTriangle,
   MessageSquare,
   Eye,
-  Filter
+  Filter,
+  Layers,
+  Calculator,
+  ShieldAlert,
+  ShieldCheck,
+  TrendingUp,
+  DollarSign
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatCurrencyVN } from '../utils/dateUtils';
 import Pagination from './Pagination';
 import AppraisalFormModal from './modals/AppraisalFormModal';
 import AppraisalOpinionModal from './modals/AppraisalOpinionModal';
+import AppraisalDetailModal from './modals/AppraisalDetailModal';
 
 export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }) {
   const [appraisals, setAppraisals] = useState([]);
@@ -21,12 +28,14 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKetLuan, setFilterKetLuan] = useState('ALL');
+  const [filterRuiRo, setFilterRuiRo] = useState('ALL');
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedAppraisalForOpinion, setSelectedAppraisalForOpinion] = useState(null);
+  const [selectedAppraisalForDetail, setSelectedAppraisalForDetail] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -61,7 +70,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
     try {
       const res = await api.saveAppraisalReport(formData);
       if (res.status === 'success') {
-        alert('Lưu báo cáo thẩm định tín dụng thành công!');
+        alert('Lưu báo cáo thẩm định tín dụng 5 nhóm thành công!');
         setShowFormModal(false);
         fetchData();
       } else {
@@ -76,7 +85,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
     try {
       const res = await api.addApprovalOpinion({ maBCTD, opinion: opinionData });
       if (res.status === 'success') {
-        alert('Đã ghi nhận ý kiến đánh giá thành công!');
+        alert('Đã ghi nhận ý kiến phê duyệt thành công!');
         setSelectedAppraisalForOpinion(null);
         fetchData();
       } else {
@@ -97,19 +106,104 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
       item.canBoThamDinh?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchStatus = filterKetLuan === 'ALL' || item.ketLuan === filterKetLuan;
-    return matchSearch && matchStatus;
+    const matchRuiRo = filterRuiRo === 'ALL' || item.mucDoRuiRo === filterRuiRo;
+    return matchSearch && matchStatus && matchRuiRo;
   });
 
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  // Summary Metrics
+  const totalApprovedMoney = filtered.reduce((acc, curr) => acc + (Number(curr.duyetVay) || 0), 0);
+  const avgLtv = filtered.length > 0
+    ? (filtered.reduce((acc, curr) => acc + (Number(curr.tyLeLTV) || 0), 0) / filtered.length).toFixed(1)
+    : '0.0';
+  const highRiskCount = filtered.filter((i) => i.mucDoRuiRo === 'Cao' || Number(i.tyLeLTV) > 75).length;
+
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Header Controls */}
+      {/* Top Metric Cards */}
+      <div className="row g-3">
+        <div className="col-12 col-sm-6 col-lg-3">
+          <div className="card-modern p-3">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-muted small">Tổng số hồ sơ thẩm định</span>
+                <h4 className="fw-extrabold text-slate-800 m-0 font-heading">{filtered.length}</h4>
+              </div>
+              <div className="p-2.5 rounded-3 bg-primary-subtle text-primary">
+                <Layers size={22} />
+              </div>
+            </div>
+            <div className="small text-muted mt-2">
+              Bao gồm 5 nhóm nghiệp vụ thẩm định
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-sm-6 col-lg-3">
+          <div className="card-modern p-3">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-muted small">Tổng dư nợ đề xuất duyệt</span>
+                <h4 className="fw-extrabold text-danger m-0 font-heading num-tabular">
+                  {formatCurrencyVN(totalApprovedMoney)}
+                </h4>
+              </div>
+              <div className="p-2.5 rounded-3 bg-danger-subtle text-danger">
+                <DollarSign size={22} />
+              </div>
+            </div>
+            <div className="small text-muted mt-2">
+              Hạn mức cấp tín dụng đề nghị
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-sm-6 col-lg-3">
+          <div className="card-modern p-3">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-muted small">Tỷ lệ LTV bình quân</span>
+                <h4 className={`fw-extrabold m-0 font-heading ${Number(avgLtv) > 70 ? 'text-warning' : 'text-success'}`}>
+                  {avgLtv}%
+                </h4>
+              </div>
+              <div className="p-2.5 rounded-3 bg-success-subtle text-success">
+                <ShieldCheck size={22} />
+              </div>
+            </div>
+            <div className="small text-muted mt-2">
+              {Number(avgLtv) <= 70 ? 'Trong ngưỡng an toàn (≤70%)' : 'Cần kiểm soát trần TSĐB'}
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-sm-6 col-lg-3">
+          <div className="card-modern p-3">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <span className="text-muted small">Hồ sơ cần theo dõi đặc biệt</span>
+                <h4 className={`fw-extrabold m-0 font-heading ${highRiskCount > 0 ? 'text-danger' : 'text-success'}`}>
+                  {highRiskCount}
+                </h4>
+              </div>
+              <div className="p-2.5 rounded-3 bg-warning-subtle text-warning">
+                <ShieldAlert size={22} />
+              </div>
+            </div>
+            <div className="small text-muted mt-2">
+              {highRiskCount > 0 ? 'LTV > 75% hoặc rủi ro cao' : 'Không có hồ sơ cảnh báo'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Header Controls & Filters */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div className="d-flex align-items-center flex-wrap gap-2">
           <select
             className="form-select form-select-sm"
-            style={{ width: 190 }}
+            style={{ width: 185 }}
             value={filterKetLuan}
             onChange={(e) => {
               setFilterKetLuan(e.target.value);
@@ -122,7 +216,22 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
             <option value="Từ chối cấp tín dụng">Từ chối cấp tín dụng</option>
           </select>
 
-          <div className="input-group input-group-sm" style={{ width: 230 }}>
+          <select
+            className="form-select form-select-sm"
+            style={{ width: 155 }}
+            value={filterRuiRo}
+            onChange={(e) => {
+              setFilterRuiRo(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="ALL">Tất cả Mức Rủi Ro</option>
+            <option value="Thấp">Rủi ro: Thấp</option>
+            <option value="Trung bình">Rủi ro: Trung bình</option>
+            <option value="Cao">Rủi ro: Cao</option>
+          </select>
+
+          <div className="input-group input-group-sm" style={{ width: 240 }}>
             <span className="input-group-text bg-white border-end-0 text-muted">
               <Search size={14} />
             </span>
@@ -165,6 +274,8 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                 <th className="text-center">Thời Hạn</th>
                 <th className="text-center">Xếp Hạng CIC</th>
                 <th className="text-center">Tỷ Lệ LTV</th>
+                <th className="text-center">Tỷ Lệ DSR</th>
+                <th className="text-center">Mức Rủi Ro</th>
                 <th className="text-center">Ý Kiến Đánh Giá</th>
                 <th className="text-center">Kết Luận</th>
                 <th className="text-center">Thao Tác</th>
@@ -174,7 +285,9 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
               {paginated.length > 0 ? (
                 paginated.map((item) => {
                   const opinions = item.danhSachYKien || [];
-                  const agreeCount = opinions.filter((y) => y.yKien === 'Đồng ý').length;
+                  const agreeCount = opinions.filter((y) => y.yKien === 'Đồng ý' || y.yKien === 'Đồng ý có điều kiện').length;
+                  const ltvNum = Number(item.tyLeLTV) || 0;
+                  const dsrNum = Number(item.tyLeDSR) || 0;
 
                   return (
                     <tr key={item.maBCTD}>
@@ -183,7 +296,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                         <div
                           className="customer-click-link"
                           onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen })}
-                          title="Xem nhanh thông tin 360° khách hàng"
+                          title="Xem chi tiết khách hàng"
                         >
                           {item.hoTen || item.maKH}
                         </div>
@@ -195,8 +308,26 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                         <span className="badge bg-success-subtle text-success">{item.xepHangCIC}</span>
                       </td>
                       <td className="text-center">
-                        <span className={`badge ${Number(item.tyLeLTV) > 75 ? 'bg-danger' : 'bg-primary'}`}>
+                        <span className={`badge ${ltvNum > 75 ? 'bg-danger' : ltvNum > 70 ? 'bg-warning text-dark' : 'bg-success'}`}>
                           {item.tyLeLTV}%
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <span className={`badge ${dsrNum > 60 ? 'bg-danger' : 'bg-primary-subtle text-primary'}`}>
+                          {dsrNum > 0 ? `${dsrNum}%` : '-'}
+                        </span>
+                      </td>
+                      <td className="text-center">
+                        <span
+                          className={`badge ${
+                            item.mucDoRuiRo === 'Cao'
+                              ? 'bg-danger'
+                              : item.mucDoRuiRo === 'Trung bình'
+                              ? 'bg-warning text-dark'
+                              : 'bg-success-subtle text-success'
+                          }`}
+                        >
+                          {item.mucDoRuiRo || 'Thấp'}
                         </span>
                       </td>
                       <td className="text-center">
@@ -223,20 +354,29 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                         </span>
                       </td>
                       <td className="text-center">
-                        <button
-                          className="btn btn-sm btn-outline-primary p-1 px-2"
-                          onClick={() => setSelectedAppraisalForOpinion(item)}
-                          title="Đánh giá & Phê duyệt"
-                        >
-                          <FileCheck2 size={13} />
-                        </button>
+                        <div className="d-inline-flex gap-1">
+                          <button
+                            className="btn btn-sm btn-outline-secondary p-1 px-2"
+                            onClick={() => setSelectedAppraisalForDetail(item)}
+                            title="Xem chi tiết & In Báo cáo"
+                          >
+                            <Eye size={13} />
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-primary p-1 px-2"
+                            onClick={() => setSelectedAppraisalForOpinion(item)}
+                            title="Đánh giá & Phê duyệt"
+                          >
+                            <FileCheck2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" className="text-center text-muted py-4">
+                  <td colSpan="11" className="text-center text-muted py-4">
                     {loading ? 'Đang tải dữ liệu...' : 'Không tìm thấy hồ sơ thẩm định nào phù hợp.'}
                   </td>
                 </tr>
@@ -267,6 +407,15 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
         appraisal={selectedAppraisalForOpinion}
         onClose={() => setSelectedAppraisalForOpinion(null)}
         onSubmit={handleSaveOpinionSubmit}
+      />
+
+      <AppraisalDetailModal
+        appraisal={selectedAppraisalForDetail}
+        onClose={() => setSelectedAppraisalForDetail(null)}
+        onOpenAddOpinion={(item) => {
+          setSelectedAppraisalForDetail(null);
+          setSelectedAppraisalForOpinion(item);
+        }}
       />
     </div>
   );

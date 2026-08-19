@@ -183,7 +183,7 @@ export default function LoanInspection({ prefilledContract, onOpenCustomerQuickV
                       <div
                         className="customer-click-link"
                         onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen })}
-                        title="Xem nhanh thông tin 360° khách hàng"
+                        title="Xem chi tiết khách hàng"
                       >
                         {item.hoTen || item.maKH}
                       </div>

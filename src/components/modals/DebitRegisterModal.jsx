@@ -86,7 +86,7 @@ export default function DebitRegisterModal({
               )}
 
               <div className="row g-3">
-                <div className="col-md-4">
+                <div className="col-12 col-md-4">
                   <label className="form-label small fw-bold text-dark">Mã Khách Hàng (*)</label>
                   <input
                     type="text"
@@ -102,7 +102,7 @@ export default function DebitRegisterModal({
                   />
                 </div>
 
-                <div className="col-md-8">
+                <div className="col-12 col-md-8">
                   <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng (*)</label>
                   <input
                     type="text"
@@ -114,7 +114,7 @@ export default function DebitRegisterModal({
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Số CCCD (12 chữ số)</label>
                   <input
                     type="text"
@@ -126,7 +126,7 @@ export default function DebitRegisterModal({
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Số Tài Khoản Thanh Toán CASA (*)</label>
                   <input
                     type="text"
@@ -149,7 +149,7 @@ export default function DebitRegisterModal({
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Kỳ Trích Nợ Đăng Ký</label>
                   <select
                     className="form-select form-select-sm fw-bold"
@@ -162,7 +162,7 @@ export default function DebitRegisterModal({
                   </select>
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-12 col-md-6">
                   <label className="form-label small fw-bold text-dark">Trạng Thái Thỏa Thuận</label>
                   <select
                     className="form-select form-select-sm"

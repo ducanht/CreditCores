@@ -8,7 +8,14 @@
 
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "getDashboardStats";
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheetInstance();
+
+  // TỰ ĐỘNG KIỂM TRA, KHỞI TẠO & NÂNG CẤP CSDL TỰ ĐỘNG (SELF-HEALING AUTOMATION)
+  try {
+    SchemaSetup.ensureDatabaseSchema(ss);
+  } catch (schemaErr) {
+    Logger.log("Cảnh báo Schema Auto-Check: " + schemaErr.toString());
+  }
 
   try {
     var result;
@@ -69,7 +76,14 @@ function doGet(e) {
 function doPost(e) {
   var lock = LockService.getScriptLock();
   var isLocked = false;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheetInstance();
+
+  // TỰ ĐỘNG KIỂM TRA, KHỞI TẠO & NÂNG CẤP CSDL TỰ ĐỘNG (SELF-HEALING AUTOMATION)
+  try {
+    SchemaSetup.ensureDatabaseSchema(ss);
+  } catch (schemaErr) {
+    Logger.log("Cảnh báo Schema Auto-Check: " + schemaErr.toString());
+  }
 
   try {
     isLocked = lock.tryLock(10000);
@@ -156,6 +170,6 @@ function doPost(e) {
 }
 
 function runSetupDirectly() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheetInstance();
   return SchemaSetup.setupAllSheets(ss);
 }

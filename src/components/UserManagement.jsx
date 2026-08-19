@@ -276,10 +276,10 @@ export default function UserManagement() {
           </div>
           <div>
             <h5 className="fw-bold m-0 text-slate-800 font-heading">
-              Quản Trị Phân Quyền Theo Nhóm & Người Dùng
+              Quản Trị Phân Quyền & Người Dùng
             </h5>
             <span className="text-muted small">
-              Quản lý phân quyền truy cập 360° theo 4 nhóm nghiệp vụ và danh sách cán bộ
+              Quản lý phân quyền truy cập theo 4 nhóm nghiệp vụ và danh sách cán bộ
             </span>
           </div>
         </div>
@@ -292,14 +292,14 @@ export default function UserManagement() {
               className={`btn btn-sm ${activeSubTab === 'roles' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
               onClick={() => setActiveSubTab('roles')}
             >
-              <Layers size={14} className="me-1" /> Phân Quyền Theo Nhóm (4 Nhóm)
+              <Layers size={14} className="me-1" /> Phân Quyền Theo Nhóm
             </button>
             <button
               type="button"
               className={`btn btn-sm ${activeSubTab === 'users' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
               onClick={() => setActiveSubTab('users')}
             >
-              <Users size={14} className="me-1" /> Danh Sách Tài Khoản & Gán Nhóm
+              <Users size={14} className="me-1" /> Danh Sách Tài Khoản
             </button>
           </div>
 
@@ -329,10 +329,10 @@ export default function UserManagement() {
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <div>
               <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-2">
-                <Shield size={18} className="text-success" /> Ma Trận Phân Quyền Truy Cập 360° (4 Nhóm Nghiệp Vụ)
+                <Shield size={18} className="text-success" /> Ma Trận Phân Quyền Truy Cập (4 Nhóm Nghiệp Vụ)
               </h6>
               <span className="text-muted small">
-                Tick chọn để cấp quyền truy cập từng phân hệ chức năng cho từng nhóm nghiệp vụ
+                Chọn để cấp quyền truy cập từng phân hệ chức năng cho từng nhóm nghiệp vụ
               </span>
             </div>
 

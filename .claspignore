@@ -1,3 +1,7 @@
-**/*
-!**/*.gs
-!appsscript.json
+# Ignore bundle and docs in clasp push
+CreditCores_GAS_ALL_IN_ONE.gs
+HUONG_DAN_DAY_CODE_GAS.md
+**/*.md
+**/*.test.*
+.git/**
+node_modules/**

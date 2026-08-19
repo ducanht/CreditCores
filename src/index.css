@@ -263,7 +263,129 @@ html.dark .input-group-text {
   border: 1.5px solid #334155 !important;
 }
 
-/* Modals */
+/* ==========================================================================
+   RESPONSIVE MODAL SYSTEM (HỆ THỐNG CỬA SỔ POPUP CO GIÃN MỌI THIẾT BỊ)
+   ========================================================================== */
+.modal {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-dialog {
+  margin: 0.5rem auto;
+  width: calc(100% - 1rem);
+  max-width: calc(100% - 1rem);
+  transition: transform 0.25s ease-out;
+}
+
+@media (min-width: 576px) {
+  .modal-dialog {
+    margin: 1.5rem auto;
+    width: auto;
+    max-width: 500px;
+  }
+}
+
+@media (min-width: 768px) {
+  .modal-dialog.modal-md {
+    max-width: 560px;
+  }
+  .modal-dialog.modal-lg {
+    max-width: 780px;
+  }
+}
+
+@media (min-width: 992px) {
+  .modal-dialog.modal-lg {
+    max-width: 860px;
+  }
+  .modal-dialog.modal-xl {
+    max-width: 1040px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .modal-dialog.modal-xl {
+    max-width: 1180px;
+  }
+}
+
+.modal-content {
+  border-radius: 16px !important;
+  border: 1px solid var(--border-subtle) !important;
+  padding: 1.25rem !important;
+  max-height: calc(100vh - 1rem);
+  max-height: calc(100dvh - 1rem);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .modal-content {
+    padding: 1.5rem !important;
+  }
+}
+
+.modal-header {
+  padding: 0 0 0.75rem 0 !important;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.modal-title {
+  font-size: 1.1rem !important;
+  line-height: 1.35;
+  margin: 0;
+  word-break: break-word;
+}
+
+@media (min-width: 768px) {
+  .modal-title {
+    font-size: 1.25rem !important;
+  }
+}
+
+.modal-body {
+  padding: 0.85rem 0 !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  max-height: calc(85vh - 130px);
+  max-height: calc(85dvh - 130px);
+}
+
+.modal-footer {
+  padding: 0.75rem 0 0 0 !important;
+  border-top: 1px solid var(--border-subtle) !important;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Mobile Friendly Buttons in Modal */
+@media (max-width: 575.98px) {
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+  .modal-footer .btn {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+  .modal-footer .btn + .btn {
+    margin: 0;
+  }
+}
+
+/* Dark Mode for Modals */
 html.dark .modal-content {
   background-color: #0f172a !important;
   color: #f8fafc !important;
@@ -271,8 +393,17 @@ html.dark .modal-content {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
 }
 
+html.dark .modal-header,
+html.dark .modal-footer {
+  border-color: #1e293b !important;
+}
+
 html.dark .btn-close {
   filter: invert(1) grayscale(100%) brightness(200%);
+  opacity: 0.75;
+}
+html.dark .btn-close:hover {
+  opacity: 1;
 }
 
 /* Badges */

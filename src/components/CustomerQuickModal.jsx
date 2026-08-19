@@ -74,8 +74,8 @@ export default function CustomerQuickModal({
           <div className="modal-body py-3">
             {/* Quick Metrics */}
             <div className="row g-3 mb-4">
-              <div className="col-sm-4">
-                <div className="p-3 bg-light rounded-3 border">
+              <div className="col-12 col-sm-4">
+                <div className="p-3 bg-light rounded-3 border h-100">
                   <span className="text-muted small fw-bold d-block">TỔNG DƯ NỢ HIỆN TẠI</span>
                   <h5 className="fw-extrabold text-danger m-0 mt-1 num-tabular">
                     {formatCurrencyVN(totalDuNo)}
@@ -84,8 +84,8 @@ export default function CustomerQuickModal({
                 </div>
               </div>
 
-              <div className="col-sm-4">
-                <div className="p-3 bg-light rounded-3 border">
+              <div className="col-12 col-sm-4">
+                <div className="p-3 bg-light rounded-3 border h-100">
                   <span className="text-muted small fw-bold d-block">VỐN GÓP THÀNH VIÊN</span>
                   <h5 className="fw-extrabold text-success m-0 mt-1 num-tabular">
                     {formatCurrencyVN(customer.tongTienCP || 20000000)}
@@ -94,8 +94,8 @@ export default function CustomerQuickModal({
                 </div>
               </div>
 
-              <div className="col-sm-4">
-                <div className="p-3 bg-light rounded-3 border">
+              <div className="col-12 col-sm-4">
+                <div className="p-3 bg-light rounded-3 border h-100">
                   <span className="text-muted small fw-bold d-block">SỐ TÀI KHOẢN CASA</span>
                   <h5 className="fw-extrabold text-primary m-0 mt-1 font-monospace" style={{ fontSize: '1rem' }}>
                     {customer.soTK || '3500205123456'}

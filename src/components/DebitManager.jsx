@@ -240,7 +240,7 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                         <div
                           className="customer-click-link font-monospace fw-bold"
                           onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView(r)}
-                          title="Xem nhanh thông tin 360° khách hàng"
+                          title="Xem chi tiết khách hàng"
                         >
                           {r.maKH}
                         </div>

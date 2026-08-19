@@ -67,8 +67,8 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
             </div>
           </div>
           <div className="col-md-3 d-flex gap-2">
-            <button type="submit" className="btn btn-primary fw-semibold w-100" disabled={loading}>
-              {loading ? 'Đang tra cứu...' : 'Tra cứu 360°'}
+            <button type="submit" className="btn btn-brand fw-semibold w-100" disabled={loading}>
+              {loading ? 'Đang tra cứu...' : 'Tìm Kiếm'}
             </button>
             <button
               type="button"
@@ -78,7 +78,7 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
                 fetchCustomers('');
               }}
             >
-              Reset
+              Đặt lại
             </button>
           </div>
         </form>
@@ -266,7 +266,7 @@ export default function Customer360({ onNavigateToAppraisal, onNavigateToInspect
             </div>
           ) : (
             <div className="card-modern p-5 text-center text-muted">
-              Vui lòng chọn hoặc tìm kiếm khách hàng để xem thông tin 360°.
+              Vui lòng chọn hoặc tìm kiếm khách hàng để xem chi tiết hồ sơ.
             </div>
           )}
         </div>

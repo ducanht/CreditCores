@@ -31,3 +31,6 @@ credentials.json
 config.json
 python_daemon/credentials.json
 python_daemon/config.json
+.cbi/
+vite.config.js.timestamp*
+

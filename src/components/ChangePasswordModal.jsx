@@ -51,16 +51,16 @@ export default function ChangePasswordModal({ onClose }) {
       style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1060 }}
     >
       <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '14px' }}>
-          <div className="modal-header bg-primary text-white">
-            <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
-              <KeyRound size={20} /> Thay Đổi Mật Khẩu Tài Khoản
+        <div className="modal-content card-modern p-3 p-md-4">
+          <div className="modal-header border-0 pb-0">
+            <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
+              <KeyRound size={20} className="text-primary" /> Thay Đổi Mật Khẩu Tài Khoản
             </h5>
-            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="modal-body p-4">
+            <div className="modal-body py-3">
               {errorMsg && (
                 <div className="alert alert-danger d-flex align-items-center gap-2 py-2 small mb-3">
                   <AlertCircle size={16} className="flex-shrink-0" />
@@ -76,7 +76,7 @@ export default function ChangePasswordModal({ onClose }) {
               )}
 
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted">Mật Khẩu Hiện Tại</label>
+                <label className="form-label small fw-bold text-dark">Mật Khẩu Hiện Tại</label>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0">
                     <Lock size={16} className="text-muted" />
@@ -93,7 +93,7 @@ export default function ChangePasswordModal({ onClose }) {
               </div>
 
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted">Mật Khẩu Mới</label>
+                <label className="form-label small fw-bold text-dark">Mật Khẩu Mới</label>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0">
                     <KeyRound size={16} className="text-muted" />
@@ -110,7 +110,7 @@ export default function ChangePasswordModal({ onClose }) {
               </div>
 
               <div className="mb-3">
-                <label className="form-label small fw-bold text-muted">Xác Nhận Mật Khẩu Mới</label>
+                <label className="form-label small fw-bold text-dark">Xác Nhận Mật Khẩu Mới</label>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0">
                     <KeyRound size={16} className="text-muted" />
@@ -140,11 +140,11 @@ export default function ChangePasswordModal({ onClose }) {
               </div>
             </div>
 
-            <div className="modal-footer bg-light">
-              <button type="button" className="btn btn-secondary fw-semibold" onClick={onClose}>
+            <div className="modal-footer border-0 pt-0">
+              <button type="button" className="btn btn-light" onClick={onClose}>
                 Hủy
               </button>
-              <button type="submit" className="btn btn-primary fw-bold px-4" disabled={loading}>
+              <button type="submit" className="btn btn-brand fw-bold px-4" disabled={loading}>
                 {loading ? 'Đang lưu...' : 'Xác Nhận Đổi'}
               </button>
             </div>

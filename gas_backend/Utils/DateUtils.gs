@@ -1,5 +1,6 @@
 /**
- * UTILITY XỬ LÝ NGÀY THÁNG VÀ ĐỊNH DẠNG GOOGLE APPS SCRIPT
+ * UTILITY XỬ LÝ NGÀY THÁNG VÀ TÍNH LÃI THEO NGÀY THỰC TẾ GOOGLE APPS SCRIPT
+ * Chuẩn Thông tư 14/2017/TT-NHNN: "Tính ngày đầu, bỏ ngày cuối"
  */
 
 function formatGasDate(val) {
@@ -7,8 +8,16 @@ function formatGasDate(val) {
   if (val instanceof Date) {
     return Utilities.formatDate(val, "GMT+7", "dd/MM/yyyy");
   }
+  if (typeof val === 'number') {
+    var d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return Utilities.formatDate(d, "GMT+7", "dd/MM/yyyy");
+  }
   var str = String(val).trim();
   if (!str) return '';
+  if (!isNaN(Number(str)) && Number(str) > 30000 && Number(str) < 60000) {
+    var d = new Date(Math.round((Number(str) - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return Utilities.formatDate(d, "GMT+7", "dd/MM/yyyy");
+  }
   if (str.indexOf('T') > -1 || str.indexOf('-') > -1) {
     var d = new Date(str);
     if (!isNaN(d.getTime())) {
@@ -23,8 +32,16 @@ function formatGasDateTime(val) {
   if (val instanceof Date) {
     return Utilities.formatDate(val, "GMT+7", "dd/MM/yyyy HH:mm:ss");
   }
+  if (typeof val === 'number') {
+    var d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return Utilities.formatDate(d, "GMT+7", "dd/MM/yyyy HH:mm:ss");
+  }
   var str = String(val).trim();
   if (!str) return '';
+  if (!isNaN(Number(str)) && Number(str) > 30000 && Number(str) < 60000) {
+    var d = new Date(Math.round((Number(str) - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) return Utilities.formatDate(d, "GMT+7", "dd/MM/yyyy HH:mm:ss");
+  }
   if (str.indexOf('T') > -1 || str.indexOf('-') > -1) {
     var d = new Date(str);
     if (!isNaN(d.getTime())) {
@@ -35,10 +52,10 @@ function formatGasDateTime(val) {
 }
 
 function parseGasDateToSheet(val) {
-  if (!val) return '';
+  if (!val) return null;
   if (val instanceof Date) return val;
   var str = String(val).trim();
-  if (!str) return '';
+  if (!str) return null;
   if (str.indexOf('/') > -1) {
     var parts = str.split('/');
     if (parts.length === 3) {
@@ -51,5 +68,29 @@ function parseGasDateToSheet(val) {
   }
   var parsed = new Date(str);
   if (!isNaN(parsed.getTime())) return parsed;
-  return str;
+  return null;
+}
+
+/**
+ * Tính số ngày thực tế giữa 2 ngày theo nguyên tắc "Tính ngày đầu, bỏ ngày cuối"
+ */
+function calculateGasActualDays(startDate, endDate) {
+  var dStart = parseGasDateToSheet(startDate);
+  var dEnd = parseGasDateToSheet(endDate);
+  if (!dStart || !dEnd) return 0;
+
+  var msPerDay = 1000 * 60 * 60 * 24;
+  var diff = dEnd.getTime() - dStart.getTime();
+  var days = Math.round(diff / msPerDay);
+  return Math.max(0, days);
+}
+
+/**
+ * Tính tiền lãi theo số ngày thực tế: (Dư nợ * Lãi suất %/năm * Số ngày) / 36500
+ */
+function calculateGasInterest(duNo, laiSuat, actualDays) {
+  var d = Number(duNo) || 0;
+  var r = Number(laiSuat) || 9.5;
+  var days = Number(actualDays) || 0;
+  return Math.round((d * r * days) / 36500);
 }
