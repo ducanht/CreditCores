@@ -35,7 +35,7 @@ const TAB_TITLES = {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(AuthService.getCurrentUser());
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('CREDITCORES_ACTIVE_TAB') || 'dashboard');
   const [showChangePassModal, setShowChangePassModal] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -49,6 +49,11 @@ export default function App() {
   const [prefilledCustomer, setPrefilledCustomer] = useState(null);
   const [prefilledContract, setPrefilledContract] = useState(null);
   const [quickViewCustomer, setQuickViewCustomer] = useState(null);
+
+  const handleSelectTab = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('CREDITCORES_ACTIVE_TAB', tab);
+  };
 
   useEffect(() => {
     if (isDarkMode) {
@@ -156,7 +161,7 @@ export default function App() {
     <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSelectTab}
         currentUser={currentUser}
         onOpenChangePass={() => setShowChangePassModal(true)}
         onLogout={handleLogout}
@@ -170,7 +175,7 @@ export default function App() {
         <TopHeader
           activeTabTitle={TAB_TITLES[activeTab] || 'CreditCores'}
           activeTab={activeTab}
-          onNavigate={setActiveTab}
+          onNavigate={handleSelectTab}
           syncStatus={syncStatus}
           isSyncing={isSyncing}
           onTriggerSync={handleTriggerSync}

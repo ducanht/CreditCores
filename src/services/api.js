@@ -31,11 +31,25 @@ const mockDb = JSON.parse(JSON.stringify(initialMockData));
 
 /**
  * Resilient Network Request Wrapper with Dual-Mode Fallback
+ * 1. Ưu tiên Vercel Serverless Proxy (/api/data)
+ * 2. Fallback sang Direct Google Apps Script API URL
+ * 3. Fallback sang Mock Database nội bộ khi mất mạng
  */
 async function sendRequest(action, data = null, method = 'GET') {
-  const url = getGasApiUrl();
+  const directGasUrl = getGasApiUrl();
+  const isBrowser = typeof window !== 'undefined';
+  const isVercelOrigin = isBrowser && (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost');
 
-  if (url && url.startsWith('http')) {
+  // Danh sách các endpoints thử nghiệm tuần tự (Dual-Path)
+  const candidateUrls = [];
+  if (isVercelOrigin) {
+    candidateUrls.push('/api/data');
+  }
+  if (directGasUrl && directGasUrl.startsWith('http')) {
+    candidateUrls.push(directGasUrl);
+  }
+
+  for (const url of candidateUrls) {
     try {
       let fetchUrl = url;
       let options = { method: method };
@@ -51,21 +65,27 @@ async function sendRequest(action, data = null, method = 'GET') {
         }
         fetchUrl += (fetchUrl.includes('?') ? '&' : '?') + queryParams.toString();
       } else {
-        options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+        options.headers = { 'Content-Type': 'application/json' };
         options.body = JSON.stringify({ action: action, data: data });
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      options.signal = controller.signal;
+
       const res = await fetch(fetchUrl, options);
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const json = await res.json();
         if (json && json.status === 'error' && json.message && (json.message.includes('không hợp lệ') || json.message.includes('Invalid action') || json.message.includes('Action not found'))) {
-          console.warn(`[Dual-Mode Fallback] GAS chưa deploy action "${action}" (${json.message}), chuyển sang Mock Data Handler.`);
-          return handleMockFallback(action, data);
+          console.warn(`[Dual-Mode Fallback] Endpoint ${url} chưa có action "${action}", thử fallback.`);
+          continue;
         }
         return json;
       }
     } catch (err) {
-      console.warn(`[Dual-Mode Fallback] Kết nối GAS thất bại (${err.message}). Đang dùng Mock Database.`);
+      console.warn(`[Dual-Mode Fallback] Thất bại tại ${url} (${err.message}). Chuyển sang candidate tiếp theo.`);
     }
   }
 
@@ -83,21 +103,23 @@ function handleMockFallback(action, data) {
       if (!user) return { status: 'error', message: 'Tên đăng nhập không tồn tại.' };
       if (user.status === 'LOCKED') return { status: 'error', message: 'Tài khoản đã bị khóa.' };
       
-      const validHashes = [
-        user.passwordHash,
-        '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', // 123456
-        '7676aaafb027c825bd9abab78b234070e702752f625b752e55e55b48e607e358'  // admin@123
-      ];
-
-      if (!validHashes.includes(data?.passwordHash)) {
+      // Kiểm tra hash mật khẩu chuẩn xác (không hardcode plaintext)
+      if (user.passwordHash && data?.passwordHash && user.passwordHash !== data.passwordHash) {
         return { status: 'error', message: 'Mật khẩu không chính xác.' };
       }
 
       return {
         status: 'success',
-        message: 'Đăng nhập thành công!',
-        user: { username: user.username, fullName: user.fullName, role: user.role, customPermissions: user.customPermissions || [], status: user.status },
-        token: 'MOCK_TOKEN_' + Date.now()
+        data: {
+          user: {
+            username: user.username,
+            fullName: user.fullName,
+            role: user.role,
+            customPermissions: user.customPermissions || [],
+            effectivePermissions: user.effectivePermissions || []
+          },
+          token: 'MOCK_SESSION_TOKEN_' + Date.now()
+        }
       };
     }
 
@@ -256,6 +278,28 @@ function handleMockFallback(action, data) {
     case 'triggerSqlSync':
       return { status: 'success', message: 'Đã gửi lệnh SYNC_DATA tới Hàng đợi Lệnh Core Server!' };
 
+    case 'getTemplates': {
+      return { status: 'success', data: mockDb.templates || [] };
+    }
+
+    case 'saveTemplate': {
+      if (!mockDb.templates) mockDb.templates = [];
+      const idx = mockDb.templates.findIndex(t => t.id === data?.id);
+      if (idx >= 0) {
+        mockDb.templates[idx] = { ...data, ngayCapNhat: getTodayVN() };
+      } else {
+        mockDb.templates.unshift({ ...data, ngayCapNhat: getTodayVN() });
+      }
+      return { status: 'success', message: 'Lưu cấu hình biểu mẫu thành công!' };
+    }
+
+    case 'deleteTemplate': {
+      if (mockDb.templates) {
+        mockDb.templates = mockDb.templates.filter(t => t.id !== data?.id);
+      }
+      return { status: 'success', message: 'Xóa biểu mẫu thành công!' };
+    }
+
     default:
       return { status: 'error', message: 'Hành động không xác định: ' + action };
   }
@@ -278,6 +322,9 @@ export const api = {
   reconcileUpload: (data) => sendRequest('reconcileUpload', data, 'POST'),
   getSyncStatus: () => sendRequest('getSyncStatus'),
   triggerSqlSync: () => sendRequest('triggerSqlSync', {}, 'POST'),
+  getTemplates: () => sendRequest('getTemplates'),
+  saveTemplate: (data) => sendRequest('saveTemplate', data, 'POST'),
+  deleteTemplate: (id) => sendRequest('deleteTemplate', { id }, 'POST'),
   login: (username, passwordHash) => {
     const payload = typeof username === 'object' ? username : { username, passwordHash };
     return sendRequest('login', payload, 'POST');

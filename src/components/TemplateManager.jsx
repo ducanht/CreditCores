@@ -200,9 +200,34 @@ export default function TemplateManager() {
     NgayKTNext: '19/11/2026'
   });
 
-  const saveToStorage = (updated) => {
+  useEffect(() => {
+    const loadBackendTemplates = async () => {
+      try {
+        const res = await api.getTemplates();
+        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+          setTemplates(res.data);
+          localStorage.setItem('creditcore_templates', JSON.stringify(res.data));
+        }
+      } catch (e) {
+        console.warn('Dùng offline templates cache:', e);
+      }
+    };
+    loadBackendTemplates();
+  }, []);
+
+  const saveToStorage = async (updated, itemToSave = null, deleteId = null) => {
     setTemplates(updated);
     localStorage.setItem('creditcore_templates', JSON.stringify(updated));
+
+    try {
+      if (itemToSave) {
+        await api.saveTemplate(itemToSave);
+      } else if (deleteId) {
+        await api.deleteTemplate(deleteId);
+      }
+    } catch (e) {
+      console.warn('Lỗi đồng bộ template lên backend:', e);
+    }
   };
 
   const handleOpenAdd = () => {
@@ -228,7 +253,7 @@ export default function TemplateManager() {
     setShowEditModal(true);
   };
 
-  const handleSaveTemplate = (e) => {
+  const handleSaveTemplate = async (e) => {
     e.preventDefault();
     if (!formData.tenBM || !formData.maBM) {
       alert('Vui lòng nhập Mã biểu mẫu và Tên biểu mẫu.');
@@ -257,15 +282,15 @@ export default function TemplateManager() {
       updated = [itemToSave, ...templates];
     }
 
-    saveToStorage(updated);
+    await saveToStorage(updated, itemToSave);
     setShowEditModal(false);
     alert('Đã lưu cấu hình biểu mẫu thành công!');
   };
 
-  const handleDeleteTemplate = (id) => {
+  const handleDeleteTemplate = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa biểu mẫu này khỏi danh mục?')) {
       const updated = templates.filter((t) => t.id !== id);
-      saveToStorage(updated);
+      await saveToStorage(updated, null, id);
     }
   };
 
