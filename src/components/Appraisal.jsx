@@ -424,6 +424,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
       <AppraisalDetailModal
         appraisal={selectedAppraisalForDetail}
         onClose={() => setSelectedAppraisalForDetail(null)}
+        currentUser={currentUser}
         onOpenAddOpinion={(item) => {
           setSelectedAppraisalForDetail(null);
           setSelectedAppraisalForOpinion(item);

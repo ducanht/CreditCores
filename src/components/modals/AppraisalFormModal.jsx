@@ -21,11 +21,12 @@ import {
   Upload,
   Calendar,
   Sparkles,
-  HelpCircle
+  Search,
+  Lock
 } from 'lucide-react';
 import ThousandInput from '../ThousandInput';
 import { isValidCCCD } from '../../utils/validators';
-import { formatCurrencyVN } from '../../utils/dateUtils';
+import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
 export default function AppraisalFormModal({
   show,
@@ -36,19 +37,23 @@ export default function AppraisalFormModal({
   currentUser = null
 }) {
   const [activeTab, setActiveTab] = useState(1);
+  const [customerSearch, setCustomerSearch] = useState('');
 
   const [formData, setFormData] = useState({
-    // 1. Pháp lý & Nhu cầu vốn
+    // 1. Pháp lý & Nhu cầu vốn (Ràng buộc chặt với KH_CORE)
     maBCTD: '',
     maKH: '',
     hoTen: '',
     soCCCD: '',
-    ngaySinh: '15/08/1985',
+    ngayCap: '',
+    noiCap: '',
+    ngaySinh: '',
     gioiTinh: 'Nam',
-    dienThoai: '0912345678',
-    diaChi: 'Xã Yên Thọ, Huyện Ý Yên, Tỉnh Nam Định',
+    dienThoai: '',
+    diaChi: '',
+    soTV: '',
     tinhTrangHonNhan: 'Đã kết hôn',
-    nguoiDongVay: 'Nguyễn Thị Hoa (Vợ - CCCD: 038186001234)',
+    nguoiDongVay: '',
     hinhAnhKH: '',
     nganhNghe: 'Kinh doanh tự do & Nông nghiệp',
     trinhDo: 'Đại học / Cao đẳng',
@@ -76,8 +81,8 @@ export default function AppraisalFormModal({
     thuaDatSo: '112',
     toBanDoSo: '08',
     dienTich: 250,
-    diaChiTSBD: 'Thôn Yên Lãng, Xã Yên Thọ, Huyện Ý Yên, Nam Định',
-    chuSoHuuTSBD: 'Chính chủ (Nguyễn Văn An và vợ Nguyễn Thị Hoa)',
+    diaChiTSBD: '',
+    chuSoHuuTSBD: '',
     quanHeVoiNguoiVay: 'Chính chủ',
     nguonGocTSBD: 'Nhận chuyển nhượng quyền sử dụng đất',
     giaTriThiTruong: 700000000,
@@ -100,7 +105,7 @@ export default function AppraisalFormModal({
     soTCTDQuanHe: 1,
     duNoCICNgoai: 0,
     lichSuTraNo: 'Lịch sử trả nợ tốt, không có nợ quá hạn hay nợ xấu',
-    ghiChuCIC: 'Tra cứu CIC ngày ' + new Date().toLocaleDateString('vi-VN') + ': Khách hàng có quan hệ tại 1 Ngân hàng, trả nợ đầy đủ.',
+    ghiChuCIC: 'Tra cứu CIC: Khách hàng có quan hệ tại 1 Ngân hàng, trả nợ đầy đủ.',
     diaDiemThamDinh: 'Tại nhà riêng và cơ sở sản xuất kinh doanh của khách hàng',
     hienTrangSXKD: 'Cơ sở hoạt động ổn định, máy móc vận hành bình thường, đơn hàng đều đặn',
     tuCachKhachHang: 'Đạo đức tốt, lối sống gương mẫu, uy tín cao tại địa phương',
@@ -140,23 +145,43 @@ export default function AppraisalFormModal({
 
   if (!show) return null;
 
+  // Lựa chọn khách hàng từ CoreBanking
   const handleSelectCustomer = (maKH, customObj = null) => {
     const cust = customObj || allCustomers.find((c) => c.maKH === maKH);
     if (cust) {
       setFormData((prev) => ({
         ...prev,
         maKH: cust.maKH,
-        hoTen: cust.hoTen || prev.hoTen,
-        soCCCD: cust.cccd || cust.gttt || prev.soCCCD,
-        dienThoai: cust.dienThoaiDD || cust.dienThoai || prev.dienThoai,
-        diaChi: cust.diaChi || prev.diaChi,
+        hoTen: cust.hoTen || '',
+        soCCCD: cust.cccd || cust.gttt || '',
+        ngayCap: cust.ngayCap || '',
+        noiCap: cust.noiCap || '',
+        ngaySinh: cust.ngaySinh || prev.ngaySinh || '15/08/1985',
+        gioiTinh: cust.gioiTinh || prev.gioiTinh || 'Nam',
+        dienThoai: cust.dienThoaiDD || cust.dienThoai || '',
+        diaChi: cust.diaChi || '',
+        diaChiTSBD: cust.diaChi || prev.diaChiTSBD,
         chuSoHuuTSBD: cust.hoTen || prev.chuSoHuuTSBD,
+        soTV: cust.soTV || cust.maThanhVien || '',
         canBoThamDinh: currentUser?.fullName || prev.canBoThamDinh,
         canBoLapUsername: currentUser?.username || prev.canBoLapUsername
       }));
       setFormError('');
     }
   };
+
+  // Danh sách khách hàng lọc theo ô tìm kiếm
+  const filteredCustomers = allCustomers.filter((c) => {
+    if (!customerSearch) return true;
+    const q = customerSearch.toLowerCase();
+    return (
+      (c.maKH && c.maKH.toLowerCase().includes(q)) ||
+      (c.hoTen && c.hoTen.toLowerCase().includes(q)) ||
+      (c.cccd && c.cccd.includes(q)) ||
+      (c.dienThoaiDD && c.dienThoaiDD.includes(q)) ||
+      (c.diaChi && c.diaChi.toLowerCase().includes(q))
+    );
+  });
 
   // Tính toán Tài chính & Thu nhập ròng
   const thuNhapVay = Number(formData.thuNhapNguoiVay) || 0;
@@ -183,36 +208,26 @@ export default function AppraisalFormModal({
   const thoiHan = Number(formData.thoiHanThang) || 12;
   const laiSuat = Number(formData.laiSuatDuyet) || 0;
 
-  // Gốc tháng bình quân
   const gocThang = thoiHan > 0 ? duyetVay / thoiHan : 0;
-  // Lãi tháng đầu cao nhất
   const laiThangDau = (duyetVay * (laiSuat / 100)) / 12;
   
-  // Tính nghĩa vụ nợ theo phương thức trả gốc
   let nghiaVuKyCaoNhat = gocThang + laiThangDau;
-  let moTaPhuongThuc = 'Gốc đều hàng tháng';
   if (formData.phuongThucTraGoc === 'HANG_QUY') {
     const gocQuy = thoiHan >= 3 ? duyetVay / (thoiHan / 3) : duyetVay;
     nghiaVuKyCaoNhat = gocQuy + (laiThangDau * 3);
-    moTaPhuongThuc = 'Gốc đều hàng quý (3 tháng/lần), lãi hàng tháng';
   } else if (formData.phuongThucTraGoc === 'HANG_NAM') {
     const gocNam = thoiHan >= 12 ? duyetVay / (thoiHan / 12) : duyetVay;
     nghiaVuKyCaoNhat = gocNam + (laiThangDau * 12);
-    moTaPhuongThuc = 'Gốc đều hàng năm (12 tháng/lần), lãi hàng tháng';
   } else if (formData.phuongThucTraGoc === 'BAN_NIEN') {
     const goc6Th = thoiHan >= 6 ? duyetVay / (thoiHan / 6) : duyetVay;
     nghiaVuKyCaoNhat = goc6Th + (laiThangDau * 6);
-    moTaPhuongThuc = 'Gốc đều 6 tháng/lần, lãi hàng tháng';
   } else if (formData.phuongThucTraGoc === 'CUOI_KY') {
     nghiaVuKyCaoNhat = duyetVay + laiThangDau;
-    moTaPhuongThuc = 'Gốc trả cuối kỳ khi đáo hạn, lãi hàng tháng';
   }
 
-  // Nghĩa vụ quy đổi bình quân tháng
   const emiThangQuyDoi = gocThang + laiThangDau;
   const tyLeLTV = tongGiaTriTSBD > 0 ? ((duyetVay / tongGiaTriTSBD) * 100).toFixed(1) : '0.0';
   const tyLeDTI = tongThuNhap > 0 ? ((emiThangQuyDoi / tongThuNhap) * 100).toFixed(1) : '0.0';
-  const tyLeDTI_Rong = thuNhapRong > 0 ? ((emiThangQuyDoi / thuNhapRong) * 100).toFixed(1) : '0.0';
   const heSoDSCR = emiThangQuyDoi > 0 ? (thuNhapRong / emiThangQuyDoi).toFixed(2) : '0.00';
 
   // Sinh gợi ý Phương án tối ưu tự động
@@ -250,7 +265,6 @@ export default function AppraisalFormModal({
     return reasons.join(' ');
   };
 
-  // Thao tác bảng chi tiết đất
   const handleAddLandRow = () => {
     const newRow = {
       id: Date.now().toString(),
@@ -286,15 +300,24 @@ export default function AppraisalFormModal({
     });
   };
 
+  const handleTabChange = (targetTab) => {
+    if (targetTab > 1 && !formData.maKH) {
+      setFormError('BẮT BUỘC: Vui lòng chọn Khách hàng từ CSDL KH_CORE trước khi chuyển sang các bước tiếp theo!');
+      return;
+    }
+    setFormError('');
+    setActiveTab(targetTab);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.hoTen || !formData.soCCCD) {
-      setFormError('Vui lòng điền Họ tên và Số CCCD khách hàng');
+    if (!formData.maKH) {
+      setFormError('BẮT BUỘC: Bạn phải chọn Khách hàng từ CSDL KH_CORE trước khi lưu Báo cáo thẩm định!');
       setActiveTab(1);
       return;
     }
-    if (!isValidCCCD(formData.soCCCD)) {
-      setFormError('Số CCCD không hợp lệ (yêu cầu chuẩn 12 chữ số)');
+    if (!formData.hoTen || !formData.soCCCD) {
+      setFormError('Thông tin khách hàng từ KH_CORE không hợp lệ (thiếu Họ tên hoặc CCCD)');
       setActiveTab(1);
       return;
     }
@@ -332,7 +355,7 @@ export default function AppraisalFormModal({
                   {formData.maBCTD || 'MỚI'}
                 </span>
                 <span className="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill small fw-semibold">
-                  Chuẩn Nghiệp Vụ QTDND 5 Nhóm
+                  Đồng Bộ Dữ Liệu Pháp Lý Từ KH_CORE
                 </span>
                 <span className="badge bg-light text-muted border small">
                   Người lập: <strong>{currentUser?.fullName || formData.canBoThamDinh}</strong>
@@ -353,11 +376,11 @@ export default function AppraisalFormModal({
                   className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
                     activeTab === 1 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
-                  onClick={() => setActiveTab(1)}
+                  onClick={() => handleTabChange(1)}
                   type="button"
                 >
                   <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">1</span>
-                  Pháp Lý & Thu Nhập
+                  Pháp Lý (Từ Core) & Thu Nhập
                 </button>
               </li>
 
@@ -366,7 +389,7 @@ export default function AppraisalFormModal({
                   className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
                     activeTab === 2 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
-                  onClick={() => setActiveTab(2)}
+                  onClick={() => handleTabChange(2)}
                   type="button"
                 >
                   <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">2</span>
@@ -379,7 +402,7 @@ export default function AppraisalFormModal({
                   className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
                     activeTab === 3 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
-                  onClick={() => setActiveTab(3)}
+                  onClick={() => handleTabChange(3)}
                   type="button"
                 >
                   <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">3</span>
@@ -392,7 +415,7 @@ export default function AppraisalFormModal({
                   className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
                     activeTab === 4 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
-                  onClick={() => setActiveTab(4)}
+                  onClick={() => handleTabChange(4)}
                   type="button"
                 >
                   <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">4</span>
@@ -405,11 +428,11 @@ export default function AppraisalFormModal({
                   className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
                     activeTab === 5 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
-                  onClick={() => setActiveTab(5)}
+                  onClick={() => handleTabChange(5)}
                   type="button"
                 >
                   <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">5</span>
-                  Kết Luận & Ký Duyệt
+                  Kết Luận & Trình Duyệt
                 </button>
               </li>
             </ul>
@@ -418,44 +441,72 @@ export default function AppraisalFormModal({
           {formError && (
             <div className="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
               <AlertCircle size={18} />
-              <span className="small">{formError}</span>
+              <span className="small fw-semibold">{formError}</span>
             </div>
           )}
 
           {/* Form Body */}
           <form onSubmit={handleSubmit} className="modal-body py-2">
             {/* ========================================================================= */}
-            {/* TAB 1: THÔNG TIN PHÁP LÝ, NHU CẦU & CHI TIẾT THU NHẬP ĐỒNG VAY           */}
+            {/* TAB 1: THÔNG TIN PHÁP LÝ TỰ ĐỘNG TỪ KH_CORE & THU NHẬP CHI TIẾT           */}
             {/* ========================================================================= */}
             {activeTab === 1 && (
               <div className="d-flex flex-column gap-3">
-                {/* Chọn nhanh Khách hàng từ CSDL */}
-                <div className="p-3 bg-light rounded-3 border">
+                {/* Khối Bắt Buộc Chọn Khách Hàng Từ KH_CORE */}
+                <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle shadow-2xs">
+                  <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <label className="form-label small fw-extrabold text-primary m-0 d-flex align-items-center gap-1.5">
+                      <Search size={16} /> BẮT BUỘC CHỌN THÀNH VIÊN TỪ CƠ SỞ DỮ LIỆU KH_CORE (*)
+                    </label>
+                    <span className="badge bg-white text-primary border border-primary-subtle small fw-bold">
+                      {formData.maKH ? `Đã liên kết: ${formData.maKH} - ${formData.hoTen}` : 'Chưa chọn khách hàng'}
+                    </span>
+                  </div>
+
                   <div className="row g-2 align-items-center">
-                    <div className="col-md-7">
-                      <label className="form-label small fw-bold text-dark m-0">
-                        <User size={14} className="me-1 inline text-primary" /> Chọn nhanh thành viên từ CoreBanking / Khách Hàng 360°:
-                      </label>
-                    </div>
                     <div className="col-md-5">
+                      <div className="input-group input-group-sm">
+                        <span className="input-group-text bg-white"><Search size={14} /></span>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Gõ tìm theo Tên, CCCD, Mã KH, SĐT..."
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-md-7">
                       <select
-                        className="form-select form-select-sm fw-semibold"
+                        className="form-select form-select-sm fw-bold border-primary"
                         value={formData.maKH}
                         onChange={(e) => handleSelectCustomer(e.target.value)}
+                        required
                       >
-                        <option value="">-- Chọn khách hàng đã có --</option>
-                        {allCustomers.map((c) => (
+                        <option value="">-- Bấm để chọn Khách Hàng từ KH_CORE ({filteredCustomers.length} KH) --</option>
+                        {filteredCustomers.map((c) => (
                           <option key={c.maKH} value={c.maKH}>
-                            {c.hoTen} ({c.maKH} - CCCD: {c.cccd})
+                            {c.hoTen} • Mã: {c.maKH} • CCCD: {c.cccd || c.gttt} • SĐT: {c.dienThoaiDD || c.dienThoai || '---'}
                           </option>
                         ))}
                       </select>
                     </div>
                   </div>
+
+                  {!formData.maKH && (
+                    <div className="mt-2 pt-2 border-top border-primary-subtle d-flex align-items-center gap-2 text-primary small">
+                      <Info size={16} />
+                      <span>
+                        <strong>Quy tắc nghiệp vụ:</strong> Cán bộ tín dụng không nhập tay tên và thông tin pháp lý. Nếu khách hàng chưa có trong danh sách, vui lòng thêm khách hàng vào danh mục <strong>Khách Hàng Core (KH_CORE)</strong> trước khi lập Báo cáo thẩm định.
+                      </span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Thông tin nhân thân (Read-only từ KH_CORE) */}
                 <div className="row g-3">
-                  {/* Cột Trái: Ảnh KH & Thông tin nhân thân */}
+                  {/* Cột Trái: Ảnh KH & Trạng thái Core */}
                   <div className="col-md-4">
                     <div className="p-3 bg-white rounded-3 border h-100 text-center d-flex flex-column align-items-center justify-content-center">
                       <div className="mb-2 position-relative">
@@ -484,54 +535,57 @@ export default function AppraisalFormModal({
                         onChange={(e) => setFormData({ ...formData, hinhAnhKH: e.target.value })}
                       />
                       <span className="text-muted mt-1" style={{ fontSize: '0.68rem' }}>
-                        Khổ ảnh chuẩn 3x4 hoặc 4x6
+                        Ảnh chụp nhận diện thực tế tại cơ sở
                       </span>
                     </div>
                   </div>
 
-                  {/* Cột Phải: Thông tin nhân thân chi tiết */}
+                  {/* Cột Phải: Các trường dữ liệu pháp lý (Khóa cố định) */}
                   <div className="col-md-8">
                     <div className="row g-2">
                       <div className="col-md-6">
-                        <label className="form-label small fw-bold text-slate-700">Họ và Tên Khách Hàng <span className="text-danger">*</span></label>
+                        <label className="form-label small fw-bold text-slate-700 d-flex justify-content-between">
+                          <span>Họ và Tên Khách Hàng:</span>
+                          <span className="badge bg-secondary-subtle text-secondary small"><Lock size={10} className="inline me-0.5" /> Từ KH_CORE</span>
+                        </label>
                         <input
                           type="text"
-                          className="form-control fw-semibold"
+                          className="form-control fw-bold bg-light"
                           value={formData.hoTen}
-                          onChange={(e) => setFormData({ ...formData, hoTen: e.target.value.toUpperCase() })}
-                          placeholder="NGUYỄN VĂN AN"
-                          required
+                          readOnly
+                          placeholder="-- Chọn khách hàng từ KH_CORE --"
                         />
                       </div>
 
                       <div className="col-md-6">
-                        <label className="form-label small fw-bold text-slate-700">Số CCCD (12 chữ số) <span className="text-danger">*</span></label>
+                        <label className="form-label small fw-bold text-slate-700 d-flex justify-content-between">
+                          <span>Số CCCD / GTTT:</span>
+                          <span className="badge bg-secondary-subtle text-secondary small"><Lock size={10} className="inline me-0.5" /> Từ KH_CORE</span>
+                        </label>
                         <input
                           type="text"
-                          className="form-control font-monospace fw-bold"
+                          className="form-control font-monospace fw-bold bg-light"
                           value={formData.soCCCD}
-                          onChange={(e) => setFormData({ ...formData, soCCCD: e.target.value.replace(/\D/g, '') })}
-                          placeholder="038085001234"
-                          maxLength={12}
-                          required
+                          readOnly
+                          placeholder="-- CCCD 12 số --"
                         />
                       </div>
 
                       <div className="col-md-4">
-                        <label className="form-label small fw-bold text-slate-700">Ngày Sinh</label>
+                        <label className="form-label small fw-bold text-slate-700">Ngày Sinh (Core)</label>
                         <input
                           type="text"
-                          className="form-control"
+                          className="form-control bg-light"
                           value={formData.ngaySinh}
-                          onChange={(e) => setFormData({ ...formData, ngaySinh: e.target.value })}
-                          placeholder="15/08/1985"
+                          readOnly
+                          placeholder="dd/MM/yyyy"
                         />
                       </div>
 
                       <div className="col-md-4">
                         <label className="form-label small fw-bold text-slate-700">Giới Tính</label>
                         <select
-                          className="form-select"
+                          className="form-select bg-light"
                           value={formData.gioiTinh}
                           onChange={(e) => setFormData({ ...formData, gioiTinh: e.target.value })}
                         >
@@ -541,18 +595,18 @@ export default function AppraisalFormModal({
                       </div>
 
                       <div className="col-md-4">
-                        <label className="form-label small fw-bold text-slate-700">Số Điện Thoại</label>
+                        <label className="form-label small fw-bold text-slate-700">Số Điện Thoại (Core)</label>
                         <input
                           type="text"
-                          className="form-control"
+                          className="form-control bg-light"
                           value={formData.dienThoai}
-                          onChange={(e) => setFormData({ ...formData, dienThoai: e.target.value })}
-                          placeholder="0912345678"
+                          readOnly
+                          placeholder="Số điện thoại..."
                         />
                       </div>
 
                       <div className="col-md-6">
-                        <label className="form-label small fw-bold text-slate-700">Ngành Nghề / Lĩnh Vực Kinh Doanh</label>
+                        <label className="form-label small fw-bold text-slate-700">Ngành Nghề / Lĩnh Vực Hoạt Động</label>
                         <input
                           type="text"
                           className="form-control"
@@ -578,13 +632,16 @@ export default function AppraisalFormModal({
                       </div>
 
                       <div className="col-12">
-                        <label className="form-label small fw-bold text-slate-700">Địa Chỉ Thường Trú / Nơi Ở Hiện Tại</label>
+                        <label className="form-label small fw-bold text-slate-700 d-flex justify-content-between">
+                          <span>Địa Chỉ Thường Trú (Core):</span>
+                          <span className="badge bg-secondary-subtle text-secondary small"><Lock size={10} className="inline me-0.5" /> Từ KH_CORE</span>
+                        </label>
                         <input
                           type="text"
-                          className="form-control"
+                          className="form-control bg-light"
                           value={formData.diaChi}
-                          onChange={(e) => setFormData({ ...formData, diaChi: e.target.value })}
-                          placeholder="Thôn 3, Xã Yên Thọ, Huyện Ý Yên, Tỉnh Nam Định"
+                          readOnly
+                          placeholder="Địa chỉ thường trú..."
                         />
                       </div>
                     </div>
@@ -635,7 +692,6 @@ export default function AppraisalFormModal({
                   </div>
 
                   <div className="row g-3">
-                    {/* Người Vay Chính */}
                     <div className="col-md-6">
                       <div className="p-2.5 bg-white rounded-3 border">
                         <span className="small fw-bold text-primary d-block mb-1">1. Thu nhập Người Vay Chính (VNĐ/tháng)</span>
@@ -656,7 +712,6 @@ export default function AppraisalFormModal({
                       </div>
                     </div>
 
-                    {/* Người Đồng Vay / Vợ Chồng */}
                     <div className="col-md-6">
                       <div className="p-2.5 bg-white rounded-3 border">
                         <span className="small fw-bold text-info d-block mb-1">2. Thu nhập Người Đồng Vay / Vợ Chồng (VNĐ/tháng)</span>
@@ -677,7 +732,6 @@ export default function AppraisalFormModal({
                       </div>
                     </div>
 
-                    {/* Chi Phí & Chứng Minh */}
                     <div className="col-md-4">
                       <label className="form-label small fw-bold text-slate-700">Chi Phí Sinh Hoạt Gia Đình</label>
                       <ThousandInput
@@ -709,7 +763,7 @@ export default function AppraisalFormModal({
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-bold text-slate-700">Tài Liệu Chứng Minh Nguồn Thu Nhập (Hóa đơn, hợp đồng, sao kê...)</label>
+                      <label className="form-label small fw-bold text-slate-700">Tài Liệu Chứng Minh Nguồn Thu Nhập</label>
                       <input
                         type="text"
                         className="form-control"
@@ -822,7 +876,6 @@ export default function AppraisalFormModal({
 
                 {formData.coTSBD === 'Có' && (
                   <>
-                    {/* Bảng kê chi tiết các loại diện tích đất & đơn giá */}
                     <div className="p-3 bg-light rounded-3 border">
                       <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <div>
@@ -918,7 +971,6 @@ export default function AppraisalFormModal({
                         </table>
                       </div>
 
-                      {/* Công trình xây dựng trên đất & Giá trị thị trường */}
                       <div className="row g-2 mt-2 pt-2 border-top">
                         <div className="col-md-4">
                           <label className="form-label small fw-bold text-slate-700">Giá Trị Công Trình / Nhà Ở Trên Đất (VNĐ)</label>
@@ -949,7 +1001,6 @@ export default function AppraisalFormModal({
                       </div>
                     </div>
 
-                    {/* Thông tin Giấy chứng nhận và Pháp lý */}
                     <div className="row g-2">
                       <div className="col-md-3">
                         <label className="form-label small fw-bold text-slate-700">Số Giấy Chứng Nhận (GCN / Sổ đỏ)</label>
@@ -991,7 +1042,7 @@ export default function AppraisalFormModal({
                           className="form-control"
                           value={formData.chuSoHuuTSBD}
                           onChange={(e) => setFormData({ ...formData, chuSoHuuTSBD: e.target.value })}
-                          placeholder="Nguyễn Văn An và vợ Nguyễn Thị Hoa"
+                          placeholder="Nguyễn Văn An"
                         />
                       </div>
 
@@ -1049,7 +1100,6 @@ export default function AppraisalFormModal({
             {/* ========================================================================= */}
             {activeTab === 3 && (
               <div className="d-flex flex-column gap-3">
-                {/* Tóm tắt tài chính lấy từ Tab 1 */}
                 <div className="p-3 bg-light rounded-3 border">
                   <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
                     <Calculator size={16} className="text-primary" /> Năng Lực Tài Chính & Dòng Tiền Thặng Dư (Kế Thừa Từ Kê Khai)
@@ -1076,7 +1126,6 @@ export default function AppraisalFormModal({
                   </div>
                 </div>
 
-                {/* Khối Tra Cứu CIC */}
                 <div className="p-3 bg-light rounded-3 border">
                   <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
                     <ShieldCheck size={16} className="text-primary" /> Lịch Sử Quan Hệ Tín Dụng & Tra Cứu CIC
@@ -1136,13 +1185,12 @@ export default function AppraisalFormModal({
                         className="form-control"
                         value={formData.ghiChuCIC}
                         onChange={(e) => setFormData({ ...formData, ghiChuCIC: e.target.value })}
-                        placeholder="Tra cứu CIC ngày dd/mm/yyyy: Lịch sử tín dụng tốt..."
+                        placeholder="Tra cứu CIC: Lịch sử tín dụng tốt..."
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Đánh Giá Thực Địa & Tư Cách */}
                 <div className="row g-2">
                   <div className="col-md-6">
                     <label className="form-label small fw-bold text-slate-700">Địa Điểm Thẩm Định Thực Tế</label>
@@ -1185,7 +1233,6 @@ export default function AppraisalFormModal({
             {/* ========================================================================= */}
             {activeTab === 4 && (
               <div className="d-flex flex-column gap-3">
-                {/* Thông số khoản vay duyệt */}
                 <div className="p-3 bg-light rounded-3 border">
                   <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
                     <TrendingUp size={16} className="text-primary" /> Đề Xuất Cấp Tín Dụng Của Cán Bộ Thẩm Định
@@ -1254,7 +1301,6 @@ export default function AppraisalFormModal({
                   </div>
                 </div>
 
-                {/* Thẻ Chỉ Số Tài Chính & Tỷ Lệ An Toàn */}
                 <div className="row g-2 text-center">
                   <div className="col-6 col-md-3">
                     <div className="p-2.5 bg-light rounded-3 border">
@@ -1305,7 +1351,6 @@ export default function AppraisalFormModal({
                   </div>
                 </div>
 
-                {/* Khối Phân Tích & Gợi Ý Phương Án Tối Ưu */}
                 <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <h6 className="fw-bold text-primary m-0 d-flex align-items-center gap-1.5">
@@ -1366,7 +1411,7 @@ export default function AppraisalFormModal({
               <div className="d-flex flex-column gap-3">
                 <div className="p-3 bg-light rounded-3 border">
                   <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
-                    <CheckCircle2 size={16} className="text-success" /> Kết Luận Của Cán Bộ Thẩm Định
+                    <CheckCircle2 size={16} className="text-success" /> Đề Xuất Kết Luận Của Cán Bộ Thẩm Định
                   </h6>
                   <div className="row g-2">
                     <div className="col-md-6">
@@ -1376,9 +1421,9 @@ export default function AppraisalFormModal({
                         value={formData.ketLuan}
                         onChange={(e) => setFormData({ ...formData, ketLuan: e.target.value })}
                       >
-                        <option value="Đồng ý cấp tín dụng">1. Đồng ý cấp tín dụng</option>
-                        <option value="Có điều kiện bổ sung">2. Đồng ý nhưng có điều kiện bổ sung</option>
-                        <option value="Từ chối cấp tín dụng">3. Từ chối cấp tín dụng</option>
+                        <option value="Đồng ý cấp tín dụng">1. Đề xuất: Đồng ý cấp tín dụng</option>
+                        <option value="Có điều kiện bổ sung">2. Đề xuất: Đồng ý nhưng có điều kiện bổ sung</option>
+                        <option value="Từ chối cấp tín dụng">3. Đề xuất: Không đủ điều kiện / Từ chối</option>
                       </select>
                     </div>
 
@@ -1418,35 +1463,38 @@ export default function AppraisalFormModal({
                   </div>
                 </div>
 
-                {/* Khung ký duyệt đa cấp mô phỏng */}
+                {/* Sơ đồ quy trình phê duyệt đa cấp */}
                 <div className="p-3 bg-white rounded-3 border">
                   <span className="small fw-bold text-muted text-uppercase d-block mb-2 text-center" style={{ letterSpacing: '0.5px' }}>
-                    Quy Trình Ký Duyệt Báo Cáo Thẩm Định 4 Cấp (QTDND)
+                    Quy Trình Phê Duyệt Tín Dụng Đa Cấp 4 Bước (QTDND Yên Thọ)
                   </span>
                   <div className="row g-2 text-center">
                     <div className="col-3">
-                      <div className="p-2 border rounded bg-light">
-                        <span className="small fw-bold text-primary d-block">1. CBTD Lập</span>
-                        <div className="fw-semibold small mt-1">{currentUser?.fullName || formData.canBoThamDinh}</div>
-                        <span className="badge bg-success-subtle text-success small mt-1">Đã ký lập</span>
+                      <div className="p-2 border rounded bg-success-subtle border-success-subtle">
+                        <span className="small fw-bold text-success d-block">1. CBTD Lập Hồ Sơ</span>
+                        <div className="fw-semibold small mt-1 text-slate-900">{currentUser?.fullName || formData.canBoThamDinh}</div>
+                        <span className="badge bg-success text-white small mt-1">Đang hoàn tất</span>
                       </div>
                     </div>
                     <div className="col-3">
                       <div className="p-2 border rounded bg-light">
                         <span className="small fw-bold text-secondary d-block">2. Trưởng Phòng TD</span>
-                        <div className="text-muted small mt-1">Chờ duyệt</div>
+                        <div className="text-muted small mt-1">Chờ thẩm tra</div>
+                        <span className="badge bg-secondary-subtle text-secondary small mt-1">Chờ xử lý</span>
                       </div>
                     </div>
                     <div className="col-3">
                       <div className="p-2 border rounded bg-light">
                         <span className="small fw-bold text-secondary d-block">3. Ban Kiểm Soát</span>
-                        <div className="text-muted small mt-1">Chờ thẩm tra</div>
+                        <div className="text-muted small mt-1">Chờ giám sát rủi ro</div>
+                        <span className="badge bg-secondary-subtle text-secondary small mt-1">Chờ xử lý</span>
                       </div>
                     </div>
                     <div className="col-3">
                       <div className="p-2 border rounded bg-light">
-                        <span className="small fw-bold text-secondary d-block">4. Giám Đốc / HĐTD</span>
+                        <span className="small fw-bold text-secondary d-block">4. HĐQT / Ban Giám Đốc</span>
                         <div className="text-muted small mt-1">Chờ phê duyệt</div>
+                        <span className="badge bg-secondary-subtle text-secondary small mt-1">Quyết định cuối</span>
                       </div>
                     </div>
                   </div>
@@ -1461,7 +1509,7 @@ export default function AppraisalFormModal({
                   <button
                     type="button"
                     className="btn btn-outline-secondary btn-sm"
-                    onClick={() => setActiveTab((p) => p - 1)}
+                    onClick={() => handleTabChange(activeTab - 1)}
                   >
                     ← Quay Lại
                   </button>
@@ -1477,7 +1525,7 @@ export default function AppraisalFormModal({
                   <button
                     type="button"
                     className="btn btn-brand btn-sm fw-semibold"
-                    onClick={() => setActiveTab((p) => p + 1)}
+                    onClick={() => handleTabChange(activeTab + 1)}
                   >
                     Tiếp Theo →
                   </button>

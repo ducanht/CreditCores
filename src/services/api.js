@@ -362,10 +362,26 @@ function handleMockFallback(action, data) {
       const target = mockDb.appraisals.find(a => a.maBCTD === maBCTD);
       if (target) {
         if (!target.danhSachYKien) target.danhSachYKien = [];
-        target.danhSachYKien.push({
-          ...(data.opinion || data),
-          ngayDanhGia: formatDateTimeVN(new Date())
-        });
+        const op = data.opinion || data;
+        const newOp = {
+          ...op,
+          ngayDanhGia: op.ngayDanhGia || formatDateTimeVN(new Date())
+        };
+        target.danhSachYKien.push(newOp);
+
+        if (op.chucVu && (op.chucVu.includes('HĐQT') || op.chucVu.includes('Giám Đốc') || op.chucVu.includes('Lãnh Đạo'))) {
+          if (op.yKien === 'Không đồng ý' || op.yKien === 'Từ chối') {
+            target.ketLuan = 'Từ chối cấp tín dụng';
+          } else if (op.yKien === 'Yêu cầu bổ sung' || op.yKien === 'Đồng ý có điều kiện') {
+            target.ketLuan = 'Có điều kiện bổ sung';
+          } else {
+            target.ketLuan = 'Đồng ý cấp tín dụng';
+          }
+        }
+        if (op.dieuKienBoSung) {
+          target.dieuKienGiaiNgan = (target.dieuKienGiaiNgan ? target.dieuKienGiaiNgan + ' | ' : '') + 'Chỉ đạo HĐQT: ' + op.dieuKienBoSung;
+        }
+
         return { status: 'success', message: 'Đã ghi nhận ý kiến phê duyệt thành công!' };
       }
       return { status: 'error', message: 'Không tìm thấy báo cáo thẩm định ' + maBCTD };

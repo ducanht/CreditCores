@@ -458,13 +458,37 @@ var AppraisalController = {
     var newOpinion = {
       nguoiDanhGia: opinionPayload.nguoiDanhGia || opinionPayload.evaluatorName || "Cán bộ",
       chucVu: opinionPayload.chucVu || opinionPayload.role || "Cán Bộ Tín Dụng",
+      capDuyet: opinionPayload.capDuyet || (opinionPayload.chucVu && opinionPayload.chucVu.includes("HĐQT") ? "HDQT" : opinionPayload.chucVu && opinionPayload.chucVu.includes("Kiểm Soát") ? "BKS" : "CBTD"),
       yKien: opinionPayload.yKien || opinionPayload.decision || "Đồng ý",
       noiDung: opinionPayload.noiDung || opinionPayload.note || "",
+      hanMucDuyet: opinionPayload.hanMucDuyet ? Number(opinionPayload.hanMucDuyet) : null,
+      laiSuatDuyet: opinionPayload.laiSuatDuyet ? Number(opinionPayload.laiSuatDuyet) : null,
+      dieuKienBoSung: opinionPayload.dieuKienBoSung || "",
       ngayDanhGia: opinionPayload.ngayDanhGia || Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss")
     };
 
     currentOpinions.push(newOpinion);
     sheet.getRange(foundRow, opinionColIdx + 1).setValue(JSON.stringify(currentOpinions));
+
+    // Nếu người duyệt là HĐQT / Ban Giám Đốc hoặc có cờ cập nhật kết luận
+    if (opinionPayload.updateKetLuan || (newOpinion.chucVu && (newOpinion.chucVu.includes("HĐQT") || newOpinion.chucVu.includes("Giám Đốc") || newOpinion.chucVu.includes("Lãnh Đạo")))) {
+      if (colMap["KetLuan"] !== undefined) {
+        var ketLuanMoi = "Đồng ý cấp tín dụng";
+        if (newOpinion.yKien === "Không đồng ý" || newOpinion.yKien === "Từ chối") {
+          ketLuanMoi = "Từ chối cấp tín dụng";
+        } else if (newOpinion.yKien === "Yêu cầu bổ sung" || newOpinion.yKien === "Yêu cầu thẩm định lại") {
+          ketLuanMoi = "Có điều kiện bổ sung";
+        } else if (newOpinion.yKien === "Đồng ý có điều kiện") {
+          ketLuanMoi = "Có điều kiện bổ sung";
+        }
+        sheet.getRange(foundRow, colMap["KetLuan"] + 1).setValue(ketLuanMoi);
+      }
+      if (newOpinion.dieuKienBoSung && colMap["DieuKienGiaiNgan"] !== undefined) {
+        var currentDieuKien = String(values[foundRow - 1][colMap["DieuKienGiaiNgan"]] || "");
+        var updatedDieuKien = currentDieuKien ? (currentDieuKien + " | Chỉ đạo HĐQT: " + newOpinion.dieuKienBoSung) : ("Chỉ đạo HĐQT: " + newOpinion.dieuKienBoSung);
+        sheet.getRange(foundRow, colMap["DieuKienGiaiNgan"] + 1).setValue(updatedDieuKien);
+      }
+    }
 
     CacheHelper.invalidateModuleCache('appraisal');
     return {

@@ -41,6 +41,10 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
   // Danh sách ý kiến phê duyệt
   const opinions = appraisal.danhSachYKien || [];
 
+  const opinionHDQT = opinions.find(o => (o.chucVu && (o.chucVu.includes('HĐQT') || o.chucVu.includes('Giám Đốc') || o.chucVu.includes('Lãnh Đạo'))) || o.capDuyet === 'HDQT');
+  const opinionBKS = opinions.find(o => (o.chucVu && o.chucVu.includes('Kiểm Soát')) || o.capDuyet === 'BKS');
+  const opinionTruongPhong = opinions.find(o => (o.chucVu && o.chucVu.includes('Trưởng Phòng')) || o.capDuyet === 'TRUONG_PHONG');
+
   // Thao tác in ấn
   const handlePrint = () => {
     window.print();
@@ -259,7 +263,9 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
 
           <div class="section-title">V. KẾT LUẬN & Ý KIẾN PHÊ DUYỆT</div>
           <p><span class="bold">1. Đề xuất của CBTD:</span> ${appraisal.ketLuan} - Mức độ rủi ro: ${appraisal.mucDoRuiRo || 'Thấp'}.</p>
-          <p><span class="bold">2. Điều kiện giải ngân:</span> ${appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng HĐTC và đăng ký giao dịch bảo đảm đầy đủ.'}</p>
+          <p><span class="bold">2. Ý kiến Ban Kiểm Soát:</span> ${opinionBKS ? `${opinionBKS.yKien} - ${opinionBKS.noiDung}` : 'Chưa ghi nhận ý kiến thẩm tra.'}</p>
+          <p><span class="bold">3. Quyết định của HĐQT / Ban Giám Đốc:</span> ${opinionHDQT ? `${opinionHDQT.yKien} - ${opinionHDQT.noiDung} (Hạn mức duyệt: ${opinionHDQT.hanMucDuyet ? formatCurrencyVN(opinionHDQT.hanMucDuyet) : formatCurrencyVN(duyetVay)})` : 'Chờ phê duyệt.'}</p>
+          <p><span class="bold">4. Điều kiện giải ngân & Giám sát:</span> ${appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng HĐTC và đăng ký giao dịch bảo đảm đầy đủ.'}</p>
 
           <table class="header-table" style="margin-top: 30px;">
             <tr>
@@ -271,17 +277,17 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
               <td style="width: 25%; text-align: center;">
                 <span class="bold">TRƯỞNG PHÒNG TÍN DỤNG</span><br/>
                 <i>(Ký, ghi rõ họ tên)</i><br/><br/><br/><br/>
-                <span class="bold">Trần Văn Trưởng</span>
+                <span class="bold">${opinionTruongPhong?.nguoiDanhGia || 'Trần Văn Trưởng'}</span>
               </td>
               <td style="width: 25%; text-align: center;">
                 <span class="bold">BAN KIỂM SOÁT</span><br/>
                 <i>(Ký, ghi rõ họ tên)</i><br/><br/><br/><br/>
-                <span class="bold">Ban Kiểm Soát</span>
+                <span class="bold">${opinionBKS?.nguoiDanhGia || 'Ban Kiểm Soát'}</span>
               </td>
               <td style="width: 25%; text-align: center;">
                 <span class="bold">GIÁM ĐỐC / HĐTD</span><br/>
                 <i>(Ký, đóng dấu)</i><br/><br/><br/><br/>
-                <span class="bold">Phạm Giám Đốc</span>
+                <span class="bold">${opinionHDQT?.nguoiDanhGia || 'Phạm Giám Đốc'}</span>
               </td>
             </tr>
           </table>
@@ -644,7 +650,9 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
                   V. KẾT LUẬN & PHÊ DUYỆT CÁC CẤP
                 </div>
                 <p className="mb-1"><strong>1. Đề xuất của CBTD:</strong> {appraisal.ketLuan} - Mức độ rủi ro: {appraisal.mucDoRuiRo || 'Thấp'}.</p>
-                <p className="mb-3"><strong>2. Điều kiện giải ngân:</strong> {appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng HĐTC và đăng ký giao dịch bảo đảm đầy đủ.'}</p>
+                <p className="mb-1"><strong>2. Ý kiến Ban Kiểm Soát:</strong> {opinionBKS ? `${opinionBKS.yKien} - ${opinionBKS.noiDung}` : 'Chưa ghi nhận ý kiến thẩm tra.'}</p>
+                <p className="mb-1"><strong>3. Quyết định của HĐQT / Ban Giám Đốc:</strong> {opinionHDQT ? `${opinionHDQT.yKien} - ${opinionHDQT.noiDung} (Hạn mức: ${opinionHDQT.hanMucDuyet ? formatCurrencyVN(opinionHDQT.hanMucDuyet) : formatCurrencyVN(duyetVay)})` : 'Chờ phê duyệt.'}</p>
+                <p className="mb-3"><strong>4. Điều kiện giải ngân & Giám sát:</strong> {appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng HĐTC và đăng ký giao dịch bảo đảm đầy đủ.'}</p>
 
                 {/* Chữ ký 4 cấp */}
                 <div className="row g-2 text-center mt-4 pt-2">
@@ -659,21 +667,21 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
                     <div className="fw-bold" style={{ fontSize: '13px' }}>TRƯỞNG PHÒNG TD</div>
                     <div className="fst-italic text-muted small" style={{ fontSize: '11px' }}>(Ký, ghi rõ họ tên)</div>
                     <div style={{ height: '70px' }}></div>
-                    <div className="fw-bold">Trần Văn Trưởng</div>
+                    <div className="fw-bold">{opinionTruongPhong?.nguoiDanhGia || 'Trần Văn Trưởng'}</div>
                   </div>
 
                   <div className="col-3">
                     <div className="fw-bold" style={{ fontSize: '13px' }}>BAN KIỂM SOÁT</div>
                     <div className="fst-italic text-muted small" style={{ fontSize: '11px' }}>(Ký, ghi rõ họ tên)</div>
                     <div style={{ height: '70px' }}></div>
-                    <div className="fw-bold">Ban Kiểm Soát</div>
+                    <div className="fw-bold">{opinionBKS?.nguoiDanhGia || 'Ban Kiểm Soát'}</div>
                   </div>
 
                   <div className="col-3">
                     <div className="fw-bold" style={{ fontSize: '13px' }}>GIÁM ĐỐC / HĐTD</div>
                     <div className="fst-italic text-muted small" style={{ fontSize: '11px' }}>(Ký, đóng dấu)</div>
                     <div style={{ height: '70px' }}></div>
-                    <div className="fw-bold">Phạm Giám Đốc</div>
+                    <div className="fw-bold">{opinionHDQT?.nguoiDanhGia || 'Phạm Giám Đốc'}</div>
                   </div>
                 </div>
               </div>

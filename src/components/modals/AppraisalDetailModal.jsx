@@ -18,15 +18,21 @@ import {
   Calculator,
   Percent,
   Sparkles,
-  Download
+  Download,
+  Lock,
+  Clock,
+  Award
 } from 'lucide-react';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
-export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpinion, onOpenPrintPreview }) {
+export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpinion, onOpenPrintPreview, currentUser }) {
   if (!appraisal) return null;
 
-  const deXuatVay = Number(appraisal.deXuatVay) || 0;
-  const duyetVay = Number(appraisal.duyetVay) || 0;
+  const isHDQT = currentUser?.role === 'LANHDAO' || currentUser?.role === 'ADMIN';
+  const isBKS = currentUser?.role === 'BKS';
+  const isCBTD = currentUser?.role === 'CBTD';
+
+  const duyetVay = Number(appraisal.duyetVay || appraisal.deXuatVay) || 0;
   const thuNhap = Number(appraisal.tongThuNhapThang || appraisal.thuNhapChinh) || 0;
   const chiPhi = Number(appraisal.tongChiPhiThang) || 0;
   const thuNhapRong = Number(appraisal.thuNhapRong || appraisal.thangDuThang) || (thuNhap - chiPhi);
@@ -52,10 +58,14 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
   }
 
   const opinions = appraisal.danhSachYKien || [];
-  const agreeCount = opinions.filter((y) => y.yKien === 'Đồng ý').length;
+
+  // Tìm các ý kiến theo từng cấp
+  const opinionHDQT = opinions.find(o => (o.chucVu && (o.chucVu.includes('HĐQT') || o.chucVu.includes('Giám Đốc') || o.chucVu.includes('Lãnh Đạo'))) || o.capDuyet === 'HDQT');
+  const opinionBKS = opinions.find(o => (o.chucVu && o.chucVu.includes('Kiểm Soát')) || o.capDuyet === 'BKS');
+  const opinionTruongPhong = opinions.find(o => (o.chucVu && o.chucVu.includes('Trưởng Phòng')) || o.capDuyet === 'TRUONG_PHONG');
 
   return (
-    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1060 }}>
+    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 1060 }}>
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content card-modern p-3 p-md-4">
           {/* Header */}
@@ -83,20 +93,98 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
                   Rủi ro: {appraisal.mucDoRuiRo || 'Thấp'}
                 </span>
                 <span className="badge bg-info-subtle text-info small">
-                  CBTD: {appraisal.canBoThamDinh || 'Lê Văn Tín (CBTD)'}
+                  CBTD Lập: <strong>{appraisal.canBoThamDinh || 'Lê Văn Tín (CBTD)'}</strong>
                 </span>
               </div>
               <h4 className="fw-extrabold text-slate-900 font-heading m-0">
-                Báo Cáo Thẩm Định Tín Dụng & Định Giá TSĐB (5 Nhóm Nghiệp Vụ)
+                Chi Tiết Báo Cáo Thẩm Định Tín Dụng & Theo Dõi Phê Duyệt Đa Cấp
               </h4>
             </div>
             <button type="button" className="btn-close" onClick={onClose} />
           </div>
 
-          <div className="modal-body py-3">
+          <div className="modal-body py-2">
             {/* ========================================================================= */}
-            {/* BANNER CHỈ SỐ TÀI CHÍNH TỔNG HỢP                                          */}
+            {/* TIẾN TRÌNH PHÊ DUYỆT 4 CẤP (STEPPER / TIMELINE CHUỖI DUYỆT)              */}
             {/* ========================================================================= */}
+            <div className="p-3 bg-light rounded-3 border mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-1.5">
+                  <Award size={18} className="text-primary" /> Tiến Trình Thẩm Định & Phê Duyệt Đa Cấp (CBTD → Trưởng Phòng → BKS → HĐQT)
+                </h6>
+                <span className="badge bg-white text-muted border small">
+                  Tổng số ý kiến ghi nhận: <strong>{opinions.length}</strong>
+                </span>
+              </div>
+
+              <div className="row g-2 text-center">
+                {/* 1. CBTD Lập */}
+                <div className="col-6 col-md-3">
+                  <div className="p-2.5 bg-white rounded-3 border border-success h-100 shadow-2xs">
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="badge bg-success text-white small">1. CBTD Lập</span>
+                      <CheckCircle2 size={15} className="text-success" />
+                    </div>
+                    <div className="fw-bold text-slate-900 small">{appraisal.canBoThamDinh || 'Lê Văn Tín'}</div>
+                    <div className="text-muted" style={{ fontSize: '0.68rem' }}>Đề xuất: {formatCurrencyVN(duyetVay)}</div>
+                    <span className="badge bg-success-subtle text-success small mt-1">Đã lập hồ sơ</span>
+                  </div>
+                </div>
+
+                {/* 2. Trưởng Phòng Tín Dụng */}
+                <div className="col-6 col-md-3">
+                  <div className={`p-2.5 bg-white rounded-3 border h-100 shadow-2xs ${opinionTruongPhong ? 'border-success' : 'border-secondary-subtle'}`}>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="badge bg-secondary-subtle text-secondary small">2. Trưởng Phòng TD</span>
+                      {opinionTruongPhong ? <CheckCircle2 size={15} className="text-success" /> : <Clock size={15} className="text-muted" />}
+                    </div>
+                    <div className="fw-bold text-slate-900 small">{opinionTruongPhong ? opinionTruongPhong.nguoiDanhGia : 'Chờ thẩm tra'}</div>
+                    <div className="text-muted text-truncate" style={{ fontSize: '0.68rem' }}>
+                      {opinionTruongPhong ? opinionTruongPhong.yKien : 'Đang xử lý'}
+                    </div>
+                    <span className={`badge small mt-1 ${opinionTruongPhong ? 'bg-success-subtle text-success' : 'bg-light text-muted border'}`}>
+                      {opinionTruongPhong ? 'Đã cho ý kiến' : 'Chờ ý kiến'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Ban Kiểm Soát */}
+                <div className="col-6 col-md-3">
+                  <div className={`p-2.5 bg-white rounded-3 border h-100 shadow-2xs ${opinionBKS ? 'border-warning' : 'border-secondary-subtle'}`}>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="badge bg-warning text-dark small">3. Ban Kiểm Soát</span>
+                      {opinionBKS ? <ShieldCheck size={15} className="text-warning" /> : <Clock size={15} className="text-muted" />}
+                    </div>
+                    <div className="fw-bold text-slate-900 small">{opinionBKS ? opinionBKS.nguoiDanhGia : 'Chờ giám sát rủi ro'}</div>
+                    <div className="text-muted text-truncate" style={{ fontSize: '0.68rem' }}>
+                      {opinionBKS ? opinionBKS.yKien : 'Thẩm tra tuân thủ'}
+                    </div>
+                    <span className={`badge small mt-1 ${opinionBKS ? 'bg-warning-subtle text-dark border border-warning' : 'bg-light text-muted border'}`}>
+                      {opinionBKS ? 'Đã thẩm tra' : 'Chờ BKS'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. HĐQT / Ban Giám Đốc */}
+                <div className="col-6 col-md-3">
+                  <div className={`p-2.5 bg-white rounded-3 border h-100 shadow-2xs ${opinionHDQT ? 'border-danger' : 'border-secondary-subtle'}`}>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <span className="badge bg-danger text-white small">4. HĐQT / BGĐ</span>
+                      {opinionHDQT ? <CheckCircle2 size={15} className="text-danger" /> : <Clock size={15} className="text-muted" />}
+                    </div>
+                    <div className="fw-bold text-slate-900 small">{opinionHDQT ? opinionHDQT.nguoiDanhGia : 'Chờ phê duyệt'}</div>
+                    <div className="text-muted text-truncate" style={{ fontSize: '0.68rem' }}>
+                      {opinionHDQT ? opinionHDQT.yKien : 'Quyết định cuối'}
+                    </div>
+                    <span className={`badge small mt-1 ${opinionHDQT ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-light text-muted border'}`}>
+                      {opinionHDQT ? 'Đã phê duyệt' : 'Chờ HĐQT'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Banner Chỉ Số Nổi Bật */}
             <div className="row g-2 mb-3">
               <div className="col-6 col-md-3">
                 <div className="p-2.5 bg-light rounded-3 border text-center">
@@ -143,12 +231,10 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
               </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* NHÓM 1: PHÁP LÝ & NHU CẦU VỐN                                             */}
-            {/* ========================================================================= */}
+            {/* NHÓM 1: PHÁP LÝ KHÁCH HÀNG (TỪ KH_CORE) */}
             <div className="p-3 bg-white rounded-3 border mb-3">
               <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
-                <User size={18} /> 1. Thông Tin Pháp Lý Khách Hàng & Nhu Cầu Vay
+                <User size={18} /> 1. Thông Tin Pháp Lý Khách Hàng (Dữ Liệu Khóa Từ KH_CORE) & Nhu Cầu Vay
               </h6>
               <div className="row g-2">
                 <div className="col-md-3 text-center">
@@ -168,14 +254,15 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
                       <span style={{ fontSize: '0.65rem' }}>Ảnh chân dung</span>
                     </div>
                   )}
-                  <span className="small text-muted d-block">{appraisal.hoTen}</span>
+                  <span className="small text-muted d-block fw-bold">{appraisal.hoTen}</span>
+                  <span className="badge bg-secondary-subtle text-secondary small"><Lock size={10} className="inline me-0.5" /> Core: {appraisal.maKH}</span>
                 </div>
 
                 <div className="col-md-9">
                   <div className="row g-2">
                     <div className="col-md-6">
-                      <span className="text-muted small d-block">Khách hàng:</span>
-                      <strong className="text-dark">{appraisal.hoTen}</strong> ({appraisal.maKH})
+                      <span className="text-muted small d-block">Khách hàng vay:</span>
+                      <strong className="text-dark">{appraisal.hoTen}</strong> (Mã: <strong>{appraisal.maKH}</strong>)
                     </div>
                     <div className="col-md-6">
                       <span className="text-muted small d-block">Số CCCD / Ngày cấp:</span>
@@ -202,9 +289,7 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
               </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* NHÓM 2: TÀI SẢN BẢO ĐẢM & BẢNG ĐẤT ĐA LOẠI                                */}
-            {/* ========================================================================= */}
+            {/* NHÓM 2: TÀI SẢN BẢO ĐẢM & ĐẤT ĐA LOẠI */}
             <div className="p-3 bg-white rounded-3 border mb-3">
               <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
                 <Building2 size={18} /> 2. Tài Sản Bảo Đảm & Chi Tiết Định Giá Từng Loại Đất
@@ -268,9 +353,7 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
               )}
             </div>
 
-            {/* ========================================================================= */}
-            {/* NHÓM 3: NĂNG LỰC TÀI CHÍNH & LỊCH SỬ CIC                                  */}
-            {/* ========================================================================= */}
+            {/* NHÓM 3: NĂNG LỰC TÀI CHÍNH & LỊCH SỬ CIC */}
             <div className="p-3 bg-white rounded-3 border mb-3">
               <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
                 <DollarSign size={18} /> 3. Năng Lực Tài Chính, Dòng Tiền & Lịch Sử Tín Dụng CIC
@@ -314,15 +397,13 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
 
                 <div className="col-12 mt-2">
                   <div className="p-2 bg-slate-50 rounded-3 border small">
-                    <strong>Thông tin CIC:</strong> Nhóm nợ: <span className="badge bg-success-subtle text-success">{appraisal.xepHangCIC || 'Nhóm 1'}</span> • Quan hệ: <strong>{appraisal.soTCTDQuanHe || 1} TCTD</strong> • Dư nợ ngoài: {formatCurrencyVN(appraisal.duNoCICNgoai || 0)} • {appraisal.ghiChuCIC || 'CIC sạch'}
+                    <strong>Thông tin CIC:</strong> Nhóm nợ: <span className="badge bg-success-subtle text-success">{appraisal.xepHangCIC || 'Nhóm 1'}</span> • Quan hệ: <strong>{appraisal.soTCTDQuanHe || 1} TCTD</strong> • Dư nợ ngoài: {formatCurrencyVN(appraisal.duNoCICNgoai || 0)} • {appraisal.ghiChuCIC || 'Lịch sử tín dụng tốt'}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* NHÓM 4 & 5: ĐỀ XUẤT, PHƯƠNG ÁN TỐI ƯU & Ý KIẾN PHÊ DUYỆT                 */}
-            {/* ========================================================================= */}
+            {/* NHÓM 4: ĐỀ XUẤT CẤP TÍN DỤNG & PHƯƠNG ÁN TỐI ƯU */}
             <div className="p-3 bg-white rounded-3 border mb-3">
               <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
                 <TrendingUp size={18} /> 4. Đề Xuất Cấp Tín Dụng & Đánh Giá Phương Án Tối Ưu
@@ -358,48 +439,79 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
               )}
 
               <div className="p-2 bg-light rounded-3 border small">
-                <strong>Điều kiện giải ngân:</strong> {appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng và đăng ký GDBĐ.'}
+                <strong>Điều kiện giải ngân & Chỉ đạo giám sát:</strong> {appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng và đăng ký GDBĐ đầy đủ.'}
               </div>
             </div>
 
-            {/* Lịch sử ý kiến phê duyệt đa cấp */}
+            {/* NHÓM 5: TỔNG HỢP Ý KIẾN PHÊ DUYỆT & CHỈ ĐẠO CÁC CẤP */}
             <div className="p-3 bg-white rounded-3 border">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="fw-bold text-primary m-0 d-flex align-items-center gap-2">
-                  <MessageSquare size={18} /> 5. Ý Kiến Phê Duyệt & Chữ Ký Các Cấp ({opinions.length})
-                </h6>
+              <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                <div>
+                  <h6 className="fw-bold text-primary m-0 d-flex align-items-center gap-2">
+                    <MessageSquare size={18} /> 5. Tổng Hợp Ý Kiến Phê Duyệt & Chỉ Đạo Của Các Cấp ({opinions.length})
+                  </h6>
+                  <span className="text-muted small">
+                    CBTD, Ban Kiểm Soát và HĐQT đều xem được toàn diện tiến trình ý kiến này.
+                  </span>
+                </div>
+
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-primary fw-semibold"
+                  className={`btn btn-sm fw-bold d-flex align-items-center gap-1.5 shadow-sm ${
+                    isHDQT ? 'btn-danger text-white' : isBKS ? 'btn-warning text-dark' : 'btn-outline-primary'
+                  }`}
                   onClick={() => onOpenAddOpinion && onOpenAddOpinion(appraisal)}
                 >
-                  + Thêm Ý Kiến Phê Duyệt
+                  <FileCheck2 size={15} />
+                  {isHDQT ? 'HĐQT Phê Duyệt / Chỉ Đạo' : isBKS ? 'BKS Thẩm Tra Rủi Ro' : '+ Thêm Ý Kiến Đánh Giá'}
                 </button>
               </div>
 
               {opinions.length > 0 ? (
                 <div className="d-flex flex-column gap-2">
                   {opinions.map((op, idx) => (
-                    <div key={idx} className="p-2.5 bg-light rounded-3 border">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
+                    <div key={idx} className="p-3 bg-light rounded-3 border shadow-2xs">
+                      <div className="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-1">
                         <div>
                           <strong className="text-dark">{op.nguoiDanhGia}</strong>{' '}
-                          <span className="badge bg-secondary-subtle text-secondary small">{op.chucVu}</span>
+                          <span className="badge bg-secondary-subtle text-secondary small ms-1">{op.chucVu}</span>
+                          {op.capDuyet && (
+                            <span className="badge bg-primary-subtle text-primary small ms-1">Cấp: {op.capDuyet}</span>
+                          )}
                         </div>
                         <div className="d-flex align-items-center gap-2">
-                          <span className={`badge ${op.yKien === 'Đồng ý' ? 'bg-success' : op.yKien === 'Có điều kiện' ? 'bg-warning text-dark' : 'bg-danger'}`}>
+                          <span className={`badge ${
+                            op.yKien?.includes('Đồng ý') || op.yKien?.includes('Thống nhất')
+                              ? 'bg-success'
+                              : op.yKien?.includes('điều kiện') || op.yKien?.includes('trung bình')
+                              ? 'bg-warning text-dark'
+                              : 'bg-danger'
+                          }`}>
                             {op.yKien}
                           </span>
                           <span className="text-muted small" style={{ fontSize: '0.72rem' }}>{op.ngayDanhGia}</span>
                         </div>
                       </div>
-                      <p className="small text-slate-700 m-0">{op.noiDung}</p>
+
+                      <p className="small text-slate-700 m-0 mb-1">{op.noiDung}</p>
+
+                      {(op.hanMucDuyet || op.laiSuatDuyet) && (
+                        <div className="small text-danger fw-semibold">
+                          Hạn mức phê duyệt: {formatCurrencyVN(op.hanMucDuyet)} • Lãi suất: {op.laiSuatDuyet}%/năm
+                        </div>
+                      )}
+
+                      {op.dieuKienBoSung && (
+                        <div className="small text-warning-emphasis bg-warning-subtle p-1.5 rounded border border-warning-subtle mt-1">
+                          <strong>Lưu ý / Điều kiện chỉ đạo:</strong> {op.dieuKienBoSung}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-3 text-muted small">
-                  Chưa có ý kiến phê duyệt nào được ghi nhận. Bấm nút phía trên để thêm ý kiến.
+                <div className="text-center py-3 text-muted small bg-light rounded-3 border">
+                  Chưa có ý kiến phê duyệt nào được ghi nhận. Bấm nút phía trên để thêm ý kiến hoặc phê duyệt.
                 </div>
               )}
             </div>
@@ -415,9 +527,21 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
               <Printer size={15} /> In / Xuất Hồ Sơ Thẩm Định (A4 & Word)
             </button>
 
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
-              Đóng Cửa Sổ
-            </button>
+            <div className="d-flex gap-2">
+              <button
+                type="button"
+                className={`btn btn-sm fw-semibold ${
+                  isHDQT ? 'btn-danger text-white' : isBKS ? 'btn-warning text-dark' : 'btn-primary'
+                }`}
+                onClick={() => onOpenAddOpinion && onOpenAddOpinion(appraisal)}
+              >
+                {isHDQT ? 'Phê Duyệt Tín Dụng (HĐQT)' : isBKS ? 'Thẩm Tra (BKS)' : 'Ghi Nhận Ý Kiến'}
+              </button>
+
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
+                Đóng Cửa Sổ
+              </button>
+            </div>
           </div>
         </div>
       </div>
