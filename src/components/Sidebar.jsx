@@ -16,7 +16,8 @@ import {
   KeyRound,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Layers
 } from 'lucide-react';
 import { AuthService, ROLE_LABELS } from '../services/auth';
 
@@ -41,6 +42,7 @@ export default function Sidebar({
     { id: 'reconciliation', label: 'Đối soát & Kết quả', icon: ArrowLeftRight, category: 'KẾ TOÁN' },
     { id: 'debt_warning', label: 'Cảnh báo Nợ tồn đọng', icon: AlertTriangle, category: 'QUẢN LÝ NỢ' },
     { id: 'reports', label: 'Báo cáo Thống kê', icon: FileBarChart2, category: 'BÁO CÁO' },
+    { id: 'templates', label: 'Cấu hình Biểu mẫu & Merge', icon: Layers, category: 'HỆ THỐNG' },
     { id: 'user_management', label: 'Phân quyền 360° & User', icon: UserCog, category: 'HỆ THỐNG' },
     { id: 'settings', label: 'Cấu hình & Đồng bộ Core', icon: Settings, category: 'HỆ THỐNG' }
   ];

@@ -11,6 +11,7 @@ import DebtWarning from './components/DebtWarning';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import UserManagement from './components/UserManagement';
+import TemplateManager from './components/TemplateManager';
 import LoginModal from './components/LoginModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import CustomerQuickModal from './components/CustomerQuickModal';
@@ -27,6 +28,7 @@ const TAB_TITLES = {
   reconciliation: 'Đối Soát Kết Quả Trích Nợ Từ CoreBanking',
   debt_warning: 'Sổ Theo Dõi Nợ Tồn Đọng & Cảnh Báo',
   reports: 'Báo Cáo Thống Kê & Phân Tích Dư Nợ',
+  templates: 'Trung Tâm Cấu Hình Biểu Mẫu & Mail Merge',
   user_management: 'Phân Quyền 360° & Quản Lý Tài Khoản',
   settings: 'Cấu Hình & Giám Sát Đồng Bộ Dữ Liệu Core'
 };
@@ -231,6 +233,8 @@ export default function App() {
           )}
 
           {activeTab === 'reports' && <Reports />}
+
+          {activeTab === 'templates' && <TemplateManager />}
 
           {activeTab === 'user_management' && <UserManagement />}
 

@@ -64,6 +64,12 @@ export const MODULE_REGISTRY = [
     description: 'Theo dõi nợ trích chưa thành công, phân tích nguyên nhân và đôn đốc'
   },
   {
+    id: 'templates',
+    label: 'Cấu hình Biểu mẫu & Mail Merge',
+    category: 'Hệ thống',
+    description: 'Quản lý kho biểu mẫu Google Docs/Word và trộn dữ liệu báo cáo đa phân hệ'
+  },
+  {
     id: 'reports',
     label: 'Báo cáo Thống kê & Phân tích',
     category: 'Báo cáo',
@@ -108,19 +114,19 @@ export const AuthService = {
    * Đăng nhập người dùng
    */
   async login(username, password) {
-    const pHash = await hashPassword(password);
-    const res = await api.login({ username: username.trim(), passwordHash: pHash });
+    if (!username || !password) {
+      throw new Error('Vui lòng nhập tên đăng nhập và mật khẩu');
+    }
 
-    if (res.status === 'success' && res.user) {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(res.user));
-        if (res.token) {
-          localStorage.setItem(STORAGE_KEY_TOKEN, res.token);
-        }
-      }
-      return { success: true, user: res.user };
+    const passwordHash = await hashPassword(password);
+    const res = await api.login(username, passwordHash);
+
+    if (res.status === 'success' && res.data) {
+      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(res.data.user));
+      localStorage.setItem(STORAGE_KEY_TOKEN, res.data.token || 'LOCAL_TOKEN');
+      return res.data.user;
     } else {
-      return { success: false, message: res.message || 'Đăng nhập thất bại.' };
+      throw new Error(res.message || 'Tên đăng nhập hoặc mật khẩu không chính xác');
     }
   },
 
@@ -128,10 +134,8 @@ export const AuthService = {
    * Đăng xuất
    */
   logout() {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEY_USER);
-      localStorage.removeItem(STORAGE_KEY_TOKEN);
-    }
+    localStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
   },
 
   /**
@@ -139,10 +143,9 @@ export const AuthService = {
    */
   getCurrentUser() {
     try {
-      if (typeof localStorage === 'undefined') return null;
-      const u = localStorage.getItem(STORAGE_KEY_USER);
-      return u ? JSON.parse(u) : null;
-    } catch (e) {
+      const userStr = localStorage.getItem(STORAGE_KEY_USER);
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
       return null;
     }
   },
@@ -176,10 +179,10 @@ export const AuthService = {
 
     // Default fallback theo role nếu chưa có effectivePermissions
     const defaultRolePerms = {
-      CBTD: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports'],
-      KETOAN: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'],
-      BKS: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports'],
-      LANHDAO: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports']
+      CBTD: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports', 'templates'],
+      KETOAN: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates'],
+      BKS: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports', 'templates'],
+      LANHDAO: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates']
     };
 
     const allowed = defaultRolePerms[user.role] || [];

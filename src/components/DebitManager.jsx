@@ -13,10 +13,18 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  ExternalLink
+  ExternalLink,
+  CheckSquare,
+  Square,
+  Edit3,
+  Filter,
+  DollarSign,
+  Users
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatDateTimeVN, formatCurrencyVN } from '../utils/dateUtils';
+import ThousandInput from './ThousandInput';
+import Pagination from './Pagination';
 
 export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickView }) {
   const [activeSubTab, setActiveSubTab] = useState('register'); // 'register' | 'batch'
@@ -26,7 +34,17 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Filters & Search for Registrations
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterKyTrich, setFilterKyTrich] = useState('ALL');
+  const [filterTrangThai, setFilterTrangThai] = useState('ALL');
+
+  // Pagination states
+  const [regPage, setRegPage] = useState(1);
+  const [regPageSize, setRegPageSize] = useState(15);
+  const [batchPage, setBatchPage] = useState(1);
+  const [batchPageSize, setBatchPageSize] = useState(15);
 
   // Form Registration State
   const [regForm, setRegForm] = useState({
@@ -44,11 +62,14 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
   const [matchedCustomer, setMatchedCustomer] = useState(null);
   const [searchingCustomer, setSearchingCustomer] = useState(false);
 
-  // Form Batch Run
+  // --- ADVANCED BATCH CREATION WORKFLOW STATE ---
   const [batchForm, setBatchForm] = useState({
     thangNam: '202608',
     kyTrich: 1
   });
+  const [batchStep, setBatchStep] = useState(1); // 1: Setup Period -> 2: Select & Edit Amounts
+  const [batchCandidateList, setBatchCandidateList] = useState([]);
+  const [batchLoadingCandidates, setBatchLoadingCandidates] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -145,14 +166,106 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
     }
   };
 
-  const handleCreateBatch = async (e) => {
-    if (e) e.preventDefault();
+  // --- LOGIC BATCH CREATION NÂNG CAO ---
+  // Bước 1: Nạp danh sách khách hàng đã đăng ký cho kỳ được chọn
+  const handleLoadCandidatesForBatch = async () => {
+    setBatchLoadingCandidates(true);
+    try {
+      // Lọc các khách hàng đã đăng ký đúng kỳ trích này và đang có hiệu lực
+      const targetKy = Number(batchForm.kyTrich);
+      const eligibleRegs = registrations.filter(
+        r => Number(r.kyTrich) === targetKy && (r.trangThai === 'Hiệu lực' || !r.trangThai)
+      );
+
+      // Lấy thêm thông tin hợp đồng và số tiền nợ dự tính
+      const statsRes = await api.getDashboardStats();
+      const allContracts = statsRes?.data?.activeContracts || [];
+
+      const candidates = eligibleRegs.map(reg => {
+        // Tìm hợp đồng của KH
+        const custContracts = allContracts.filter(c => c.maKH === reg.maKH);
+        const totalDuNo = custContracts.reduce((sum, c) => sum + (c.duNo || 0), 0);
+        
+        // Tính toán mẫu tiền lãi và gốc dự kiến
+        const noTon = 0; // Nợ tồn kỳ trước
+        const laiPhatSinh = Math.round((totalDuNo * 0.095) / 12); // Lãi 1 tháng (ước tính 9.5%/năm)
+        const gocDenHan = 0; // Gốc đến hạn kỳ này
+        const tongDuKien = noTon + laiPhatSinh + gocDenHan;
+
+        return {
+          selected: true, // Mặc định chọn tất cả
+          maKH: reg.maKH,
+          hoTen: reg.hoTen,
+          gttt: reg.gttt,
+          soTK: reg.soTK,
+          diaChi: reg.diaChi,
+          soHDTD: custContracts.map(c => c.soHDTD).join(', ') || 'HD-TD-AUTO',
+          tongDuNo: totalDuNo,
+          noTon: noTon,
+          laiPhatSinh: laiPhatSinh,
+          gocDenHan: gocDenHan,
+          soTienTrich: tongDuKien > 0 ? tongDuKien : 500000, // Số tiền trích nợ (CHO PHÉP CHỈNH SỬA)
+          ghiChu: `Trích lãi & gốc kỳ ${targetKy} tháng ${batchForm.thangNam}`
+        };
+      });
+
+      setBatchCandidateList(candidates);
+      setBatchStep(2);
+    } catch (e) {
+      console.error('Lỗi nạp danh sách khách hàng trích nợ:', e);
+      alert('Không thể nạp danh sách khách hàng: ' + e.message);
+    } finally {
+      setBatchLoadingCandidates(false);
+    }
+  };
+
+  // Toggle chọn / bỏ chọn tất cả
+  const handleToggleSelectAll = (checked) => {
+    setBatchCandidateList(prev => prev.map(item => ({ ...item, selected: checked })));
+  };
+
+  // Toggle chọn từng người
+  const handleToggleCandidate = (index, checked) => {
+    setBatchCandidateList(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], selected: checked };
+      return copy;
+    });
+  };
+
+  // Chỉnh sửa số tiền trích nợ trực tiếp của từng người
+  const handleCandidateAmountChange = (index, newAmount) => {
+    setBatchCandidateList(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], soTienTrich: newAmount };
+      return copy;
+    });
+  };
+
+  // Xác nhận tạo đợt trích nợ
+  const handleConfirmCreateBatch = async () => {
+    const selectedList = batchCandidateList.filter(c => c.selected);
+    if (selectedList.length === 0) {
+      alert('Vui lòng chọn ít nhất 1 khách hàng để khởi tạo đợt trích nợ.');
+      return;
+    }
+
+    const tongTien = selectedList.reduce((sum, c) => sum + (c.soTienTrich || 0), 0);
+
     setSaving(true);
     try {
-      const res = await api.createDebitBatch(batchForm);
+      const payload = {
+        thangNam: batchForm.thangNam,
+        kyTrich: Number(batchForm.kyTrich),
+        tongPhaiThu: tongTien,
+        chiTietDanhSach: selectedList
+      };
+
+      const res = await api.createDebitBatch(payload);
       if (res.status === 'success') {
-        alert(res.message || 'Khởi tạo đợt trích nợ thành công!');
+        alert(res.message || `Khởi tạo đợt trích nợ thành công cho ${selectedList.length} khách hàng!`);
         setShowBatchModal(false);
+        setBatchStep(1);
         fetchData();
       } else {
         alert(res.message || 'Lỗi khởi tạo đợt.');
@@ -168,13 +281,37 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
     alert(`Đang kết xuất tệp lệnh trích nợ Excel cho đợt ${batch.maDot} (Định dạng CoreBanking)...`);
   };
 
-  const filteredRegistrations = registrations.filter(r =>
-    !searchTerm ||
-    r.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.maKH?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.soTK?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.gttt?.toLowerCase().includes(searchTerm.toLowerCase())
+  // --- LỌC VÀ PHÂN TRANG DANH SÁCH ĐĂNG KÝ ---
+  const filteredRegistrations = registrations.filter(r => {
+    const matchesSearch = !searchTerm ||
+      r.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.maKH?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.soTK?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.gttt?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesKy = filterKyTrich === 'ALL' || Number(r.kyTrich) === Number(filterKyTrich);
+    const matchesTrangThai = filterTrangThai === 'ALL' || r.trangThai === filterTrangThai;
+
+    return matchesSearch && matchesKy && matchesTrangThai;
+  });
+
+  const paginatedRegistrations = filteredRegistrations.slice(
+    (regPage - 1) * regPageSize,
+    regPage * regPageSize
   );
+
+  // Phân trang danh sách Đợt trích nợ
+  const paginatedBatches = batches.slice(
+    (batchPage - 1) * batchPageSize,
+    batchPage * batchPageSize
+  );
+
+  // Thống kê danh sách được chọn trong modal batch
+  const selectedCount = batchCandidateList.filter(c => c.selected).length;
+  const selectedTotalAmount = batchCandidateList
+    .filter(c => c.selected)
+    .reduce((sum, c) => sum + (c.soTienTrich || 0), 0);
+  const isAllSelected = batchCandidateList.length > 0 && selectedCount === batchCandidateList.length;
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -200,17 +337,53 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
         </div>
 
         {activeSubTab === 'register' && (
-          <div className="d-flex align-items-center gap-2">
-            <div className="input-group input-group-sm" style={{ width: 250 }}>
+          <div className="d-flex align-items-center flex-wrap gap-2">
+            {/* Bộ lọc theo Kỳ */}
+            <select
+              className="form-select form-select-sm"
+              style={{ width: 140 }}
+              value={filterKyTrich}
+              onChange={(e) => {
+                setFilterKyTrich(e.target.value);
+                setRegPage(1);
+              }}
+            >
+              <option value="ALL">Tất cả Kỳ</option>
+              <option value="1">Kỳ 1 (Ngày 05)</option>
+              <option value="2">Kỳ 2 (Ngày 15)</option>
+              <option value="3">Kỳ 3 (Ngày 25)</option>
+            </select>
+
+            {/* Bộ lọc theo Trạng thái */}
+            <select
+              className="form-select form-select-sm"
+              style={{ width: 130 }}
+              value={filterTrangThai}
+              onChange={(e) => {
+                setFilterTrangThai(e.target.value);
+                setRegPage(1);
+              }}
+            >
+              <option value="ALL">Tất cả Trạng thái</option>
+              <option value="Hiệu lực">Hiệu lực</option>
+              <option value="Tạm dừng">Tạm dừng</option>
+              <option value="Hủy bỏ">Hủy bỏ</option>
+            </select>
+
+            {/* Ô tìm kiếm nhanh */}
+            <div className="input-group input-group-sm" style={{ width: 220 }}>
               <span className="input-group-text bg-white border-end-0 text-muted">
                 <Search size={14} />
               </span>
               <input
                 type="text"
                 className="form-control border-start-0"
-                placeholder="Tìm Mã KH, Tên, Số TK..."
+                placeholder="Tìm Tên, Mã KH, Số TK..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setRegPage(1);
+                }}
               />
             </div>
 
@@ -231,7 +404,7 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                 setShowRegModal(true);
               }}
             >
-              <Plus size={16} /> Đăng Ký Trích Nợ Mới
+              <Plus size={16} /> Đăng Ký Mới
             </button>
           </div>
         )}
@@ -239,7 +412,10 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
         {activeSubTab === 'batch' && (
           <button
             className="btn btn-warning text-dark btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm"
-            onClick={() => setShowBatchModal(true)}
+            onClick={() => {
+              setBatchStep(1);
+              setShowBatchModal(true);
+            }}
           >
             <Play size={16} /> Khởi Tạo Đợt Trích Nợ Mới
           </button>
@@ -256,7 +432,7 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
               <UserCheck size={20} className="text-success" /> Thỏa Thuận Ủy Quyền Trích Nợ Tự Động (Auto-Debit)
             </h5>
             <span className="badge bg-light text-muted border">
-              {filteredRegistrations.length} khách hàng
+              Tổng cộng: {filteredRegistrations.length} khách hàng
             </span>
           </div>
 
@@ -274,8 +450,8 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                 </tr>
               </thead>
               <tbody>
-                {filteredRegistrations.length > 0 ? (
-                  filteredRegistrations.map((r, idx) => (
+                {paginatedRegistrations.length > 0 ? (
+                  paginatedRegistrations.map((r, idx) => (
                     <tr key={idx}>
                       <td>
                         <span className="fw-bold font-monospace text-primary">{r.maKH}</span>
@@ -317,13 +493,22 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                 ) : (
                   <tr>
                     <td colSpan="7" className="text-center text-muted py-4">
-                      {loading ? 'Đang tải danh sách đăng ký trích nợ...' : 'Chưa có khách hàng nào đăng ký trích nợ.'}
+                      {loading ? 'Đang tải danh sách đăng ký trích nợ...' : 'Không tìm thấy khách hàng nào phù hợp.'}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang chuẩn 15 dòng */}
+          <Pagination
+            currentPage={regPage}
+            totalItems={filteredRegistrations.length}
+            pageSize={regPageSize}
+            onPageChange={setRegPage}
+            onPageSizeChange={setRegPageSize}
+          />
         </div>
       )}
 
@@ -357,8 +542,8 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                 </tr>
               </thead>
               <tbody>
-                {batches.length > 0 ? (
-                  batches.map((b) => (
+                {paginatedBatches.length > 0 ? (
+                  paginatedBatches.map((b) => (
                     <tr key={b.maDot}>
                       <td>
                         <span className="fw-bold text-primary font-monospace">{b.maDot}</span>
@@ -400,6 +585,15 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang danh sách Đợt */}
+          <Pagination
+            currentPage={batchPage}
+            totalItems={batches.length}
+            pageSize={batchPageSize}
+            onPageChange={setBatchPage}
+            onPageSizeChange={setBatchPageSize}
+          />
         </div>
       )}
 
@@ -635,23 +829,31 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: KHỞI TẠO ĐỢT TRÍCH NỢ */}
+      {/* MODAL NÂNG CAO: KHỞI TẠO ĐỢT TRÍCH NỢ (CHỌN ALL / TỪNG NGƯỜI & SỬA SỐ TIỀN) */}
       {/* ========================================================================= */}
       {showBatchModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
-          <div className="modal-dialog modal-dialog-centered">
+          <div className={`modal-dialog ${batchStep === 2 ? 'modal-xl' : 'modal-dialog-centered'} modal-dialog-scrollable`}>
             <div className="modal-content card-modern p-4">
               <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-                  <Play size={20} className="text-warning" /> Khởi Tạo Đợt Trích Nợ Tự Động
-                </h5>
+                <div>
+                  <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
+                    <Play size={20} className="text-warning" /> Khởi Tạo Đợt Trích Nợ Tự Động Định Kỳ
+                  </h5>
+                  <span className="text-muted small">
+                    {batchStep === 1
+                      ? 'Bước 1: Chọn kỳ trích và tháng năm thu nợ'
+                      : 'Bước 2: Chọn danh sách khách hàng và điều chỉnh số tiền trích nợ thực tế'}
+                  </span>
+                </div>
                 <button type="button" className="btn-close" onClick={() => setShowBatchModal(false)} />
               </div>
 
-              <form onSubmit={handleCreateBatch}>
+              {/* BƯỚC 1: CHỌN KỲ TRÍCH VÀ THÁNG NĂM */}
+              {batchStep === 1 && (
                 <div className="modal-body py-3">
                   <div className="mb-3">
-                    <label className="form-label small fw-bold text-dark">Tháng Năm Thực Hiện (yyyyMM)</label>
+                    <label className="form-label small fw-bold text-dark">Tháng Năm Thu Nợ (yyyyMM) (*)</label>
                     <input
                       type="text"
                       className="form-control font-monospace fw-bold"
@@ -663,7 +865,7 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-bold text-dark">Kỳ Trích Thu Nợ</label>
+                    <label className="form-label small fw-bold text-dark">Kỳ Trích Thu Nợ (*)</label>
                     <select
                       className="form-select fw-semibold text-primary"
                       value={batchForm.kyTrich}
@@ -676,19 +878,136 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                   </div>
 
                   <div className="p-3 bg-light rounded-3 border small text-muted">
-                    Hệ thống sẽ tự động quét toàn bộ khách hàng đã đăng ký ủy quyền cho Kỳ {batchForm.kyTrich} và tính toán tổng số tiền (Gốc đến hạn + Lãi phát sinh + Nợ tồn) để chuẩn bị lệnh cắt nợ CoreBanking.
+                    Hệ thống sẽ lấy toàn bộ khách hàng đã đăng ký ủy quyền cho <strong>Kỳ {batchForm.kyTrich}</strong> và tự động tính toán số tiền (Nợ tồn + Lãi phát sinh + Gốc đến hạn). Bạn có thể chọn lọc danh sách và sửa số tiền ở bước tiếp theo.
+                  </div>
+
+                  <div className="modal-footer border-0 pt-3 px-0 pb-0">
+                    <button type="button" className="btn btn-light" onClick={() => setShowBatchModal(false)}>
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-brand fw-bold d-flex align-items-center gap-2"
+                      onClick={handleLoadCandidatesForBatch}
+                      disabled={batchLoadingCandidates}
+                    >
+                      {batchLoadingCandidates ? 'Đang nạp danh sách...' : 'Tiếp Tục: Lọc & Duyệt Danh Sách'}
+                    </button>
                   </div>
                 </div>
+              )}
 
-                <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-light" onClick={() => setShowBatchModal(false)}>
-                    Hủy
-                  </button>
-                  <button type="submit" className="btn btn-warning fw-bold text-dark" disabled={saving}>
-                    {saving ? 'Đang khởi tạo...' : 'Bắt Đầu Khởi Tạo Đợt'}
-                  </button>
+              {/* BƯỚC 2: CHỌN ALL / TỪNG NGƯỜI VÀ CHỈNH SỬA SỐ TIỀN TRÍCH NỢ TRỰC TIẾP */}
+              {batchStep === 2 && (
+                <div className="modal-body py-3">
+                  {/* Thanh Thống Kê & Nút Chọn Tất Cả */}
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 bg-light rounded-3 border mb-3">
+                    <div className="d-flex align-items-center gap-3">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary fw-bold d-flex align-items-center gap-1"
+                        onClick={() => handleToggleSelectAll(!isAllSelected)}
+                      >
+                        {isAllSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                        {isAllSelected ? 'Bỏ Chọn Tất Cả' : 'Chọn Tất Cả Khách Hàng'}
+                      </button>
+
+                      <span className="text-dark small">
+                        Đã chọn: <strong className="text-primary">{selectedCount}</strong> / {batchCandidateList.length} khách hàng
+                      </span>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="small text-muted">Tổng tiền trích nợ đợt này:</span>
+                      <span className="badge bg-danger fs-6 fw-bold num-tabular">
+                        {formatCurrencyVN(selectedTotalAmount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bảng Danh Sách Khách Hàng & Chỉnh Sửa Số Tiền */}
+                  <div className="table-responsive border rounded-3 bg-white" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+                    <table className="table table-custom align-middle m-0">
+                      <thead className="bg-light sticky-top">
+                        <tr>
+                          <th style={{ width: 40 }} className="text-center">Chọn</th>
+                          <th>Mã KH / Tên Khách Hàng</th>
+                          <th>Số TK CASA</th>
+                          <th>Số HĐTD / Khế Ước</th>
+                          <th className="text-end">Dư Nợ Gốc</th>
+                          <th className="text-end">Lãi Ước Tính</th>
+                          <th className="text-end" style={{ minWidth: 160 }}>
+                            <span className="d-flex align-items-center justify-content-end gap-1 text-danger fw-bold">
+                              <Edit3 size={13} /> Số Tiền Trích Nợ (Sửa)
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batchCandidateList.length > 0 ? (
+                          batchCandidateList.map((c, idx) => (
+                            <tr key={idx} className={c.selected ? 'table-primary-subtle' : 'opacity-75'}>
+                              <td className="text-center">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={c.selected}
+                                  onChange={(e) => handleToggleCandidate(idx, e.target.checked)}
+                                  style={{ cursor: 'pointer', width: 18, height: 18 }}
+                                />
+                              </td>
+                              <td>
+                                <div className="fw-bold text-dark">{c.hoTen}</div>
+                                <div className="small text-muted font-monospace">{c.maKH} • {c.gttt}</div>
+                              </td>
+                              <td>
+                                <span className="font-monospace fw-bold text-success small">{c.soTK}</span>
+                              </td>
+                              <td className="small text-muted">
+                                {c.soHDTD || '---'}
+                              </td>
+                              <td className="text-end font-monospace small num-tabular">
+                                {formatCurrencyVN(c.tongDuNo)}
+                              </td>
+                              <td className="text-end font-monospace small text-primary num-tabular">
+                                {formatCurrencyVN(c.laiPhatSinh)}
+                              </td>
+                              <td className="text-end">
+                                <ThousandInput
+                                  value={c.soTienTrich}
+                                  onChange={(newAmt) => handleCandidateAmountChange(idx, newAmt)}
+                                  disabled={!c.selected}
+                                  placeholder="Nhập số tiền..."
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="text-center text-muted py-4">
+                              Không có khách hàng nào đăng ký trích nợ cho Kỳ {batchForm.kyTrich}.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="modal-footer border-0 pt-3 px-0 pb-0 d-flex justify-content-between">
+                    <button type="button" className="btn btn-outline-secondary" onClick={() => setBatchStep(1)}>
+                      Quay Lại Bước 1
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-brand fw-bold d-flex align-items-center gap-2 shadow-sm"
+                      onClick={handleConfirmCreateBatch}
+                      disabled={saving || selectedCount === 0}
+                    >
+                      {saving ? 'Đang khởi tạo...' : `Xác Nhận Khởi Tạo Đợt (${selectedCount} KH)`}
+                    </button>
+                  </div>
                 </div>
-              </form>
+              )}
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatDateTimeVN, getTodayISO, toISODateString } from '../utils/dateUtils';
+import Pagination from './Pagination';
 
 const INSPECTION_TEAMS = [
   { id: 'ALL', label: 'Tất Cả Đoàn KT', color: 'btn-secondary' },
@@ -35,6 +36,8 @@ export default function LoanInspection({ prefilledContract }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [teamFilter, setTeamFilter] = useState('ALL');
   const [riskFilter, setRiskFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -142,6 +145,8 @@ export default function LoanInspection({ prefilledContract }) {
 
     return matchSearch && matchTeam && matchRisk;
   });
+
+  const paginatedInspections = filteredInspections.slice((page - 1) * pageSize, page * pageSize);
 
   // Thống kê nhanh
   const countTotal = inspections.length;
@@ -310,8 +315,8 @@ export default function LoanInspection({ prefilledContract }) {
               </tr>
             </thead>
             <tbody>
-              {filteredInspections.length > 0 ? (
-                filteredInspections.map((item) => {
+              {paginatedInspections.length > 0 ? (
+                paginatedInspections.map((item) => {
                   const isCBTD = item.loaiDoanKT === 'CBTD';
                   const isBKS = item.loaiDoanKT === 'BKS';
                   const isHDQT = item.loaiDoanKT === 'HDQT';
@@ -369,12 +374,12 @@ export default function LoanInspection({ prefilledContract }) {
                       <td>
                         {item.ngayKTNext ? (
                           <div>
-                            <div className="fw-bold text-primary num-tabular d-flex align-items-center gap-1">
-                              <Clock size={13} className="text-warning" />
+                            <div className="fw-bold text-danger num-tabular d-flex align-items-center gap-1">
+                              <Clock size={13} />
                               {formatDateVN(item.ngayKTNext)}
                             </div>
-                            <span className="small text-muted" style={{ fontSize: '0.7rem' }}>
-                              Định kỳ lần tới
+                            <span className="badge bg-warning-subtle text-warning fw-bold" style={{ fontSize: '0.68rem' }}>
+                              ĐẾN HẠN KT
                             </span>
                           </div>
                         ) : (
@@ -383,17 +388,17 @@ export default function LoanInspection({ prefilledContract }) {
                       </td>
 
                       <td>
-                        <div className="fw-semibold small text-success d-flex align-items-center gap-1">
-                          <CheckCircle2 size={13} /> {item.danhGiaMucDich}
+                        <div className="small text-dark fw-semibold text-truncate" style={{ maxWidth: 200 }} title={item.danhGiaMucDich}>
+                          {item.danhGiaMucDich}
                         </div>
-                        <div className="mt-1">
+                        <div className="d-flex align-items-center gap-1 mt-1">
                           <span
-                            className={`badge ${
+                            className={`badge-status ${
                               item.mucDoRuiRo === 'Thấp'
-                                ? 'bg-success'
+                                ? 'badge-success-soft'
                                 : item.mucDoRuiRo === 'Trung bình'
-                                ? 'bg-warning text-dark'
-                                : 'bg-danger'
+                                ? 'badge-warning-soft'
+                                : 'badge-danger-soft'
                             }`}
                             style={{ fontSize: '0.68rem' }}
                           >
@@ -459,6 +464,15 @@ export default function LoanInspection({ prefilledContract }) {
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang chuẩn 15 dòng */}
+        <Pagination
+          currentPage={page}
+          totalItems={filteredInspections.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ========================================================================= */}

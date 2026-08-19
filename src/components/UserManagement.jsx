@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { hashPassword, ROLE_LABELS, MODULE_REGISTRY } from '../services/auth';
+import Pagination from './Pagination';
 
 const GROUPS_METADATA = [
   {
@@ -53,6 +54,8 @@ export default function UserManagement() {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(15);
   const [saving, setSaving] = useState(false);
   const [alertInfo, setAlertInfo] = useState(null);
 
@@ -253,6 +256,11 @@ export default function UserManagement() {
     !searchTerm ||
     u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const paginatedUsers = filteredUsers.slice(
+    (userPage - 1) * userPageSize,
+    userPage * userPageSize
   );
 
   return (
@@ -486,8 +494,8 @@ export default function UserManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((u) => {
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((u) => {
                     const groupMeta = GROUPS_METADATA.find(g => g.code === u.role) || {};
                     const roleLabel = ROLE_LABELS[u.role] || { label: u.role, badgeClass: 'badge-brand-soft' };
                     const isLocked = u.status === 'LOCKED';
@@ -561,6 +569,15 @@ export default function UserManagement() {
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang danh sách tài khoản */}
+          <Pagination
+            currentPage={userPage}
+            totalItems={filteredUsers.length}
+            pageSize={userPageSize}
+            onPageChange={setUserPage}
+            onPageSizeChange={setUserPageSize}
+          />
         </div>
       )}
 

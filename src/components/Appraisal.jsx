@@ -19,6 +19,7 @@ import { api } from '../services/api';
 import { AuthService } from '../services/auth';
 import { formatDateVN, formatCurrencyVN, getTodayISO } from '../utils/dateUtils';
 import ThousandInput from './ThousandInput';
+import Pagination from './Pagination';
 
 export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }) {
   const currentUser = AuthService.getCurrentUser();
@@ -28,6 +29,9 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
   const [showOpinionModal, setShowOpinionModal] = useState(false);
   const [selectedAppraisal, setSelectedAppraisal] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterKetLuan, setFilterKetLuan] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -169,29 +173,55 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
     }
   };
 
-  const filteredAppraisals = appraisals.filter(a =>
-    !searchTerm ||
-    a.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.maKH?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.maBCTD?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.canBoThamDinh?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAppraisals = appraisals.filter(a => {
+    const matchesSearch = !searchTerm ||
+      a.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.maKH?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.maBCTD?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.canBoThamDinh?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesKetLuan = filterKetLuan === 'ALL' || a.ketLuan === filterKetLuan;
+    return matchesSearch && matchesKetLuan;
+  });
+
+  const paginatedAppraisals = filteredAppraisals.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="d-flex flex-column gap-4">
       {/* Header Controls */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="input-group input-group-sm" style={{ maxWidth: 350 }}>
-          <span className="input-group-text bg-white border-end-0 text-muted">
-            <Search size={14} />
-          </span>
-          <input
-            type="text"
-            className="form-control border-start-0"
-            placeholder="Tìm theo Mã BCTD, Mã KH, Họ tên..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="d-flex align-items-center flex-wrap gap-2">
+          {/* Bộ lọc Kết luận */}
+          <select
+            className="form-select form-select-sm"
+            style={{ width: 170 }}
+            value={filterKetLuan}
+            onChange={(e) => {
+              setFilterKetLuan(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="ALL">Tất cả Kết Luận</option>
+            <option value="Đồng ý cấp tín dụng">Đồng ý cấp tín dụng</option>
+            <option value="Đồng ý có điều kiện">Đồng ý có điều kiện</option>
+            <option value="Từ chối cấp tín dụng">Từ chối cấp tín dụng</option>
+          </select>
+
+          <div className="input-group input-group-sm" style={{ width: 260 }}>
+            <span className="input-group-text bg-white border-end-0 text-muted">
+              <Search size={14} />
+            </span>
+            <input
+              type="text"
+              className="form-control border-start-0"
+              placeholder="Tìm theo Mã BCTD, Mã KH, Họ tên..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
 
         <button
@@ -252,8 +282,8 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
               </tr>
             </thead>
             <tbody>
-              {filteredAppraisals.length > 0 ? (
-                filteredAppraisals.map((item) => {
+              {paginatedAppraisals.length > 0 ? (
+                paginatedAppraisals.map((item) => {
                   const opinions = item.danhSachYKien || [];
                   const latestOpinion = opinions[opinions.length - 1];
 
@@ -369,6 +399,15 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
             </tbody>
           </table>
         </div>
+
+        {/* Phân trang chuẩn 15 dòng */}
+        <Pagination
+          currentPage={page}
+          totalItems={filteredAppraisals.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ========================================================================= */}
