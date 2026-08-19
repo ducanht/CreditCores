@@ -1,224 +1,87 @@
-# CẤU TRÚC DỮ LIỆU TOÀN DIỆN (DATA SCHEMA)
-# 11 Bảng CSDL Chuẩn Hóa Trên Google Sheets
+# CẤU TRÚC DỮ LIỆU TOÀN DIỆN (DATA SCHEMA) & QUẢN TRỊ CSDL
+# 12 Bảng CSDL Chuẩn Hóa Trên Google Sheets
 
-Tài liệu này định nghĩa chi tiết 11 bảng CSDL của hệ thống **CreditCores**, các trường thông tin, kiểu dữ liệu, khóa chính và định dạng chuẩn.
+Tài liệu này định nghĩa chi tiết 12 bảng CSDL của hệ thống **CreditCores**, cơ chế lưu trữ đợt trích nợ 2 cấp (Master - Detail), xử lý snapshot hợp đồng và cơ chế tự động kiểm soát cấu trúc dữ liệu (**Schema Governance & Auto-Migration**).
 
 ---
 
-## 📋 Danh Mục 11 Bảng CSDL
+## 📋 Danh Mục 12 Bảng CSDL Chuẩn
 
 ```
 1. ROLES             - Quản lý Nhóm Vai Trò & Ma Trận Quyền 360°
 2. USERS             - Tài Khoản Cán Bộ & Phân Quyền Cá Nhân Hóa
-3. SETTING           - Cấu Hình & Hàng Đợi Lệnh Đồng Bộ Core
-4. KH_CORE           - Dữ Liệu Khách Hàng & Thành Viên Góp Vốn
-5. HDTD_CORE         - Hợp Đồng Tín Dụng & Khế Ước Dư Nợ
-6. DS_TRICH_NO       - Danh Sách Đăng Ký Thỏa Thuận Trích Nợ Tự Động
-7. DOT_TRICH_NO      - Quản Lý Các Đợt / Kỳ Trích Nợ Theo Tháng
-8. LICH_SU_GIAO_DICH - Chi Tiết Kết Quả Từng Món Vay Trong Đợt
-9. NO_TON_DONG       - Sổ Theo Dõi Nợ Tồn Đọng Chuyển Kỳ Sau
-10. BAO_CAO_THAM_DINH- Hồ Sơ Thẩm Định Tín Dụng & Định Giá TSĐB
-11. KIEM_TRA_VON     - Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân
+3. SETTING           - Cấu Hình & Hàng Đợi Lệnh Đồng Bộ Core 24/7
+4. KH_CORE           - Dữ Liệu Khách Hàng & Thành Viên Góp Vốn (Kèm NgayCapNhat)
+5. HDTD_CORE         - Hợp Đồng Tín Dụng & Khế Ước Dư Nợ Hiện Hữu (Active Snapshot)
+6. DANG_KY_TRICH_NO  - Danh Sách Đăng Ký Thỏa Thuận Trích Nợ Tự Động CASA
+7. DOT_TRICH_NO      - Bảng Master Quản Lý Các Đợt Trích Nợ Định Kỳ (Kỳ 1, 2, 3)
+8. CHI_TIET_TRICH_NO - Bảng Detail Lưu Vĩnh Viễn Snapshot Từng Món Nợ Trong Đợt
+9. NO_TON_DONG       - Sổ Theo Dõi Nợ Tồn Đọng Chuyển Kỳ Sau & Cảnh Báo
+10. THAM_DINH_TD     - Hồ Sơ Thẩm Định Tín Dụng, CIC, TSĐB & Ý Kiến Đa Cấp
+11. KIEM_TRA_VON     - Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân (CBTD, BKS, HĐQT)
+12. CAU_HINH_BIEU_MAU- Kho Biểu Mẫu Google Docs/Word & Thẻ Biến Mail Merge
 ```
 
 ---
 
-## 🔍 Chi Tiết Cấu Trúc Từng Bảng
+## 🏛️ 1. Cơ Chế Lưu Trữ Đợt Trích Nợ 2 Cấp (Master - Detail Snapshot)
 
-### 1. Bảng `ROLES` (Nhóm Vai Trò & Ma Trận Quyền)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Khóa / Ràng Buộc | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
-| A | `RoleCode` | String | **PK** | Mã nhóm vai trò (`ADMIN`, `CBTD`, `KETOAN`, `LANHDAO`...) |
-| B | `RoleName` | String | Required | Tên hiển thị của nhóm |
-| C | `Permissions`| JSON String| Required | Mảng JSON chứa danh sách `moduleId` được phép truy cập |
-| D | `Description`| String | Optional | Mô tả phạm vi trách nhiệm |
-| E | `UpdatedAt` | DateTime | Auto | Ngày giờ cập nhật gần nhất (`dd/MM/yyyy HH:mm:ss`) |
+Hàng tháng có 3 kỳ trích nợ (ngày 05, 15, 25) với 100 - 200 khách hàng/tháng (~1.200 - 2.400 dòng/năm). CSDL Google Sheets lưu trữ hoàn hảo 10-20 năm với hiệu năng cao:
 
-### 2. Bảng `USERS` (Tài Khoản & Phân Quyền Cá Nhân Hóa)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Khóa / Ràng Buộc | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
-| A | `Username` | String | **PK** | Tên đăng nhập duy nhất (vd: `admin`, `cbtd_yentho`) |
-| B | `PasswordHash` | String | SHA-256 | Mã băm mật khẩu 64 ký tự hex |
-| C | `FullName` | String | Required | Họ và tên đầy đủ của cán bộ |
-| D | `Role` | String | **FK (ROLES)**| Nhóm vai trò chính |
-| E | `CustomPermissions` | JSON String | Optional | Mảng JSON các quyền riêng lẻ bổ sung ngoài nhóm |
-| F | `Status` | String | Enum | `ACTIVE` (Hoạt động) / `LOCKED` (Tạm khóa) |
-| G | `CreatedAt` | DateTime | Auto | Ngày tạo tài khoản |
-| H | `LastLogin` | DateTime | Auto | Thời điểm đăng nhập gần nhất |
-
-### 3. Bảng `SETTING` (Hàng Đợi Lệnh & Trạng Thái Đồng Bộ)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
+### A. Bảng Master: `DOT_TRICH_NO`
+| Cột | Tên Trường | Kiểu | Mô Tả |
 | :--- | :--- | :---: | :--- |
-| A | `COMMAND` | String | Lệnh điều khiển (`SYNC_DATA` / `IDLE`) |
-| B | `STATUS` | String | Trạng thái (`PENDING` / `PROCESSING` / `SUCCESS` / `ERROR`) |
-| C | `REQUEST_TIME` | DateTime | Thời gian phát lệnh từ WebApp |
-| D | `START_TIME` | DateTime | Thời gian Daemon bắt đầu xử lý |
-| E | `FINISH_TIME` | DateTime | Thời gian hoàn tất đồng bộ |
-| F | `TOTAL_ROWS` | Number | Tổng số dòng dữ liệu đã đẩy lên Google Sheets |
-| G | `MESSAGE` | String | Thông báo chi tiết hoặc lỗi (nếu có) |
+| A | `MaDot` | String | **PK** (vd: `DOT-202608-K1`, `DOT-202608-K2`, `DOT-202608-K3`) |
+| B | `ThangNam` | String | Tháng năm thu nợ (`202608`) |
+| C | `KyTrich` | Number | Kỳ trích (`1`: Ngày 05, `2`: Ngày 15, `3`: Ngày 25) |
+| D | `TongPhaiThu` | Number | Tổng tiền trích nợ dự kiến của cả đợt (VNĐ) |
+| E | `TongDaTrich` | Number | Tổng số tiền cắt nợ thành công qua CoreBanking (VNĐ) |
+| F | `TongConNo` | Number | Tổng nợ chưa thu được chuyển sang sổ nợ tồn (VNĐ) |
+| G | `TongSoKH` | Number | Số lượng khách hàng tham gia đợt trích nợ |
+| H | `TrangThai` | Enum | `CHO_TRICH_NO` $\to$ `DANG_TRICH` $\to$ `HOAN_TAT` |
+| I | `NgayTao` | DateTime | Thời điểm khởi tạo đợt trích nợ |
+| J | `NgayHoanTat` | DateTime | Thời điểm đối soát và chốt sổ đợt |
 
-### 4. Bảng `KH_CORE` (Thông Tin Khách Hàng & Thành Viên)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
+### B. Bảng Detail: `CHI_TIET_TRICH_NO` (Lưu trữ vĩnh viễn Snapshot hợp đồng)
+| Cột | Tên Trường | Kiểu | Mô Tả |
 | :--- | :--- | :---: | :--- |
-| A | `MaKH` | String (**PK**) | Mã định danh khách hàng trên CoreBanking |
-| B | `HoTen` | String | Họ và tên khách hàng (In hoa) |
-| C | `DiaChi` | String | Địa chỉ cư trú (Thôn/Xã) |
-| D | `NgaySinh` | Date (`dd/MM/yyyy`) | Ngày tháng năm sinh |
-| E | `CCCD` | String (12 số) | Số Căn cước công dân / CMND |
-| F | `NgayCap` | Date | Ngày cấp CCCD |
-| G | `NoiCap` | String | Cơ quan cấp (Cục CSQLHC về TTXH...) |
-| H | `DienThoai` | String | Điện thoại bàn cố định |
-| I | `DienThoaiDD`| String (10 số) | Số điện thoại di động chính |
-| J | `SoTK` | String | Số tài khoản thanh toán tiền gửi (CASA) trích nợ |
-| K | `KhuVuc` | String | Địa bàn (Thôn 1, Thôn 2, Xã Yên Thọ, Yên Bái...) |
-| L | `SoTV` | String | Mã số thành viên Quỹ Tín Dụng |
-| M | `SoSoCP` | String | Số sổ chứng nhận cổ phần xác lập |
-| N | `NgayVaoTV` | Date | Ngày chính thức gia nhập thành viên |
-| O | `TongTienCP` | Number (VNĐ) | Tổng giá trị vốn góp cổ phần đã đóng |
-
-### 5. Bảng `HDTD_CORE` (Hợp Đồng Tín Dụng & Khế Ước Dư Nợ)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `SoHDTD` | String (**PK**) | Số hợp đồng tín dụng / Mã khế ước nhận nợ |
-| B | `MaKH` | String (**FK**) | Mã khách hàng vay vốn |
-| C | `TienVay` | Number (VNĐ) | Số tiền giải ngân ban đầu theo hợp đồng |
-| D | `DuNo` | Number (VNĐ) | Dư nợ gốc thực tế hiện tại |
-| E | `LaiSuat` | Number (%/năm)| Lãi suất cho vay theo hợp đồng |
-| F | `NgayVay` | Date | Ngày bắt đầu giải ngân |
-| G | `DenHan` | Date | Ngày đáo hạn hợp đồng |
-| H | `TraLaiDenNgay`| Date | Ngày đã thu lãi đến hạn gần nhất |
-| I | `MaLoaiVay` | String | Mã sản phẩm tín dụng (LV01: Chăn nuôi, LV02: Trồng trọt...) |
-| J | `SoThangVay` | Number | Thời hạn vay tính theo tháng |
-| K | `MoTaVay` | String | Mục đích vay vốn chi tiết |
-
-### 6. Bảng `DS_TRICH_NO` (Đăng Ký Dịch Vụ Trích Nợ Tự Động)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `MaKH` | String (**PK**) | Mã khách hàng đăng ký dịch vụ |
-| B | `HoTen` | String | Tên khách hàng |
-| C | `GTTT` | String | Số CCCD/CMND |
-| D | `DiaChi` | String | Địa chỉ |
-| E | `SoTK` | String | Số tài khoản CASA ủy quyền trích nợ |
-| F | `KyTrich` | Number (1/2/3) | Kỳ trích cố định: **Kỳ 1 (ngày 05)**, **Kỳ 2 (ngày 15)**, **Kỳ 3 (ngày 25)** |
-| G | `TrangThai` | String | `Hieu luc` (Đang hoạt động) / `Tam dung` / `Huy bo` |
-| H | `GhiChu` | String | Ghi chú điều khoản ủy quyền |
-
-### 7. Bảng `DOT_TRICH_NO` (Quản Lý Các Đợt Trích Nợ Theo Tháng)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `MaDot` | String (**PK**) | Mã đợt trích (vd: `DOT-202608-K1`) |
-| B | `ThangNam` | String (`yyyyMM`) | Tháng năm thực hiện (vd: `202608`) |
-| C | `KyTrich` | Number (1/2/3) | Kỳ trích |
-| D | `TongPhaiThu` | Number (VNĐ) | Tổng số tiền phải thu trong đợt (Gốc + Lãi + Nợ tồn) |
-| E | `TongDaTrich` | Number (VNĐ) | Tổng số tiền đã trích thành công từ Core |
-| F | `TongConNo` | Number (VNĐ) | Tổng số tiền trích không thành công |
-| G | `NgayTao` | DateTime | Thời điểm lập đợt trích |
-| H | `TrangThai` | String | `KHOI_TAO` $\to$ `CHO_DUYET` $\to$ `DANG_TRICH` $\to$ `HOAN_TAT` |
-
-### 8. Bảng `LICH_SU_GIAO_DICH` (Chi Tiết Kết Quả Từng Món Vay Trong Đợt)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `IDGiaoDich` | String (**PK**) | Mã giao dịch (`GD-DOT-202608-K1-KU-0982`) |
-| B | `MaDot` | String (**FK**) | Mã đợt trích |
-| C | `MaKH` | String | Mã khách hàng |
-| D | `SoHDTD` | String | Số khế ước |
-| E | `SoTK` | String | Số tài khoản CASA trích tiền |
-| F | `PhaiThuGoc` | Number (VNĐ) | Gốc đến hạn phải thu trong kỳ |
-| G | `PhaiThuLai` | Number (VNĐ) | Lãi phát sinh phải thu trong kỳ |
-| H | `NoTonTruoc` | Number (VNĐ) | Nợ tồn đọng từ kỳ trước chuyển sang |
-| I | `TongPhaiThu` | Number (VNĐ) | Tổng cộng phải thu ($F + G + H$) |
-| J | `DaTrich` | Number (VNĐ) | Số tiền Core đã cắt nợ thực tế |
-| K | `ConNo` | Number (VNĐ) | Số tiền còn nợ ($I - J$) |
-| L | `KetQua` | String | `THANH_CONG` / `TRICH_MOT_PHAN` / `THAT_BAI` |
-| M | `LyDoLoi` | String | Nguyên nhân (vd: *Không đủ số dư*, *Tài khoản phong tỏa*) |
-| N | `NgayCapNhat` | DateTime | Thời điểm đối soát hạch toán |
-
-### 9. Bảng `NO_TON_DONG` (Sổ Theo Dõi Nợ Tồn Đọng Chuyển Kỳ Sau)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `MaKH` | String | Mã khách hàng |
-| B | `SoHDTD` | String | Số khế ước còn nợ |
-| C | `GocTon` | Number (VNĐ) | Tiền gốc chưa thu được |
-| D | `LaiTon` | Number (VNĐ) | Tiền lãi chưa thu được |
-| E | `TongNoTon` | Number (VNĐ) | Tổng nợ tồn đọng |
-| F | `KyPhatSinh` | String | Đợt trích phát sinh nợ tồn |
-| G | `TrangThai` | String | `CHUA_THU` / `DANG_DON_DOC` / `DA_THU_HOI` |
-| H | `NgayCapNhat` | DateTime | Ngày cập nhật |
-
-### 10. Bảng `BAO_CAO_THAM_DINH` (Hồ Sơ Thẩm Định & TSĐB)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `MaBCTD` | String (**PK**) | Mã biên bản thẩm định (`BCTD-2026-081`) |
-| B | `MaKH` | String | Mã khách hàng |
-| C | `HoTen` | String | Tên khách hàng |
-| D | `DeXuatVay` | Number (VNĐ) | Số tiền khách hàng đề nghị vay |
-| E | `DuyetVay` | Number (VNĐ) | Số tiền cán bộ thẩm định đề xuất phê duyệt |
-| F | `ThoiHanThang` | Number | Thời hạn vay đề xuất (tháng) |
-| G | `LaiSuatDuyet` | Number (%/năm)| Lãi suất đề xuất |
-| H | `ThuNhapThang` | Number (VNĐ) | Thu nhập bình quân hàng tháng |
-| I | `XepHangCIC` | String | Xếp hạng tín dụng CIC (`Hang A`, `Hang B`, `Hang C`) |
-| J | `LoaiTSBD` | String | Loại tài sản (QSDĐ, Nhà ở, Xe ô tô, Giấy tờ có giá...) |
-| K | `ChuSoHuuTSBD`| String | Chủ sở hữu hợp pháp tài sản |
-| L | `MoTaTSBD` | String | Chi tiết số thửa, tờ bản đồ, diện tích |
-| M | `GiaTriTSBD` | Number (VNĐ) | Giá trị định giá tài sản bảo đảm |
-| N | `TyLeLTV` | String (%) | Tỷ lệ cho vay trên giá trị TSĐB ($\frac{\text{DuyetVay}}{\text{GiaTriTSBD}}$) |
-| O | `HinhAnhTSBD` | String (URL) | Link thư mục hình ảnh giấy tờ TSĐB trên Google Drive |
-| P | `HinhAnhThamDinh`| String (URL) | Link ảnh thực địa cơ sở kinh doanh / nhà ở |
-| Q | `MucDoRuiRo` | String | `Thap` / `Trung binh` / `Cao` |
-| R | `KetLuan` | String | Kết luận thẩm định (`Dong y cap tin dung` / `Tu choi`) |
-| S | `NgayLap` | Date | Ngày lập báo cáo |
-| T | `CanBoThamDinh` | String | Cán bộ tín dụng phụ trách |
-
-### 11. Bảng `KIEM_TRA_VON` (Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân)
-| Cột | Tên Trường | Kiểu Dữ Liệu | Mô Tả |
-| :--- | :--- | :---: | :--- |
-| A | `MaBBKT` | String (**PK**) | Mã biên bản kiểm tra (`BBKT-2026-0045`) |
-| B | `SoHDTD` | String | Số hợp đồng tín dụng được kiểm tra |
-| C | `MaKH` | String | Mã khách hàng |
-| D | `HoTen` | String | Tên khách hàng |
-| E | `LoaiDoanKT` | String | Đoàn kiểm tra: `CBTD` (Cán bộ tín dụng), `BKS` (Ban kiểm soát), `HDQT` (Hội đồng quản trị) |
-| F | `ThanhPhanDoan` | String | Danh sách các thành viên tham gia đoàn kiểm tra |
-| G | `NgayKiemTra` | Date (`dd/MM/yyyy`)| Ngày tiến hành kiểm tra thực tế |
-| H | `LanKiemTra` | String | Lần kiểm tra: `Lần 1 (Sau giải ngân 30 ngày)` / `Lần 2 (Định kỳ 6 tháng)` / `Đột xuất` |
-| I | `NgayKTNext` | Date (`dd/MM/yyyy`)| Ngày dự kiến kiểm tra tiếp theo (định kỳ +3T, +6T, +12T) |
-| J | `HinhThuc` | String | Hình thức: `Thực địa tại cơ sở` / `Kiểm tra hóa đơn chứng từ` / `Kết hợp` |
-| K | `DiaDiemKT` | String | Địa điểm kiểm tra thực tế (Thôn/Xã/Nơi SXKD) |
-| L | `DanhGiaMucDich` | String | Đánh giá mục đích: `Đúng mục đích 100%` / `Sai mục đích một phần` / `Chưa đưa vào sử dụng` |
-| M | `TienDoSuDungVon`| String | Tiến độ giải ngân và đưa vốn vào SXKD thực tế |
-| N | `MucDoRuiRo` | String | Mức độ rủi ro: `Thấp` / `Trung bình` / `Cao` |
-| O | `MoTaThucTe` | String | Ghi nhận chi tiết hiện trạng hiện trường, chuồng trại, máy móc, hóa đơn |
-| P | `KienNghi` | String | Kết luận & Kiến nghị của đoàn kiểm tra (Duy trì / Nâng hạn mức / Thu hồi trước hạn) |
-| Q | `FileBienBanUrl` | String (URL) | Link tải / xem tệp Biên bản kiểm tra đã ký (Google Drive PDF / DOC) |
-| R | `HinhAnhKiemTra` | String (URL) | Link thư mục hình ảnh hiện trường thực địa trên Google Drive |
-| S | `TrangThai` | String | `ĐÃ_DUYỆT` / `CHỜ_DUYỆT` |
-| T | `NgayTao` | DateTime | Ngày giờ lập biên bản trên hệ thống |
+| A | `MaDot` | String | **FK (DOT_TRICH_NO)** |
+| B | `MaKH` | String | Mã khách hàng (vd: `KH008892`) |
+| C | `HoTen` | String | Họ và tên khách hàng |
+| D | `SoCCCD` | String | Số CCCD (12 số có số 0 đầu) |
+| E | `SoTK_CASA` | String | Số tài khoản thanh toán CASA ủy quyền trích nợ |
+| F | `SoHDTD` | String | Danh sách các số hợp đồng/khế ước đang vay tại thời điểm lập đợt |
+| G | `DuNoGoc_Snap`| Number | **Dư nợ gốc của khách hàng tại thời điểm lập đợt** (Snapshot) |
+| H | `LaiDuKien` | Number | Tiền lãi phát sinh tính toán tự động (VNĐ) |
+| I | `GocDuKien` | Number | Tiền gốc đến hạn (nếu có) (VNĐ) |
+| J | `SoTienTrichThucTe`| Number | **Số tiền trích nợ thực tế sau khi CBTD điều chỉnh** (VNĐ) |
+| K | `DaTrich` | Number | Số tiền CoreBanking đã cắt thành công (VNĐ) |
+| L | `ConNo` | Number | Số tiền trích thiếu / thất bại (VNĐ) |
+| M | `TrangThai` | Enum | `CHO_XU_LY` $\to$ `DA_TRICH_DU` / `TRICH_MOT_PHAN` / `THAT_BAI` |
+| N | `MaGiaoDichCore`| String | Mã bút toán ghi nhận từ CoreBanking |
+| O | `NgayCapNhat`| DateTime | Thời điểm cập nhật trạng thái gần nhất |
 
 ---
 
-## 🕒 3. Quy Tắc Định Dạng Ngày Tháng (Date Normalization Protocol)
+## 🔄 2. Xử Lý Hợp Đồng Đã Tất Toán Khi Đồng Bộ SQL Server
 
-1. **Hiển thị trên Giao diện Người dùng (Frontend Display)**:
-   - **Bắt buộc**: 100% các trường ngày hiển thị chuẩn Việt Nam **`dd/MM/yyyy`** (ví dụ: `18/08/2026`).
-   - Các trường có thời gian hiển thị **`dd/MM/yyyy HH:mm:ss`** (ví dụ: `18/08/2026 14:30:00`).
-   - Sử dụng thư viện tiện ích [`src/utils/dateUtils.js`](../src/utils/dateUtils.js) (`formatDateVN`, `formatDateTimeVN`).
-2. **Ghi nhận vào Google Sheets & API (Database Storage)**:
-   - Google Apps Script chuyển đổi sang đối tượng `Date` hoặc chuẩn quốc tế ISO `yyyy-MM-dd` kết hợp thiết lập `setNumberFormat("dd/MM/yyyy")` trên toàn bộ cột để Google Sheets lưu trữ chính xác mà không bị đảo lộn ngày/tháng do cài đặt vùng miền (Locale).
+1. **Trên SQL Server Core**: Câu lệnh query chỉ lấy các hợp đồng đang hoạt động và còn dư nợ:
+   ```sql
+   WHERE ku.DuNo > 0 AND ku.TrangThai = 'A'
+   ```
+2. **Trên Sheet `HDTD_CORE`**: Luôn là **Active Snapshot** (chỉ chứa các hợp đồng đang vay). Hợp đồng đã tất toán sẽ tự động không còn xuất hiện trong `HDTD_CORE`.
+3. **Bảo Toàn Lịch Sử Tuyệt Đối**: Khi một đợt trích nợ được tạo, toàn bộ thông tin hợp đồng, số tiền vay và dư nợ lúc đó đã được ghi cứng vĩnh viễn vào **`CHI_TIET_TRICH_NO`**. Do đó, việc hợp đồng tất toán trên SQL Server hoàn toàn **không ảnh hưởng tới dữ liệu lịch sử các tháng trước**.
 
 ---
 
-## ⚡ 4. Cơ Chế Tối Ưu Hóa & Bảo Vệ Hạn Ngạch Tài Khoản Google Miễn Phí (Google Free Quota Protection)
+## 🛡️ 3. Cơ Chế Kiểm Soát Toàn Vẹn CSDL & Tự Động Nâng Cấp (Schema Governance)
 
-Nhằm đảm bảo hệ thống vận hành 24/7 liên tục mà không bao giờ chạm ngưỡng giới hạn (Rate Limits / API Quotas) của tài khoản Google Free:
+Hệ thống được bảo vệ bởi 3 tầng kiểm soát:
 
-1. **Tầng Caching ScriptCache trên Backend (`gas_backend/Code.gs`)**:
-   - Sử dụng `CacheService.getScriptCache()` lưu tạm kết quả của các hàm đọc nhiều (`getDashboardStats`, `getRolesAndPermissions`, `getDebtWarnings`) với TTL 20 - 60 giây.
-   - Giảm tải **hơn 90% số lượng request đọc Google Sheets API**, giúp Web App phản hồi tức thì dưới 100ms.
-   - Tự động xóa Cache (Cache Invalidation) khi phát sinh thao tác ghi mới (`saveAppraisalReport`, `reconcileUpload`, `saveUser`...).
-2. **Thao Tác Dữ Liệu Theo Lô (Batch Operations)**:
-   - Tuyệt đối không gọi `getValue()` hoặc `setValue()` trong vòng lặp. Toàn bộ thao tác đọc/ghi đều sử dụng mảng 2 chiều (`getRange().getValues()` và `setValues()`).
-   - Chỉ gọi `SpreadsheetApp.flush()` đúng 1 lần khi kết thúc phiên xử lý.
-3. **Chống Race Condition & Khóa Giao Dịch An Toàn**:
-   - Sử dụng `LockService.getScriptLock()` với thời gian chờ 10 giây và khối lệnh `try ... finally { lock.releaseLock() }` đảm bảo an toàn tuyệt đối cho số liệu.
-4. **Debounce 350ms trên Giao Diện Tìm Kiếm**:
-   - Mọi ô tìm kiếm (Tra cứu 360°, Thẩm định, Sổ nợ) đều được trang bị bộ đệm thời gian 350ms, tránh việc người dùng gõ từng ký tự làm kích hoạt hàng loạt request không cần thiết.
-
+1. **Auto-Migration Không Mất Dữ Liệu ([`gas_backend/Database/SchemaSetup.gs`](file:///d:/Antigravity%20Projects/CreditCores/gas_backend/Database/SchemaSetup.gs))**:
+   * Khi cần bổ sung cột mới: Script tự động quét dòng tiêu đề hiện tại của Sheet. Nếu thiếu cột mới, script sẽ tự động bổ sung cột mà **giữ nguyên 100% dữ liệu cũ**, không bao giờ ghi đè hay làm hỏng dữ liệu.
+2. **Kiểm Soát Kiểu Dữ Liệu (Data Integrity)**:
+   * Các cột nhạy cảm như `CCCD`, `SoTK`, `SoHDTD` luôn được lưu dưới dạng Text chuỗi (`@` hoặc có dấu `'038...`) để chống mất số 0 đầu.
+   * Các cột số tiền luôn được định dạng `#,#00` số nguyên để tránh lỗi tính toán `#VALUE!`.
+3. **Quy Trình Quản Trị Tài Liệu Bắt Buộc (Living Documentation)**:
+   * Bất kỳ khi nào mở rộng trường dữ liệu trong code frontend hoặc backend, lập tức đối chiếu và cập nhật vào file `docs/DATA_SCHEMA.md` này.

@@ -7,7 +7,7 @@ var DebitController = {
     var cached = CacheHelper.getCachedData('debit_registrations');
     if (cached) return { status: "success", data: cached };
 
-    var sheet = ss.getSheetByName("DS_TRICH_NO");
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
     if (!sheet || sheet.getLastRow() <= 1) {
       return { status: "success", data: [] };
     }
@@ -16,14 +16,14 @@ var DebitController = {
     var results = [];
     for (var i = 0; i < values.length; i++) {
       results.push({
-        maKH: values[i][0],
-        hoTen: values[i][1],
-        gttt: values[i][2],
-        diaChi: values[i][3],
-        soTK: values[i][4],
-        kyTrich: values[i][5],
-        trangThai: values[i][6],
-        ghiChu: values[i][7]
+        maKH: String(values[i][0]),
+        hoTen: String(values[i][1]),
+        gttt: String(values[i][2]),
+        soTK: String(values[i][3]),
+        diaChi: String(values[i][4]),
+        kyTrich: Number(values[i][5]) || 1,
+        trangThai: String(values[i][6]) || "Hiệu lực",
+        ghiChu: String(values[i][7] || "")
       });
     }
 
@@ -32,18 +32,22 @@ var DebitController = {
   },
 
   handleSaveDebitRegister: function(ss, data) {
-    var sheet = ss.getSheetByName("DS_TRICH_NO");
-    if (!sheet) return { status: "error", message: "Không tìm thấy Sheet DS_TRICH_NO" };
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    if (!sheet) {
+      SchemaSetup.ensureDatabaseSchema(ss);
+      sheet = ss.getSheetByName("DANG_KY_TRICH_NO");
+    }
 
     var row = [
       data.maKH || "",
       data.hoTen || "",
-      data.gttt || "",
+      "'" + (data.gttt || ""),
+      "'" + (data.soTK || ""),
       data.diaChi || "",
-      data.soTK || "",
       Number(data.kyTrich) || 1,
-      data.trangThai || "Hieu luc",
-      data.ghiChu || ""
+      data.trangThai || "Hiệu lực",
+      data.ghiChu || "",
+      new Date()
     ];
 
     sheet.appendRow(row);
@@ -60,18 +64,19 @@ var DebitController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.min(10, sheet.getLastColumn())).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
       results.push({
         maDot: values[i][0],
         thangNam: values[i][1],
-        kyTrich: values[i][2],
-        tongPhaiThu: values[i][3],
-        tongDaTrich: values[i][4],
-        tongConNo: values[i][5],
-        ngayTao: formatGasDateTime(values[i][6]),
-        trangThai: values[i][7]
+        kyTrich: Number(values[i][2]),
+        tongPhaiThu: Number(values[i][3]) || 0,
+        tongDaTrich: Number(values[i][4]) || 0,
+        tongConNo: Number(values[i][5]) || 0,
+        tongSoKH: Number(values[i][6]) || 0,
+        trangThai: values[i][7] || "CHO_TRICH_NO",
+        ngayTao: formatGasDateTime(values[i][8])
       });
     }
 
@@ -85,79 +90,70 @@ var DebitController = {
     var maDot = "DOT-" + thangNam + "-K" + kyTrich;
 
     var sDot = ss.getSheetByName("DOT_TRICH_NO");
-    var sLS = ss.getSheetByName("LICH_SU_GIAO_DICH");
-    var sDS = ss.getSheetByName("DS_TRICH_NO");
-    var sHDTD = ss.getSheetByName("HDTD_CORE");
-    var sNoTon = ss.getSheetByName("NO_TON_DONG");
+    var sDetail = ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
 
-    if (!sDot || !sLS || !sDS || !sHDTD) {
-      return { status: "error", message: "Thiếu các bảng CSDL cần thiết để tạo đợt trích nợ." };
+    if (!sDot || !sDetail) {
+      SchemaSetup.ensureDatabaseSchema(ss);
+      sDot = ss.getSheetByName("DOT_TRICH_NO");
+      sDetail = ss.getSheetByName("CHI_TIET_TRICH_NO");
     }
 
     var totalPhaiThu = 0;
     var count = 0;
+    var newDetailRows = [];
 
-    var dsValues = sDS.getLastRow() > 1 ? sDS.getRange(2, 1, sDS.getLastRow() - 1, 8).getValues() : [];
-    var hdValues = sHDTD.getLastRow() > 1 ? sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, 11).getValues() : [];
-    var noTonValues = (sNoTon && sNoTon.getLastRow() > 1) ? sNoTon.getRange(2, 1, sNoTon.getLastRow() - 1, 8).getValues() : [];
+    // Trường hợp 1: Có danh sách chi tiết được chọn và điều chỉnh số tiền từ giao diện
+    if (data.chiTietDanhSach && Array.isArray(data.chiTietDanhSach) && data.chiTietDanhSach.length > 0) {
+      for (var k = 0; k < data.chiTietDanhSach.length; k++) {
+        var item = data.chiTietDanhSach[k];
+        var amt = Number(item.soTienTrich) || 0;
+        totalPhaiThu += amt;
+        count++;
 
-    var newTxRows = [];
-    for (var i = 0; i < dsValues.length; i++) {
-      if (Number(dsValues[i][5]) === kyTrich && dsValues[i][6] === "Hieu luc") {
-        var maKH = dsValues[i][0];
-        var soTK = dsValues[i][4];
-
-        for (var j = 0; j < hdValues.length; j++) {
-          if (hdValues[j][1] === maKH) {
-            var soHDTD = hdValues[j][0];
-            var duNo = Number(hdValues[j][3]) || 0;
-            var laiSuat = Number(hdValues[j][4]) || 0;
-            var phaiThuLai = Math.round((duNo * (laiSuat / 100)) / 12);
-            var phaiThuGoc = 0;
-
-            var noTonTruoc = 0;
-            for (var k = 0; k < noTonValues.length; k++) {
-              if (noTonValues[k][1] === soHDTD && noTonValues[k][6] === "CHUA_THU") {
-                noTonTruoc += Number(noTonValues[k][4]) || 0;
-              }
-            }
-
-            var tongThu = phaiThuGoc + phaiThuLai + noTonTruoc;
-            totalPhaiThu += tongThu;
-            count++;
-
-            var txId = "TX-" + Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd") + "-" + (1000 + count);
-            newTxRows.push([
-              txId,
-              maDot,
-              maKH,
-              soHDTD,
-              soTK,
-              phaiThuGoc,
-              phaiThuLai,
-              noTonTruoc,
-              tongThu,
-              0,
-              tongThu,
-              "CHO_XU_LY",
-              "",
-              new Date()
-            ]);
-          }
-        }
+        newDetailRows.push([
+          maDot,
+          item.maKH || "",
+          item.hoTen || "",
+          "'" + (item.gttt || ""),
+          "'" + (item.soTK || ""),
+          item.soHDTD || "",
+          Number(item.tongDuNo) || 0,
+          Number(item.laiPhatSinh) || 0,
+          Number(item.gocDenHan) || 0,
+          amt,
+          0,
+          amt,
+          "CHO_XU_LY",
+          "",
+          new Date()
+        ]);
       }
     }
 
-    if (newTxRows.length > 0) {
-      sLS.getRange(sLS.getLastRow() + 1, 1, newTxRows.length, 14).setValues(newTxRows);
+    // Ghi hàng loạt vào bảng chi tiết
+    if (newDetailRows.length > 0) {
+      sDetail.getRange(sDetail.getLastRow() + 1, 1, newDetailRows.length, newDetailRows[0].length).setValues(newDetailRows);
     }
 
-    sDot.appendRow([maDot, thangNam, kyTrich, totalPhaiThu, 0, totalPhaiThu, new Date(), "CHO_TRICH_NO"]);
+    // Ghi vào bảng Master Đợt trích nợ
+    sDot.appendRow([
+      maDot,
+      thangNam,
+      kyTrich,
+      totalPhaiThu,
+      0,
+      totalPhaiThu,
+      count,
+      "CHO_TRICH_NO",
+      new Date(),
+      ""
+    ]);
+
     CacheHelper.invalidateModuleCache('debit');
 
     return {
       status: "success",
-      message: "Khởi tạo đợt trích nợ " + maDot + " thành công với " + count + " món vay!",
+      message: "Khởi tạo đợt trích nợ " + maDot + " thành công với " + count + " khách hàng!",
       maDot: maDot,
       totalPhaiThu: totalPhaiThu
     };
