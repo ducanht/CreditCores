@@ -45,11 +45,49 @@ var AuthController = {
             customPermissions = JSON.parse(customPermsRaw || "[]");
           } catch(e) {}
 
+          // Lấy quyền theo nhóm từ bảng ROLES
+          var rolePerms = [];
+          var rolesSheet = ss.getSheetByName("ROLES");
+          if (rolesSheet) {
+            var roleVals = rolesSheet.getDataRange().getValues();
+            for (var r = 1; r < roleVals.length; r++) {
+              if (String(roleVals[r][0]).toUpperCase().trim() === String(role).toUpperCase().trim()) {
+                try {
+                  rolePerms = JSON.parse(roleVals[r][2] || "[]");
+                } catch(err) {}
+                break;
+              }
+            }
+          }
+
+          // Hợp nhất quyền hiệu lực (Effective Permissions)
+          var effectivePerms = [];
+          if (String(role).toUpperCase().trim() === "ADMIN") {
+            effectivePerms = ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates', 'user_management', 'settings'];
+          } else {
+            var permMap = {};
+            for (var p = 0; p < rolePerms.length; p++) permMap[rolePerms[p]] = true;
+            for (var cp = 0; cp < customPermissions.length; cp++) permMap[customPermissions[cp]] = true;
+            effectivePerms = Object.keys(permMap);
+            if (effectivePerms.length === 0) {
+              if (String(role).toUpperCase().trim() === "CBTD") {
+                effectivePerms = ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports', 'templates'];
+              } else if (String(role).toUpperCase().trim() === "KETOAN") {
+                effectivePerms = ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates'];
+              } else if (String(role).toUpperCase().trim() === "BKS") {
+                effectivePerms = ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports', 'templates'];
+              } else if (String(role).toUpperCase().trim() === "LANHDAO") {
+                effectivePerms = ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates'];
+              }
+            }
+          }
+
           var userObj = {
             username: values[i][0],
             fullName: fullName,
             role: role,
             customPermissions: customPermissions,
+            effectivePermissions: effectivePerms,
             status: status
           };
           var token = "TOKEN_" + username + "_" + Date.now();

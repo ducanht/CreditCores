@@ -14,6 +14,7 @@ var ModuleRegistryController = {
       { id: 'reconciliation', name: 'Đối soát & Kết quả', category: 'KẾ TOÁN', description: 'Đối soát file kết quả từ Core và phân loại nợ thu thành công/thất bại' },
       { id: 'debt_warning', name: 'Cảnh báo Nợ tồn đọng', category: 'QUẢN LÝ NỢ', description: 'Sổ theo dõi nợ tồn đọng và quản lý đôn đốc thu hồi' },
       { id: 'reports', name: 'Báo cáo Thống kê', category: 'BÁO CÁO', description: 'Phân tích đa chiều dư nợ theo 3 Xã và loại sản phẩm vay' },
+      { id: 'templates', name: 'Quản lý Biểu mẫu', category: 'HỆ THỐNG', description: 'Quản lý kho biểu mẫu Google Docs/Word và trộn dữ liệu tài liệu' },
       { id: 'user_management', name: 'Phân quyền 360° & User', category: 'HỆ THỐNG', description: 'Quản trị người dùng, phân quyền theo nhóm và gán quyền cá nhân' },
       { id: 'settings', name: 'Cấu hình & Đồng bộ Core', category: 'HỆ THỐNG', description: 'Giám sát hàng đợi lệnh đồng bộ Core và tham số hệ thống' }
     ];

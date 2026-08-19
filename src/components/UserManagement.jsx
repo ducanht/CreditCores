@@ -42,9 +42,15 @@ const GROUPS_METADATA = [
   },
   {
     code: 'BKS',
-    name: 'Ban Kiểm Soát / Giám Đốc',
+    name: 'Ban Kiểm Soát',
     badgeClass: 'badge-warning-soft',
     description: 'Giám sát hoạt động tín dụng, cảnh báo nợ quá hạn và xem báo cáo thống kê đa chiều'
+  },
+  {
+    code: 'LANHDAO',
+    name: 'Ban Giám Đốc / HĐQT',
+    badgeClass: 'badge-info-soft',
+    description: 'Giám sát tổng thể hoạt động, phê duyệt các đợt trích nợ và báo cáo quản trị'
   }
 ];
 
@@ -88,19 +94,16 @@ export default function UserManagement() {
       }
       if (rRes.status === 'success' && rRes.data) {
         const rolesList = Array.isArray(rRes.data) ? rRes.data : (rRes.data.roles || []);
-        // Đảm bảo có đủ 4 nhóm
+        // Đảm bảo có đủ 5 nhóm nghiệp vụ
         const mergedRoles = GROUPS_METADATA.map(g => {
           const found = rolesList.find(r => r.roleCode === g.code);
           return {
             roleCode: g.code,
-            roleName: g.name,
-            description: g.description,
-            permissions: found?.permissions || (
-              g.code === 'ADMIN' ? MODULE_REGISTRY.map(m => m.id) :
-              g.code === 'CBTD' ? ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'reports'] :
-              g.code === 'KETOAN' ? ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports'] :
-              ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports']
-            )
+            roleName: found?.roleName || g.name,
+            description: found?.description || g.description,
+            permissions: (found?.permissions && found.permissions.length > 0) 
+              ? found.permissions 
+              : AuthService.getDefaultPermissionsForRole(g.code)
           };
         });
         setRoles(mergedRoles);
