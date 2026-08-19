@@ -1,13 +1,14 @@
 {
-  "google_sheet_id": "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw",
+  "google_sheet_id": "1E2zPUuYHkhXMDS5ZM7jxI-FY4JrD17O66ruN5uK15U0",
   "credentials_file": "credentials.json",
   "poll_interval_seconds": 5,
   "sql_server": {
     "driver": "ODBC Driver 17 for SQL Server",
-    "server": "192.168.1.100\\SQLEXPRESS,1433",
-    "database": "CORE_BANKING_DB",
+    "server": "localhost\\SQLEXPRESS",
+    "database": "CORE_BANKING_YENTHO",
+    "use_windows_auth": false,
     "username": "sa",
-    "password": "YourStrongPasswordHere",
+    "password": "YourSecurePassword@2026",
     "trust_server_certificate": "yes"
   }
 }
