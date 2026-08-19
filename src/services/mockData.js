@@ -68,6 +68,8 @@ export const initialMockData = {
       soSoCP: 'CP-0412',
       ngayVaoTV: '10/01/2018',
       tongTienCP: 15000000,
+      cbtdPhuTrach: 'qtdyentho.cbtd',
+      tenCBTD: 'Lê Văn Tín (CBTD)',
       contracts: [
         {
           soHDTD: 'KU-2025-0982',
@@ -80,7 +82,11 @@ export const initialMockData = {
           traLaiDenNgay: '15/07/2026',
           maLoaiVay: 'LV01',
           soThangVay: 12,
-          moTaVay: 'Cho vay phát triển chăn nuôi bò sữa'
+          moTaVay: 'Cho vay phát triển chăn nuôi bò sữa',
+          cbtdPhuTrach: 'qtdyentho.cbtd',
+          tenCBTD: 'Lê Văn Tín (CBTD)',
+          trangThaiHD: 'DANG_VAY',
+          ngayTatToan: ''
         },
         {
           soHDTD: 'KU-2026-0145',
@@ -93,7 +99,28 @@ export const initialMockData = {
           traLaiDenNgay: '10/07/2026',
           maLoaiVay: 'LV03',
           soThangVay: 24,
-          moTaVay: 'Cho vay kinh doanh vật tư nông nghiệp'
+          moTaVay: 'Cho vay kinh doanh vật tư nông nghiệp',
+          cbtdPhuTrach: 'qtdyentho.cbtd',
+          tenCBTD: 'Lê Văn Tín (CBTD)',
+          trangThaiHD: 'DANG_VAY',
+          ngayTatToan: ''
+        },
+        {
+          soHDTD: 'KU-2024-0331',
+          maKH: 'KH008892',
+          tienVay: 150000000,
+          duNo: 0,
+          laiSuat: 9.0,
+          ngayVay: '10/01/2024',
+          denHan: '10/01/2025',
+          traLaiDenNgay: '10/01/2025',
+          maLoaiVay: 'LV01',
+          soThangVay: 12,
+          moTaVay: 'Cho vay cải tạo chuồng trại',
+          cbtdPhuTrach: 'qtdyentho.cbtd',
+          tenCBTD: 'Lê Văn Tín (CBTD)',
+          trangThaiHD: 'DA_TAT_TOAN',
+          ngayTatToan: '10/01/2025'
         }
       ]
     },
@@ -113,6 +140,8 @@ export const initialMockData = {
       soSoCP: 'CP-0511',
       ngayVaoTV: '15/03/2019',
       tongTienCP: 20000000,
+      cbtdPhuTrach: 'qtdyentho.cbtd',
+      tenCBTD: 'Lê Văn Tín (CBTD)',
       contracts: [
         {
           soHDTD: 'KU-2026-0312',
@@ -125,7 +154,11 @@ export const initialMockData = {
           traLaiDenNgay: '05/07/2026',
           maLoaiVay: 'LV02',
           soThangVay: 24,
-          moTaVay: 'Cho vay trồng trọt công nghệ cao'
+          moTaVay: 'Cho vay trồng trọt công nghệ cao',
+          cbtdPhuTrach: 'qtdyentho.cbtd',
+          tenCBTD: 'Lê Văn Tín (CBTD)',
+          trangThaiHD: 'DANG_VAY',
+          ngayTatToan: ''
         }
       ]
     },
@@ -145,6 +178,8 @@ export const initialMockData = {
       soSoCP: 'CP-0320',
       ngayVaoTV: '20/11/2016',
       tongTienCP: 30000000,
+      cbtdPhuTrach: 'qtdyentho.cbtd',
+      tenCBTD: 'Lê Văn Tín (CBTD)',
       contracts: [
         {
           soHDTD: 'KU-2025-0811',
@@ -157,7 +192,11 @@ export const initialMockData = {
           traLaiDenNgay: '20/07/2026',
           maLoaiVay: 'LV03',
           soThangVay: 24,
-          moTaVay: 'Cho vay mua xe tải vận chuyển nông sản'
+          moTaVay: 'Cho vay mua xe tải vận chuyển nông sản',
+          cbtdPhuTrach: 'qtdyentho.cbtd',
+          tenCBTD: 'Lê Văn Tín (CBTD)',
+          trangThaiHD: 'DANG_VAY',
+          ngayTatToan: ''
         }
       ]
     }

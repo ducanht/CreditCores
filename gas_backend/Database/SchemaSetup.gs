@@ -68,10 +68,10 @@ var SchemaSetup = {
       colWidths: { 1: 100, 2: 180, 3: 220, 4: 110, 5: 130, 6: 110, 7: 160, 8: 110, 9: 110, 10: 140, 11: 140, 12: 100, 13: 100, 14: 110, 15: 130, 16: 160 }
     },
     HDTD_CORE: {
-      headers: ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "NgayCapNhat"],
+      headers: ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"],
       color: "#1B365D",
-      formats: { "C:D": "#,##0", "E:E": "0.00", "F:H": "dd/MM/yyyy", "J:J": "#,##0", "L:L": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 120, 2: 100, 3: 130, 4: 130, 5: 90, 6: 110, 7: 110, 8: 120, 9: 100, 10: 90, 11: 220, 12: 160 }
+      formats: { "C:D": "#,##0", "E:E": "0.00", "F:H": "dd/MM/yyyy", "J:J": "#,##0", "L:M": "@", "N:N": "@", "O:O": "dd/MM/yyyy", "P:P": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 120, 2: 100, 3: 130, 4: 130, 5: 90, 6: 110, 7: 110, 8: 120, 9: 100, 10: 90, 11: 220, 12: 140, 13: 160, 14: 120, 15: 120, 16: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
@@ -211,10 +211,19 @@ var SchemaSetup = {
               for (var k = 0; k < schema.headers.length; k++) {
                 var targetColName = schema.headers[k];
                 var oldIdx = oldHeaderMap[targetColName];
-                if (oldIdx !== undefined && oldData[r][oldIdx] !== undefined) {
+                if (oldIdx !== undefined && oldData[r][oldIdx] !== undefined && oldData[r][oldIdx] !== "") {
                   newRow[k] = oldData[r][oldIdx];
                 } else {
-                  newRow[k] = "";
+                  if (targetColName === "CBTD_PhuTrach") {
+                    newRow[k] = "qtdyentho.cbtd";
+                  } else if (targetColName === "Ten_CBTD") {
+                    newRow[k] = "Lê Văn Tín (CBTD)";
+                  } else if (targetColName === "TrangThaiHD") {
+                    var oldDuNo = Number(oldData[r][3] || 0);
+                    newRow[k] = oldDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN";
+                  } else {
+                    newRow[k] = "";
+                  }
                 }
               }
               newData.push(newRow);

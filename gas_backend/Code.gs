@@ -56,6 +56,9 @@ function doGet(e) {
       case "getModuleRegistry":
         result = ModuleRegistryController.handleGetModuleRegistry();
         break;
+      case "getCBTDPortfolioStats":
+        result = Customer360Controller.handleGetCBTDPortfolioStats(ss, data);
+        break;
       case "initDatabase":
         result = SchemaSetup.setupAllSheets(ss);
         break;
@@ -142,6 +145,12 @@ function doPost(e) {
         break;
       case "triggerSqlSync":
         result = SyncController.handleTriggerSqlSync(ss);
+        break;
+      case "getCBTDPortfolioStats":
+        result = Customer360Controller.handleGetCBTDPortfolioStats(ss, data);
+        break;
+      case "assignContractCBTD":
+        result = Customer360Controller.handleAssignContractCBTD(ss, data);
         break;
       case "initDatabase":
         result = SchemaSetup.setupAllSheets(ss);

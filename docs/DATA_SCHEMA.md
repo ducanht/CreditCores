@@ -92,7 +92,11 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 | I | `MaLoaiVay` | String | `@` | Mã sản phẩm cho vay (`LV01`, `LV02`...) |
 | J | `SoThangVay` | Number | `#,##0` | Thời hạn vay (tháng) |
 | K | `MoTaVay` | String | `@` | Phương án sản xuất kinh doanh |
-| L | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server |
+| L | `CBTD_PhuTrach` | String | `@` | Username Cán bộ Tín dụng quản lý HĐ (`qtdyentho.cbtd`) |
+| M | `Ten_CBTD` | String | `@` | Họ tên đầy đủ CBTD phụ trách (`Lê Văn Tín (CBTD)`) |
+| N | `TrangThaiHD` | Enum | `@` | Trạng thái hợp đồng (`DANG_VAY`, `DA_TAT_TOAN`) |
+| O | `NgayTatToan` | String | `dd/MM/yyyy` | Ngày ghi nhận tất toán (khi dư nợ Core về 0) |
+| P | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server hoặc phân công |
 
 ### 6. `DANG_KY_TRICH_NO` (Ủy Quyền Trích Nợ CASA)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |

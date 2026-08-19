@@ -207,6 +207,7 @@ export default function App() {
 
           {activeTab === 'customer360' && (
             <Customer360
+              currentUser={currentUser}
               onNavigateToAppraisal={handleNavigateToAppraisal}
               onNavigateToInspection={handleNavigateToInspection}
               onNavigateToDebit={handleNavigateToDebit}

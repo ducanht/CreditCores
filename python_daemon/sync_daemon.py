@@ -145,6 +145,10 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
         ISNULL(ku.MaLoaiVay, 'LV01') AS MaLoaiVay,
         ISNULL(ku.SoThangVay, 12) AS SoThangVay,
         ISNULL(lv.TenLoaiVay, ku.MucDichVay) AS MoTaVay,
+        'qtdyentho.cbtd' AS CBTD_PhuTrach,
+        N'Lê Văn Tín (CBTD)' AS Ten_CBTD,
+        'DANG_VAY' AS TrangThaiHD,
+        '' AS NgayTatToan,
         ? AS NgayCapNhat
     FROM TD_KHE_UOC ku WITH (NOLOCK)
     INNER JOIN TD_HOP_DONG_TD hd WITH (NOLOCK) ON ku.SoHDTD_Goc = hd.SoHDTD
@@ -226,11 +230,62 @@ def process_sync_request(spreadsheet, sql_cfg):
             kh_sheet = get_or_create_worksheet(spreadsheet, "KH_CORE", kh_headers)
             rows_kh = sync_dataframe_to_sheet(kh_sheet, df_kh, start_row=2)
 
-            # 2. Đồng bộ Khế ước & Dư nợ Tín dụng
+            # 2. Đồng bộ Khế ước & Dư nợ Tín dụng kèm bảo toàn CBTD đã gán & nhận diện tất toán
             df_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
-            hdtd_headers = ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "NgayCapNhat"]
+            hdtd_headers = ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"]
             hdtd_sheet = get_or_create_worksheet(spreadsheet, "HDTD_CORE", hdtd_headers)
-            rows_hdtd = sync_dataframe_to_sheet(hdtd_sheet, df_hdtd, start_row=2)
+
+            # Đọc dữ liệu cũ từ Google Sheet để bảo toàn CBTD đã gán và nhận diện HĐ tất toán
+            try:
+                existing_records = hdtd_sheet.get_all_records()
+            except Exception:
+                existing_records = []
+            
+            existing_map = {str(r.get("SoHDTD", "")).strip(): r for r in existing_records if str(r.get("SoHDTD", "")).strip()}
+
+            # Bảo toàn CBTD đã phân công trên Google Sheets sang DataFrame mới
+            for idx, row in df_hdtd.iterrows():
+                so_hd = str(row["SoHDTD"]).strip()
+                if so_hd in existing_map:
+                    prev_cbtd = str(existing_map[so_hd].get("CBTD_PhuTrach", "")).strip()
+                    prev_ten = str(existing_map[so_hd].get("Ten_CBTD", "")).strip()
+                    if prev_cbtd:
+                        df_hdtd.at[idx, "CBTD_PhuTrach"] = prev_cbtd
+                    if prev_ten:
+                        df_hdtd.at[idx, "Ten_CBTD"] = prev_ten
+
+            # Nhận diện các HĐ trước đây có dư nợ mà nay không còn trong Core active -> Chuyển sang ĐÃ TẤT TOÁN
+            active_so_hd_set = set(df_hdtd["SoHDTD"].astype(str).str.strip())
+            settled_rows = []
+            for so_hd, prev_r in existing_map.items():
+                if so_hd not in active_so_hd_set:
+                    settled_row = {
+                        "SoHDTD": so_hd,
+                        "MaKH": prev_r.get("MaKH", ""),
+                        "TienVay": prev_r.get("TienVay", 0),
+                        "DuNo": 0,
+                        "LaiSuat": prev_r.get("LaiSuat", 0),
+                        "NgayVay": prev_r.get("NgayVay", ""),
+                        "DenHan": prev_r.get("DenHan", ""),
+                        "TraLaiDenNgay": prev_r.get("TraLaiDenNgay", ""),
+                        "MaLoaiVay": prev_r.get("MaLoaiVay", "LV01"),
+                        "SoThangVay": prev_r.get("SoThangVay", 12),
+                        "MoTaVay": prev_r.get("MoTaVay", ""),
+                        "CBTD_PhuTrach": prev_r.get("CBTD_PhuTrach", "qtdyentho.cbtd"),
+                        "Ten_CBTD": prev_r.get("Ten_CBTD", "Lê Văn Tín (CBTD)"),
+                        "TrangThaiHD": "DA_TAT_TOAN",
+                        "NgayTatToan": prev_r.get("NgayTatToan") or sync_timestamp_str.split(" ")[0],
+                        "NgayCapNhat": sync_timestamp_str
+                    }
+                    settled_rows.append(settled_row)
+
+            if settled_rows:
+                df_settled = pd.DataFrame(settled_rows)
+                df_hdtd_combined = pd.concat([df_hdtd, df_settled], ignore_index=True)
+            else:
+                df_hdtd_combined = df_hdtd
+
+            rows_hdtd = sync_dataframe_to_sheet(hdtd_sheet, df_hdtd_combined, start_row=2)
 
         finish_time = datetime.now()
         total_rows = rows_kh + rows_hdtd

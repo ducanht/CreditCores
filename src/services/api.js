@@ -206,15 +206,142 @@ function handleMockFallback(action, data) {
 
     case 'searchCustomer360': {
       const q = (data?.query || '').toLowerCase().trim();
-      const filtered = mockDb.customers.filter(c =>
-        !q ||
-        c.maKH.toLowerCase().includes(q) ||
-        c.hoTen.toLowerCase().includes(q) ||
-        c.cccd.includes(q) ||
-        c.dienThoaiDD.includes(q) ||
-        c.soTK.includes(q)
-      );
+      const cbtd = (data?.cbtdUsername || '').toLowerCase().trim();
+      const status = (data?.status || '').toUpperCase().trim();
+
+      const filtered = mockDb.customers.map(c => {
+        let matchingContracts = c.contracts || [];
+        if (cbtd && cbtd !== 'all') {
+          matchingContracts = matchingContracts.filter(ct => (ct.cbtdPhuTrach || '').toLowerCase() === cbtd);
+        }
+        if (status && status !== 'ALL') {
+          matchingContracts = matchingContracts.filter(ct => (ct.trangThaiHD || 'DANG_VAY') === status);
+        }
+        return {
+          ...c,
+          contracts: matchingContracts
+        };
+      }).filter(c => {
+        if ((cbtd && cbtd !== 'all') || (status && status !== 'ALL')) {
+          if (c.contracts.length === 0) return false;
+        }
+        return !q ||
+          c.maKH.toLowerCase().includes(q) ||
+          c.hoTen.toLowerCase().includes(q) ||
+          c.cccd.includes(q) ||
+          c.dienThoaiDD.includes(q) ||
+          c.soTK.includes(q) ||
+          (c.khuVuc || '').toLowerCase().includes(q);
+      });
       return { status: 'success', data: filtered };
+    }
+
+    case 'getCBTDPortfolioStats': {
+      const cbtd = (data?.cbtdUsername || '').toLowerCase().trim();
+      let totalContracts = 0;
+      let activeContracts = 0;
+      let settledContracts = 0;
+      let totalActivePrincipal = 0;
+      let totalOriginalLoan = 0;
+      const uniqueCustomers = new Set();
+      let dueIn30Days = 0;
+      let pastDueContracts = 0;
+
+      const cbtdMap = {};
+
+      mockDb.customers.forEach(c => {
+        (c.contracts || []).forEach(ct => {
+          const cCbtd = (ct.cbtdPhuTrach || 'qtdyentho.cbtd').toLowerCase();
+          const cTen = ct.tenCBTD || 'Lê Văn Tín (CBTD)';
+          const duNo = Number(ct.duNo || 0);
+          const isSettled = ct.trangThaiHD === 'DA_TAT_TOAN' || duNo === 0;
+
+          if (!cbtdMap[cCbtd]) {
+            cbtdMap[cCbtd] = {
+              username: cCbtd,
+              fullName: cTen,
+              totalContracts: 0,
+              activeContracts: 0,
+              settledContracts: 0,
+              totalDuNo: 0,
+              customers: new Set()
+            };
+          }
+          cbtdMap[cCbtd].totalContracts++;
+          if (isSettled) {
+            cbtdMap[cCbtd].settledContracts++;
+          } else {
+            cbtdMap[cCbtd].activeContracts++;
+            cbtdMap[cCbtd].totalDuNo += duNo;
+            cbtdMap[cCbtd].customers.add(c.maKH);
+          }
+
+          if (!cbtd || cbtd === 'all' || cCbtd === cbtd) {
+            totalContracts++;
+            totalOriginalLoan += Number(ct.tienVay || 0);
+            if (isSettled) {
+              settledContracts++;
+            } else {
+              activeContracts++;
+              totalActivePrincipal += duNo;
+              uniqueCustomers.add(c.maKH);
+            }
+          }
+        });
+      });
+
+      const cbtdList = Object.values(cbtdMap).map(item => ({
+        username: item.username,
+        fullName: item.fullName,
+        totalContracts: item.totalContracts,
+        activeContracts: item.activeContracts,
+        settledContracts: item.settledContracts,
+        totalDuNo: item.totalDuNo,
+        customerCount: item.customers.size
+      }));
+
+      return {
+        status: 'success',
+        data: {
+          totalContracts,
+          activeContracts,
+          settledContracts,
+          totalActivePrincipal,
+          totalOriginalLoan,
+          totalCustomers: uniqueCustomers.size,
+          dueIn30Days,
+          pastDueContracts,
+          cbtdList
+        }
+      };
+    }
+
+    case 'assignContractCBTD': {
+      const { soHDTD, maKH, cbtdUsername, tenCBTD, assignAllForCustomer } = data || {};
+      let updatedCount = 0;
+      mockDb.customers.forEach(c => {
+        if (assignAllForCustomer && maKH && c.maKH === maKH) {
+          c.cbtdPhuTrach = cbtdUsername;
+          c.tenCBTD = tenCBTD;
+          (c.contracts || []).forEach(ct => {
+            ct.cbtdPhuTrach = cbtdUsername;
+            ct.tenCBTD = tenCBTD;
+            updatedCount++;
+          });
+        } else {
+          (c.contracts || []).forEach(ct => {
+            if (ct.soHDTD === soHDTD) {
+              ct.cbtdPhuTrach = cbtdUsername;
+              ct.tenCBTD = tenCBTD;
+              updatedCount++;
+            }
+          });
+        }
+      });
+      return {
+        status: 'success',
+        message: `Đã phân công CBTD ${tenCBTD} phụ trách thành công ${updatedCount} hợp đồng!`
+      };
     }
 
     case 'getAppraisals':
@@ -333,7 +460,12 @@ function handleMockFallback(action, data) {
 
 export const api = {
   getDashboardStats: () => sendRequest('getDashboardStats'),
-  searchCustomer360: (query) => sendRequest('searchCustomer360', { query }),
+  searchCustomer360: (params) => {
+    const payload = typeof params === 'object' ? params : { query: params };
+    return sendRequest('searchCustomer360', payload);
+  },
+  getCBTDPortfolioStats: (cbtdUsername) => sendRequest('getCBTDPortfolioStats', { cbtdUsername }),
+  assignContractCBTD: (data) => sendRequest('assignContractCBTD', data, 'POST'),
   getAppraisals: () => sendRequest('getAppraisals'),
   saveAppraisalReport: (data) => sendRequest('saveAppraisalReport', data, 'POST'),
   addApprovalOpinion: (data) => sendRequest('addApprovalOpinion', data, 'POST'),
