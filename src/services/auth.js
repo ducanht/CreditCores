@@ -161,35 +161,48 @@ export const AuthService = {
   },
 
   /**
-   * Kiểm tra quyền truy cập module theo Phân Quyền 360° (Effective Permissions)
+   * Quyền mặc định theo từng vai trò (CBTD, KETOAN, BKS, LANHDAO, ADMIN)
    */
-  hasPermission(moduleKey) {
-    const user = this.getCurrentUser();
-    if (!user) return false;
-
-    // Admin luôn có toàn quyền
-    if (user.role === 'ADMIN') return true;
-
-    // Kiểm tra danh sách quyền hiệu lực (hợp nhất giữa Role Permissions và Custom Permissions)
-    if (user.effectivePermissions && Array.isArray(user.effectivePermissions)) {
-      return user.effectivePermissions.includes(moduleKey);
-    }
-
-    // Fallback: nếu có customPermissions
-    if (user.customPermissions && Array.isArray(user.customPermissions)) {
-      if (user.customPermissions.includes(moduleKey)) return true;
-    }
-
-    // Default fallback theo role nếu chưa có effectivePermissions
+  getDefaultPermissionsForRole(role) {
+    const r = (role || '').toUpperCase().trim();
     const defaultRolePerms = {
+      ADMIN: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates', 'user_management', 'settings'],
       CBTD: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports', 'templates'],
       KETOAN: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates'],
       BKS: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports', 'templates'],
       LANHDAO: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates']
     };
+    return defaultRolePerms[r] || ['dashboard', 'customer360', 'reports'];
+  },
 
-    const allowed = defaultRolePerms[user.role] || [];
-    return allowed.includes(moduleKey);
+  /**
+   * Kiểm tra quyền truy cập module theo Phân Quyền 360° (Effective Permissions)
+   */
+  hasPermission(moduleKey, customUser = null) {
+    const user = customUser || this.getCurrentUser();
+    if (!user) return false;
+
+    const role = (user.role || '').toUpperCase().trim();
+
+    // Admin luôn có toàn quyền 12/12 modules
+    if (role === 'ADMIN') return true;
+
+    // Tổng quan (dashboard) luôn luôn mở cho mọi tài khoản đã đăng nhập
+    if (moduleKey === 'dashboard') return true;
+
+    // 1. Kiểm tra danh sách quyền hiệu lực nếu có và không rỗng
+    if (user.effectivePermissions && Array.isArray(user.effectivePermissions) && user.effectivePermissions.length > 0) {
+      return user.effectivePermissions.includes(moduleKey);
+    }
+
+    // 2. Lấy quyền cơ sở theo vai trò
+    const basePerms = this.getDefaultPermissionsForRole(role);
+
+    // 3. Hợp nhất với customPermissions nếu có
+    const customPerms = Array.isArray(user.customPermissions) ? user.customPermissions : [];
+    const allAllowed = Array.from(new Set([...basePerms, ...customPerms]));
+
+    return allAllowed.includes(moduleKey);
   },
 
   /**

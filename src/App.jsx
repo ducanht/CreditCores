@@ -65,6 +65,14 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // Đảm bảo activeTab luôn hợp lệ với phân quyền người dùng
+  useEffect(() => {
+    if (currentUser && !AuthService.hasPermission(activeTab, currentUser)) {
+      setActiveTab('dashboard');
+      localStorage.setItem('CREDITCORES_ACTIVE_TAB', 'dashboard');
+    }
+  }, [currentUser, activeTab]);
+
   const toggleTheme = () => {
     setIsDarkMode(prev => !prev);
   };

@@ -47,7 +47,7 @@ export default function Sidebar({
     { id: 'settings', label: 'Cấu hình & Đồng bộ Core', icon: Settings, category: 'HỆ THỐNG' }
   ];
 
-  const visibleMenuItems = allMenuItems.filter((item) => AuthService.hasPermission(item.id));
+  const visibleMenuItems = allMenuItems.filter((item) => AuthService.hasPermission(item.id, currentUser));
 
   const roleInfo = ROLE_LABELS[currentUser?.role] || {
     label: currentUser?.role || 'Cán Bộ',
