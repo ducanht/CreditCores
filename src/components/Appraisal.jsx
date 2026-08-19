@@ -13,7 +13,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Printer
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatCurrencyVN } from '../utils/dateUtils';
@@ -21,8 +22,9 @@ import Pagination from './Pagination';
 import AppraisalFormModal from './modals/AppraisalFormModal';
 import AppraisalOpinionModal from './modals/AppraisalOpinionModal';
 import AppraisalDetailModal from './modals/AppraisalDetailModal';
+import AppraisalPrintPreviewModal from './modals/AppraisalPrintPreviewModal';
 
-export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }) {
+export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, currentUser }) {
   const [appraisals, setAppraisals] = useState([]);
   const [allCustomers, setAllCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,7 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedAppraisalForOpinion, setSelectedAppraisalForOpinion] = useState(null);
   const [selectedAppraisalForDetail, setSelectedAppraisalForDetail] = useState(null);
+  const [selectedAppraisalForPrint, setSelectedAppraisalForPrint] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -358,9 +361,16 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
                           <button
                             className="btn btn-sm btn-outline-secondary p-1 px-2"
                             onClick={() => setSelectedAppraisalForDetail(item)}
-                            title="Xem chi tiết & In Báo cáo"
+                            title="Xem chi tiết hồ sơ thẩm định"
                           >
                             <Eye size={13} />
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-success p-1 px-2"
+                            onClick={() => setSelectedAppraisalForPrint(item)}
+                            title="In Báo Cáo hoặc Xuất File Word (.doc)"
+                          >
+                            <Printer size={13} />
                           </button>
                           <button
                             className="btn btn-sm btn-outline-primary p-1 px-2"
@@ -401,12 +411,14 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
         onSubmit={handleSaveSubmit}
         prefilledCustomer={prefilledCustomer}
         allCustomers={allCustomers}
+        currentUser={currentUser}
       />
 
       <AppraisalOpinionModal
         appraisal={selectedAppraisalForOpinion}
         onClose={() => setSelectedAppraisalForOpinion(null)}
         onSubmit={handleSaveOpinionSubmit}
+        currentUser={currentUser}
       />
 
       <AppraisalDetailModal
@@ -416,6 +428,15 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView }
           setSelectedAppraisalForDetail(null);
           setSelectedAppraisalForOpinion(item);
         }}
+        onOpenPrintPreview={(item) => {
+          setSelectedAppraisalForDetail(null);
+          setSelectedAppraisalForPrint(item);
+        }}
+      />
+
+      <AppraisalPrintPreviewModal
+        appraisal={selectedAppraisalForPrint}
+        onClose={() => setSelectedAppraisalForPrint(null)}
       />
     </div>
   );

@@ -16,28 +16,40 @@ import {
   X,
   Layers,
   Calculator,
-  Percent
+  Percent,
+  Sparkles,
+  Download
 } from 'lucide-react';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
-export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpinion }) {
+export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpinion, onOpenPrintPreview }) {
   if (!appraisal) return null;
 
   const deXuatVay = Number(appraisal.deXuatVay) || 0;
   const duyetVay = Number(appraisal.duyetVay) || 0;
-  const thuNhap = Number(appraisal.tongThuNhapThang || appraisal.thuNhapThang) || 0;
-  const chiPhi = Number(appraisal.tongChiPhiThang || appraisal.chiPhiThang) || 0;
-  const thangDu = thuNhap - chiPhi;
+  const thuNhap = Number(appraisal.tongThuNhapThang || appraisal.thuNhapChinh) || 0;
+  const chiPhi = Number(appraisal.tongChiPhiThang) || 0;
+  const thuNhapRong = Number(appraisal.thuNhapRong || appraisal.thangDuThang) || (thuNhap - chiPhi);
   const giaTriTSBD = Number(appraisal.giaTriTSBD) || 0;
-  const tyLeLTV = giaTriTSBD > 0 ? ((duyetVay / giaTriTSBD) * 100).toFixed(1) : (appraisal.tyLeLTV || 0);
+  const tyLeLTV = appraisal.tyLeLTV || (giaTriTSBD > 0 ? ((duyetVay / giaTriTSBD) * 100).toFixed(1) : '0.0');
 
-  const thoiHan = Number(appraisal.thoiHanThang) || 12;
-  const laiSuat = Number(appraisal.laiSuatDuyet) || 0;
+  const thoiHan = Number(appraisal.thoiHanThang || appraisal.thoiHanVay) || 12;
+  const laiSuat = Number(appraisal.laiSuatDuyet || appraisal.laiSuatDeNghi) || 0;
   const gocThang = thoiHan > 0 ? duyetVay / thoiHan : 0;
   const laiThang = (duyetVay * (laiSuat / 100)) / 12;
   const nghiaVuTraNoThang = Number(appraisal.nghiaVuTraNoThang) || (gocThang + laiThang);
-  const tyLeDSR = thuNhap > 0 ? ((nghiaVuTraNoThang / thuNhap) * 100).toFixed(1) : (appraisal.tyLeDSR || 0);
-  const heSoBuDap = nghiaVuTraNoThang > 0 ? (thangDu / nghiaVuTraNoThang).toFixed(2) : (appraisal.heSoBuDap || '0.00');
+  const tyLeDSR = appraisal.tyLeDSR || (thuNhap > 0 ? ((nghiaVuTraNoThang / thuNhap) * 100).toFixed(1) : '0.0');
+  const heSoBuDap = appraisal.heSoBuDap || (nghiaVuTraNoThang > 0 ? (thuNhapRong / nghiaVuTraNoThang).toFixed(2) : '0.00');
+
+  // Phân tích chi tiết loại đất
+  let chiTietDat = [];
+  try {
+    chiTietDat = typeof appraisal.chiTietLoaiDat === 'string'
+      ? JSON.parse(appraisal.chiTietLoaiDat || '[]')
+      : (appraisal.chiTietLoaiDat || []);
+  } catch (e) {
+    chiTietDat = [];
+  }
 
   const opinions = appraisal.danhSachYKien || [];
   const agreeCount = opinions.filter((y) => y.yKien === 'Đồng ý').length;
@@ -65,10 +77,13 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
                   {appraisal.ketLuan}
                 </span>
                 <span className="badge bg-light text-muted border small">
-                  Ngày lập: {appraisal.ngayLap || 'Hôm nay'}
+                  Ngày lập: {formatDateVN(appraisal.ngayLap || new Date())}
                 </span>
                 <span className="badge bg-secondary-subtle text-secondary small">
                   Rủi ro: {appraisal.mucDoRuiRo || 'Thấp'}
+                </span>
+                <span className="badge bg-info-subtle text-info small">
+                  CBTD: {appraisal.canBoThamDinh || 'Lê Văn Tín (CBTD)'}
                 </span>
               </div>
               <h4 className="fw-extrabold text-slate-900 font-heading m-0">
@@ -105,7 +120,7 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
 
               <div className="col-6 col-md-3">
                 <div className="p-2.5 bg-light rounded-3 border text-center">
-                  <span className="text-muted" style={{ fontSize: '0.72rem' }}>Tỷ lệ DSR (Nợ/Thu nhập):</span>
+                  <span className="text-muted" style={{ fontSize: '0.72rem' }}>Tỷ lệ DTI (Nợ/Thu nhập):</span>
                   <div className={`fw-extrabold fs-6 ${Number(tyLeDSR) > 60 ? 'text-danger' : 'text-success'}`}>
                     {tyLeDSR}%
                   </div>
@@ -117,322 +132,291 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
 
               <div className="col-6 col-md-3">
                 <div className="p-2.5 bg-light rounded-3 border text-center">
-                  <span className="text-muted" style={{ fontSize: '0.72rem' }}>Hệ số bù đắp dòng tiền:</span>
-                  <div className={`fw-extrabold fs-6 ${Number(heSoBuDap) >= 1.2 ? 'text-success' : 'text-danger'}`}>
-                    {heSoBuDap}x
+                  <span className="text-muted" style={{ fontSize: '0.72rem' }}>Thu Nhập Ròng Thặng Dư:</span>
+                  <div className="fw-extrabold text-success fs-6 num-tabular">
+                    {formatCurrencyVN(thuNhapRong)}
                   </div>
                   <span className="text-muted" style={{ fontSize: '0.68rem' }}>
-                    {Number(heSoBuDap) >= 1.2 ? 'Đảm bảo trả nợ (≥1.2x)' : 'Cần theo dõi'}
+                    Nghĩa vụ nợ: {formatCurrencyVN(nghiaVuTraNoThang)}/tháng
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="row g-3">
-              {/* ========================================================================= */}
-              {/* NHÓM 1: THÔNG TIN PHÁP LÝ & NHU CẦU VAY VỐN                               */}
-              {/* ========================================================================= */}
-              <div className="col-12 col-lg-6">
-                <div className="p-3 bg-light rounded-3 border h-100">
-                  <h6 className="fw-bold text-primary small mb-2.5 d-flex align-items-center gap-1.5 border-bottom pb-1.5">
-                    <User size={15} /> 1. Thông Tin Pháp Lý & Nhu Cầu Vốn
-                  </h6>
-
-                  <div className="row g-2 small">
-                    <div className="col-6">
-                      <span className="text-muted">Khách hàng vay:</span>
-                      <div className="fw-bold text-dark fs-6">{appraisal.hoTen}</div>
-                      <span className="font-monospace text-primary">{appraisal.maKH}</span>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted">Số CCCD / CMND:</span>
-                      <div className="fw-bold font-monospace text-dark">{appraisal.soCCCD || 'Chưa cập nhật'}</div>
-                      <span className="text-muted">{appraisal.gioiTinh || 'Nam'} • {appraisal.ngaySinh || '1985'}</span>
-                    </div>
-
-                    <div className="col-6">
-                      <span className="text-muted">Số điện thoại:</span>
-                      <div className="fw-semibold text-dark">{appraisal.dienThoai || '0912345678'}</div>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted">Tình trạng hôn nhân:</span>
-                      <div className="fw-semibold text-dark">{appraisal.tinhTrangHonNhan || 'Đã kết hôn'}</div>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Địa chỉ thường trú / Cư trú:</span>
-                      <div className="fw-semibold text-dark">{appraisal.diaChi || 'Xã Yên Thọ, Ý Yên, Nam Định'}</div>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Người đồng vay / Vợ chồng / Bảo lãnh:</span>
-                      <div className="fw-semibold text-secondary">{appraisal.nguoiDongVay || 'Không có'}</div>
-                    </div>
-
-                    <div className="col-6 mt-1">
-                      <span className="text-muted">Số tiền xin vay:</span>
-                      <div className="fw-bold text-primary fs-6 num-tabular">{formatCurrencyVN(deXuatVay)}</div>
-                    </div>
-                    <div className="col-6 mt-1">
-                      <span className="text-muted">Thời hạn & Phương thức trả:</span>
-                      <div className="fw-semibold text-dark">{appraisal.thoiHanVay || thoiHan} tháng</div>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Mục đích vay vốn:</span>
-                      <p className="m-0 text-dark mt-0.5 bg-white p-2 rounded border" style={{ fontSize: '0.78rem' }}>
-                        {appraisal.mucDichVay || 'Đầu tư mở rộng sản xuất kinh doanh và bổ sung vốn lưu động.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ========================================================================= */}
-              {/* NHÓM 2: THÔNG TIN VỀ TÀI SẢN BẢO ĐẢM (TSBĐ)                               */}
-              {/* ========================================================================= */}
-              <div className="col-12 col-lg-6">
-                <div className="p-3 bg-light rounded-3 border h-100">
-                  <h6 className="fw-bold text-primary small mb-2.5 d-flex align-items-center gap-1.5 border-bottom pb-1.5">
-                    <Building2 size={15} /> 2. Thông Tin Tài Sản Bảo Đảm (TSBĐ)
-                  </h6>
-
-                  {appraisal.coTSBD === 'Không' ? (
-                    <div className="text-center py-4 bg-white rounded border">
-                      <ShieldCheck size={28} className="text-success mb-1" />
-                      <h6 className="fw-bold text-dark m-0">Khoản Vay Tín Chấp</h6>
-                      <p className="small text-muted m-0">Không yêu cầu tài sản thế chấp.</p>
-                    </div>
+            {/* ========================================================================= */}
+            {/* NHÓM 1: PHÁP LÝ & NHU CẦU VỐN                                             */}
+            {/* ========================================================================= */}
+            <div className="p-3 bg-white rounded-3 border mb-3">
+              <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                <User size={18} /> 1. Thông Tin Pháp Lý Khách Hàng & Nhu Cầu Vay
+              </h6>
+              <div className="row g-2">
+                <div className="col-md-3 text-center">
+                  {appraisal.hinhAnhKH ? (
+                    <img
+                      src={appraisal.hinhAnhKH}
+                      alt="Ảnh khách hàng"
+                      className="rounded border object-fit-cover shadow-sm mb-1"
+                      style={{ width: '100px', height: '120px' }}
+                    />
                   ) : (
-                    <div className="row g-2 small">
-                      <div className="col-6">
-                        <span className="text-muted">Hình thức bảo đảm:</span>
-                        <div className="fw-bold text-dark">{appraisal.hinhThucBaoDam || 'Thế chấp QSDĐ (Sổ đỏ)'}</div>
-                      </div>
-                      <div className="col-6">
-                        <span className="text-muted">Số GCN / Số Sổ đỏ:</span>
-                        <div className="fw-bold font-monospace text-primary">{appraisal.soGCN || 'CH 892341'}</div>
-                      </div>
-
-                      <div className="col-4">
-                        <span className="text-muted">Thửa đất số:</span>
-                        <div className="fw-semibold text-dark">{appraisal.thuaDatSo || '112'}</div>
-                      </div>
-                      <div className="col-4">
-                        <span className="text-muted">Tờ bản đồ:</span>
-                        <div className="fw-semibold text-dark">{appraisal.toBanDoSo || '08'}</div>
-                      </div>
-                      <div className="col-4">
-                        <span className="text-muted">Diện tích:</span>
-                        <div className="fw-semibold text-dark">{appraisal.dienTich || 250} m²</div>
-                      </div>
-
-                      <div className="col-12">
-                        <span className="text-muted">Địa chỉ tài sản:</span>
-                        <div className="fw-semibold text-dark">{appraisal.diaChiTSBD || appraisal.diaChi}</div>
-                      </div>
-
-                      <div className="col-6">
-                        <span className="text-muted">Chủ sở hữu:</span>
-                        <div className="fw-semibold text-dark">{appraisal.chuSoHuuTSBD || appraisal.hoTen}</div>
-                      </div>
-                      <div className="col-6">
-                        <span className="text-muted">Quan hệ với người vay:</span>
-                        <div className="fw-semibold text-dark">{appraisal.quanHeVoiNguoiVay || 'Chính chủ'}</div>
-                      </div>
-
-                      <div className="col-6 mt-1">
-                        <span className="text-muted">Giá trị định giá QTD:</span>
-                        <div className="fw-bold text-success fs-6 num-tabular">{formatCurrencyVN(giaTriTSBD)}</div>
-                      </div>
-                      <div className="col-6 mt-1">
-                        <span className="text-muted">Tỷ lệ LTV:</span>
-                        <div>
-                          <span className={`badge ${Number(tyLeLTV) > 75 ? 'bg-danger' : Number(tyLeLTV) > 70 ? 'bg-warning text-dark' : 'bg-success'}`}>
-                            {tyLeLTV}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="col-12">
-                        <span className="text-muted">Mô tả hiện trạng & Pháp lý TSĐB:</span>
-                        <p className="m-0 text-dark mt-0.5 bg-white p-2 rounded border" style={{ fontSize: '0.78rem' }}>
-                          {appraisal.moTaTSBD || 'Tài sản có sổ đỏ hợp pháp, không tranh chấp, đường giao thông thuận lợi.'}
-                        </p>
-                      </div>
+                    <div
+                      className="rounded border bg-light d-flex flex-column align-items-center justify-content-center text-muted mx-auto mb-1"
+                      style={{ width: '100px', height: '120px' }}
+                    >
+                      <User size={32} className="opacity-50" />
+                      <span style={{ fontSize: '0.65rem' }}>Ảnh chân dung</span>
                     </div>
                   )}
+                  <span className="small text-muted d-block">{appraisal.hoTen}</span>
                 </div>
-              </div>
 
-              {/* ========================================================================= */}
-              {/* NHÓM 3: THU THẬP THỰC ĐỊA, DÒNG TIỀN & CIC                                 */}
-              {/* ========================================================================= */}
-              <div className="col-12 col-lg-6">
-                <div className="p-3 bg-light rounded-3 border h-100">
-                  <h6 className="fw-bold text-primary small mb-2.5 d-flex align-items-center gap-1.5 border-bottom pb-1.5">
-                    <TrendingUp size={15} /> 3. Thu Thập Thực Địa, Dòng Tiền & CIC
-                  </h6>
-
-                  <div className="row g-2 small">
-                    <div className="col-6">
-                      <span className="text-muted">Thu nhập chính/tháng:</span>
-                      <div className="fw-bold text-success num-tabular">{formatCurrencyVN(appraisal.thuNhapChinh || thuNhap)}</div>
+                <div className="col-md-9">
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <span className="text-muted small d-block">Khách hàng:</span>
+                      <strong className="text-dark">{appraisal.hoTen}</strong> ({appraisal.maKH})
                     </div>
-                    <div className="col-6">
-                      <span className="text-muted">Thu nhập phụ/tháng:</span>
-                      <div className="fw-bold text-success num-tabular">{formatCurrencyVN(appraisal.thuNhapPhu || 0)}</div>
+                    <div className="col-md-6">
+                      <span className="text-muted small d-block">Số CCCD / Ngày cấp:</span>
+                      <span className="font-monospace fw-bold">{appraisal.soCCCD}</span> ({formatDateVN(appraisal.ngayCap || '')})
                     </div>
-
-                    <div className="col-6">
-                      <span className="text-muted">Chi phí sinh hoạt:</span>
-                      <div className="fw-bold text-danger num-tabular">{formatCurrencyVN(appraisal.chiPhiSinhHoat || (chiPhi * 0.7))}</div>
+                    <div className="col-md-6">
+                      <span className="text-muted small d-block">Số điện thoại / Nơi ở:</span>
+                      <span>{appraisal.dienThoai || '---'} • {appraisal.diaChi}</span>
                     </div>
-                    <div className="col-6">
-                      <span className="text-muted">Chi phí SXKD:</span>
-                      <div className="fw-bold text-danger num-tabular">{formatCurrencyVN(appraisal.chiPhiSXKD || (chiPhi * 0.3))}</div>
+                    <div className="col-md-6">
+                      <span className="text-muted small d-block">Ngành nghề & Trình độ:</span>
+                      <span>{appraisal.nganhNghe || 'Kinh doanh tự do'} • {appraisal.trinhDo || 'Đại học / Cao đẳng'}</span>
                     </div>
-
-                    <div className="col-12">
-                      <div className="p-2 rounded bg-white border d-flex justify-content-between align-items-center">
-                        <span className="text-muted">Thặng dư tích lũy hàng tháng:</span>
-                        <span className={`fw-bold fs-6 num-tabular ${thangDu >= 0 ? 'text-success' : 'text-danger'}`}>
-                          {formatCurrencyVN(thangDu)}
-                        </span>
-                      </div>
+                    <div className="col-md-6">
+                      <span className="text-muted small d-block">Hôn nhân & Người đồng vay:</span>
+                      <span>{appraisal.tinhTrangHonNhan || 'Đã kết hôn'} — {appraisal.nguoiDongVay || 'Không có'}</span>
                     </div>
-
-                    <div className="col-6 mt-1">
-                      <span className="text-muted">Xếp hạng CIC:</span>
-                      <div>
-                        <span className="badge bg-success-subtle text-success fw-bold px-2 py-0.5">
-                          {appraisal.xepHangCIC || 'Nhóm 1 (Tốt)'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="col-6 mt-1">
-                      <span className="text-muted">Số TCTD quan hệ & Dư nợ ngoài:</span>
-                      <div className="fw-semibold text-dark">{appraisal.soTCTDQuanHe || 1} TCTD • {formatCurrencyVN(appraisal.duNoCICNgoai || 0)}</div>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Đánh giá thực địa & Tư cách khách hàng:</span>
-                      <p className="m-0 text-dark mt-0.5 bg-white p-2 rounded border" style={{ fontSize: '0.78rem' }}>
-                        {appraisal.hienTrangSXKD || 'Khách hàng có cơ sở sản xuất kinh doanh hoạt động ổn định, đạo đức tốt và uy tín cao.'}
-                      </p>
+                    <div className="col-md-6">
+                      <span className="text-muted small d-block">Mục đích vay vốn:</span>
+                      <span className="text-primary fw-semibold">{appraisal.mucDichVay}</span>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* ========================================================================= */}
-              {/* NHÓM 4: ĐỀ XUẤT CỦA CBTD & CHỈ SỐ TÀI CHÍNH                               */}
-              {/* ========================================================================= */}
-              <div className="col-12 col-lg-6">
-                <div className="p-3 bg-light rounded-3 border h-100">
-                  <h6 className="fw-bold text-primary small mb-2.5 d-flex align-items-center gap-1.5 border-bottom pb-1.5">
-                    <Calculator size={15} /> 4. Đề Xuất Của CBTD & Chỉ Số Tài Chính
-                  </h6>
-
-                  <div className="row g-2 small">
-                    <div className="col-6">
-                      <span className="text-muted">Số tiền đề xuất duyệt:</span>
-                      <div className="fw-bold text-danger fs-6 num-tabular">{formatCurrencyVN(duyetVay)}</div>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted">Thời hạn & Lãi suất duyệt:</span>
-                      <div className="fw-bold text-dark">{thoiHan} tháng • {laiSuat}%/năm</div>
-                    </div>
-
-                    <div className="col-6">
-                      <span className="text-muted">Phương thức giải ngân:</span>
-                      <div className="fw-semibold text-dark">{appraisal.phuongThucGiaiNgan || 'Tài khoản CASA'}</div>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted">Nghĩa vụ trả nợ ước tính/tháng:</span>
-                      <div className="fw-bold text-danger num-tabular">{formatCurrencyVN(Math.round(nghiaVuTraNoThang))}</div>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Biện pháp bảo đảm & Quản lý rủi ro:</span>
-                      <div className="fw-semibold text-dark">{appraisal.bienPhapBaoDam || 'Thế chấp QSDĐ, công chứng đăng ký GDBĐ đầy đủ.'}</div>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Điều kiện tiên quyết trước giải ngân:</span>
-                      <p className="m-0 text-dark mt-0.5 bg-white p-2 rounded border" style={{ fontSize: '0.78rem' }}>
-                        {appraisal.dieuKienGiaiNgan || 'Hoàn tất công chứng hợp đồng thế chấp và nhận kết quả đăng ký giao dịch bảo đảm.'}
-                      </p>
-                    </div>
-
-                    <div className="col-12">
-                      <span className="text-muted">Cán bộ thẩm định lập báo cáo:</span>
-                      <div className="fw-bold text-primary">{appraisal.canBoThamDinh || 'Lê Văn Tín'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ========================================================================= */}
-              {/* NHÓM 5: Ý KIẾN PHÊ DUYỆT ĐA CẤP & KẾT LUẬN                                 */}
-              {/* ========================================================================= */}
-              <div className="col-12">
-                <div className="p-3 bg-light rounded-3 border">
-                  <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                    <h6 className="fw-bold text-primary small m-0 d-flex align-items-center gap-1.5">
-                      <MessageSquare size={15} /> 5. Lịch Sử Ý Kiến Phê Duyệt Đa Cấp ({opinions.length} ý kiến, {agreeCount} đồng ý)
-                    </h6>
-                    {onOpenAddOpinion && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary fw-semibold py-0.5 px-2"
-                        onClick={() => onOpenAddOpinion(appraisal)}
-                      >
-                        + Bổ sung ý kiến đánh giá
-                      </button>
-                    )}
-                  </div>
-
-                  {opinions.length > 0 ? (
-                    <div className="d-flex flex-column gap-2 mt-2" style={{ maxHeight: 220, overflowY: 'auto' }}>
-                      {opinions.map((yk, idx) => (
-                        <div key={idx} className="p-2.5 bg-white rounded-3 border small">
-                          <div className="d-flex justify-content-between align-items-center mb-1">
-                            <strong className="text-dark">
-                              {yk.nguoiDanhGia} ({yk.chucVu})
-                            </strong>
-                            <span className={`badge ${yk.yKien === 'Đồng ý' ? 'bg-success' : 'bg-danger'}`}>
-                              {yk.yKien}
-                            </span>
-                          </div>
-                          <p className="m-0 text-secondary">{yk.noiDung}</p>
-                          <div className="text-muted mt-1" style={{ fontSize: '0.7rem' }}>
-                            {yk.ngayDanhGia || 'Hôm nay'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted py-3 bg-white rounded border small">
-                      Chưa có ý kiến phê duyệt nào được ghi nhận cho hồ sơ thẩm định này.
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
+
+            {/* ========================================================================= */}
+            {/* NHÓM 2: TÀI SẢN BẢO ĐẢM & BẢNG ĐẤT ĐA LOẠI                                */}
+            {/* ========================================================================= */}
+            <div className="p-3 bg-white rounded-3 border mb-3">
+              <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                <Building2 size={18} /> 2. Tài Sản Bảo Đảm & Chi Tiết Định Giá Từng Loại Đất
+              </h6>
+              {appraisal.coTSBD === 'Có' ? (
+                <>
+                  <div className="row g-2 mb-2">
+                    <div className="col-md-4">
+                      <span className="text-muted small d-block">Loại TSBĐ:</span>
+                      <strong>{appraisal.loaiTSBD || 'QSDĐ & Nhà ở'}</strong>
+                    </div>
+                    <div className="col-md-4">
+                      <span className="text-muted small d-block">Số GCN (Sổ đỏ):</span>
+                      <span className="font-monospace fw-bold text-primary">{appraisal.soGCN || '---'}</span> (Thửa {appraisal.thuaDatSo}, Tờ BĐ {appraisal.toBanDoSo})
+                    </div>
+                    <div className="col-md-4">
+                      <span className="text-muted small d-block">Nguồn gốc & Chủ sở hữu:</span>
+                      <span>{appraisal.nguonGocTSBD || 'Nhận chuyển nhượng'} • {appraisal.chuSoHuuTSBD || appraisal.hoTen}</span>
+                    </div>
+                    <div className="col-12">
+                      <span className="text-muted small d-block">Địa chỉ tài sản & Hiện trạng:</span>
+                      <span>{appraisal.diaChiTSBD || appraisal.diaChi} — {appraisal.moTaTSBD}</span>
+                    </div>
+                  </div>
+
+                  {chiTietDat.length > 0 && (
+                    <div className="table-responsive mt-2">
+                      <table className="table table-sm table-bordered align-middle mb-1">
+                        <thead className="table-light small">
+                          <tr>
+                            <th>Loại Đất</th>
+                            <th className="text-end">Diện Tích (m²)</th>
+                            <th className="text-end">Đơn Giá Định Giá (VNĐ/m²)</th>
+                            <th className="text-end">Thành Tiền (VNĐ)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {chiTietDat.map((d, i) => (
+                            <tr key={i}>
+                              <td className="small">{d.loaiDat}</td>
+                              <td className="text-end num-tabular">{d.dienTich}</td>
+                              <td className="text-end num-tabular">{formatCurrencyVN(d.donGia)}</td>
+                              <td className="text-end fw-bold num-tabular">{formatCurrencyVN(d.thanhTien)}</td>
+                            </tr>
+                          ))}
+                          <tr>
+                            <td colSpan="3" className="small fw-semibold">Giá trị công trình xây dựng / Nhà ở trên đất:</td>
+                            <td className="text-end fw-bold num-tabular">{formatCurrencyVN(appraisal.giaTriCongTrinh || 0)}</td>
+                          </tr>
+                          <tr className="table-light fw-bold">
+                            <td colSpan="3" className="text-primary text-uppercase small">TỔNG GIÁ TRỊ ĐỊNH GIÁ QTDND:</td>
+                            <td className="text-end text-success fs-6 num-tabular">{formatCurrencyVN(giaTriTSBD)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-muted small">Khoản vay không áp dụng tài sản bảo đảm (Cho vay tín chấp).</div>
+              )}
+            </div>
+
+            {/* ========================================================================= */}
+            {/* NHÓM 3: NĂNG LỰC TÀI CHÍNH & LỊCH SỬ CIC                                  */}
+            {/* ========================================================================= */}
+            <div className="p-3 bg-white rounded-3 border mb-3">
+              <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                <DollarSign size={18} /> 3. Năng Lực Tài Chính, Dòng Tiền & Lịch Sử Tín Dụng CIC
+              </h6>
+              <div className="row g-2">
+                <div className="col-md-6">
+                  <div className="p-2.5 bg-light rounded-3 border">
+                    <span className="fw-bold small text-slate-800 d-block mb-1">Cơ cấu thu nhập hàng tháng:</span>
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span>• Người vay chính:</span>
+                      <span className="fw-bold">{formatCurrencyVN(appraisal.thuNhapNguoiVay || appraisal.thuNhapChinh)}</span>
+                    </div>
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span>• Người đồng vay / Vợ chồng:</span>
+                      <span className="fw-bold">{formatCurrencyVN(appraisal.thuNhapDongVay || 0)}</span>
+                    </div>
+                    <div className="d-flex justify-content-between small border-top pt-1 text-primary fw-bold">
+                      <span>TỔNG THU NHẬP:</span>
+                      <span>{formatCurrencyVN(thuNhap)}/tháng</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6">
+                  <div className="p-2.5 bg-light rounded-3 border">
+                    <span className="fw-bold small text-slate-800 d-block mb-1">Chi phí & Dòng tiền thặng dư:</span>
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span>• Chi phí sinh hoạt:</span>
+                      <span>{formatCurrencyVN(appraisal.chiPhiSinhHoat || 0)}</span>
+                    </div>
+                    <div className="d-flex justify-content-between small mb-1">
+                      <span>• Chi phí SXKD & Khác:</span>
+                      <span>{formatCurrencyVN(appraisal.chiPhiSXKD || 0)}</span>
+                    </div>
+                    <div className="d-flex justify-content-between small border-top pt-1 text-success fw-bold">
+                      <span>THU NHẬP RÒNG:</span>
+                      <span>{formatCurrencyVN(thuNhapRong)}/tháng</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-12 mt-2">
+                  <div className="p-2 bg-slate-50 rounded-3 border small">
+                    <strong>Thông tin CIC:</strong> Nhóm nợ: <span className="badge bg-success-subtle text-success">{appraisal.xepHangCIC || 'Nhóm 1'}</span> • Quan hệ: <strong>{appraisal.soTCTDQuanHe || 1} TCTD</strong> • Dư nợ ngoài: {formatCurrencyVN(appraisal.duNoCICNgoai || 0)} • {appraisal.ghiChuCIC || 'CIC sạch'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* NHÓM 4 & 5: ĐỀ XUẤT, PHƯƠNG ÁN TỐI ƯU & Ý KIẾN PHÊ DUYỆT                 */}
+            {/* ========================================================================= */}
+            <div className="p-3 bg-white rounded-3 border mb-3">
+              <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2">
+                <TrendingUp size={18} /> 4. Đề Xuất Cấp Tín Dụng & Đánh Giá Phương Án Tối Ưu
+              </h6>
+              <div className="row g-2 mb-2">
+                <div className="col-md-3">
+                  <span className="text-muted small d-block">Số tiền duyệt vay:</span>
+                  <strong className="text-danger fs-6">{formatCurrencyVN(duyetVay)}</strong>
+                </div>
+                <div className="col-md-3">
+                  <span className="text-muted small d-block">Thời hạn & Lãi suất:</span>
+                  <span><strong>{thoiHan} tháng</strong> • <strong>{laiSuat}%/năm</strong></span>
+                </div>
+                <div className="col-md-3">
+                  <span className="text-muted small d-block">Phương thức trả gốc:</span>
+                  <span className="badge bg-primary-subtle text-primary">
+                    {appraisal.phuongThucTraGoc === 'HANG_QUY' ? 'Gốc đều hàng quý' : appraisal.phuongThucTraGoc === 'CUOI_KY' ? 'Gốc trả cuối kỳ' : 'Gốc đều hàng tháng'}
+                  </span>
+                </div>
+                <div className="col-md-3">
+                  <span className="text-muted small d-block">Nghĩa vụ nợ tháng cao nhất:</span>
+                  <strong className="text-dark">{formatCurrencyVN(nghiaVuTraNoThang)}</strong>
+                </div>
+              </div>
+
+              {appraisal.phuongAnToiUu && (
+                <div className="p-2.5 bg-primary-subtle rounded-3 border border-primary-subtle small mb-2">
+                  <strong className="text-primary d-flex align-items-center gap-1 mb-1">
+                    <Sparkles size={14} /> Nhận định & Khuyến nghị phương án tối ưu:
+                  </strong>
+                  <span>{appraisal.phuongAnToiUu}</span>
+                </div>
+              )}
+
+              <div className="p-2 bg-light rounded-3 border small">
+                <strong>Điều kiện giải ngân:</strong> {appraisal.dieuKienGiaiNgan || 'Hoàn tất thủ tục công chứng và đăng ký GDBĐ.'}
+              </div>
+            </div>
+
+            {/* Lịch sử ý kiến phê duyệt đa cấp */}
+            <div className="p-3 bg-white rounded-3 border">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h6 className="fw-bold text-primary m-0 d-flex align-items-center gap-2">
+                  <MessageSquare size={18} /> 5. Ý Kiến Phê Duyệt & Chữ Ký Các Cấp ({opinions.length})
+                </h6>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary fw-semibold"
+                  onClick={() => onOpenAddOpinion && onOpenAddOpinion(appraisal)}
+                >
+                  + Thêm Ý Kiến Phê Duyệt
+                </button>
+              </div>
+
+              {opinions.length > 0 ? (
+                <div className="d-flex flex-column gap-2">
+                  {opinions.map((op, idx) => (
+                    <div key={idx} className="p-2.5 bg-light rounded-3 border">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                          <strong className="text-dark">{op.nguoiDanhGia}</strong>{' '}
+                          <span className="badge bg-secondary-subtle text-secondary small">{op.chucVu}</span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                          <span className={`badge ${op.yKien === 'Đồng ý' ? 'bg-success' : op.yKien === 'Có điều kiện' ? 'bg-warning text-dark' : 'bg-danger'}`}>
+                            {op.yKien}
+                          </span>
+                          <span className="text-muted small" style={{ fontSize: '0.72rem' }}>{op.ngayDanhGia}</span>
+                        </div>
+                      </div>
+                      <p className="small text-slate-700 m-0">{op.noiDung}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-3 text-muted small">
+                  Chưa có ý kiến phê duyệt nào được ghi nhận. Bấm nút phía trên để thêm ý kiến.
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Footer Actions */}
-          <div className="modal-footer border-0 pt-1 d-flex justify-content-between">
+          {/* Modal Footer */}
+          <div className="modal-footer border-top pt-3 d-flex justify-content-between">
             <button
               type="button"
-              className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm"
-              onClick={() => window.print()}
+              className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1.5 text-white"
+              onClick={() => onOpenPrintPreview && onOpenPrintPreview(appraisal)}
             >
-              <Printer size={14} /> In Báo Cáo Thẩm Định
+              <Printer size={15} /> In / Xuất Hồ Sơ Thẩm Định (A4 & Word)
             </button>
-            <button type="button" className="btn btn-light btn-sm px-4" onClick={onClose}>
-              Đóng
+
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
+              Đóng Cửa Sổ
             </button>
           </div>
         </div>

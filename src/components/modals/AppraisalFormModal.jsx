@@ -13,7 +13,15 @@ import {
   Layers,
   ShieldCheck,
   Percent,
-  DollarSign
+  DollarSign,
+  Plus,
+  Trash2,
+  Camera,
+  FileText,
+  Upload,
+  Calendar,
+  Sparkles,
+  HelpCircle
 } from 'lucide-react';
 import ThousandInput from '../ThousandInput';
 import { isValidCCCD } from '../../utils/validators';
@@ -24,7 +32,8 @@ export default function AppraisalFormModal({
   onClose,
   onSubmit,
   prefilledCustomer = null,
-  allCustomers = []
+  allCustomers = [],
+  currentUser = null
 }) {
   const [activeTab, setActiveTab] = useState(1);
 
@@ -39,17 +48,30 @@ export default function AppraisalFormModal({
     dienThoai: '0912345678',
     diaChi: 'Xã Yên Thọ, Huyện Ý Yên, Tỉnh Nam Định',
     tinhTrangHonNhan: 'Đã kết hôn',
-    nguoiDongVay: 'Nguyễn Thị Hoa (Vợ - CCCD: 036185002468)',
+    nguoiDongVay: 'Nguyễn Thị Hoa (Vợ - CCCD: 038186001234)',
+    hinhAnhKH: '',
+    nganhNghe: 'Kinh doanh tự do & Nông nghiệp',
+    trinhDo: 'Đại học / Cao đẳng',
+    thuNhapNguoiVay: 25000000,
+    nguonThuNguoiVay: 'Thu nhập từ hoạt động sản xuất kinh doanh và cung ứng dịch vụ',
+    thuNhapDongVay: 10000000,
+    nguonThuDongVay: 'Kinh doanh thương mại và bán lẻ tại địa phương',
+    chungMinhThuNhap: 'Hóa đơn xuất bán hàng, sổ theo dõi doanh thu và sao kê tài khoản ngân hàng 6 tháng gần nhất',
+    thuNhapPhu: 0,
+    chiPhiSinhHoat: 10000000,
+    chiPhiSXKD: 5000000,
+    chiPhiKhac: 0,
+    thuNhapRong: 20000000,
     deXuatVay: 200000000,
-    mucDichVay: 'Đầu tư mở rộng xưởng cơ khí & mua thêm nguyên vật liệu',
-    thoiHanVay: 12,
+    mucDichVay: 'Đầu tư mở rộng sản xuất kinh doanh và bổ sung vốn lưu động',
+    thoiHanVay: 24,
     phuongThucTraNo: 'Gốc đều hàng tháng, lãi tính trên dư nợ thực tế',
     laiSuatDeNghi: 9.5,
 
     // 2. Tài sản bảo đảm (TSBĐ)
     coTSBD: 'Có',
     hinhThucBaoDam: 'Thế chấp Quyền sử dụng đất (Sổ đỏ)',
-    loaiTSBD: 'Quyền sử dụng đất ở nông thôn & Nhà cấp 3',
+    loaiTSBD: 'QSDĐ ở nông thôn, đất trồng cây lâu năm & Nhà ở kiên cố',
     soGCN: 'CH 892341',
     thuaDatSo: '112',
     toBanDoSo: '08',
@@ -57,36 +79,47 @@ export default function AppraisalFormModal({
     diaChiTSBD: 'Thôn Yên Lãng, Xã Yên Thọ, Huyện Ý Yên, Nam Định',
     chuSoHuuTSBD: 'Chính chủ (Nguyễn Văn An và vợ Nguyễn Thị Hoa)',
     quanHeVoiNguoiVay: 'Chính chủ',
+    nguonGocTSBD: 'Nhận chuyển nhượng quyền sử dụng đất',
+    giaTriThiTruong: 700000000,
+    hinhAnhTSBD: '',
+    chiTietLoaiDat: [
+      { id: '1', loaiDat: 'Đất ở tại nông thôn (ONT)', dienTich: 100, donGia: 3000000, thanhTien: 300000000 },
+      { id: '2', loaiDat: 'Đất trồng cây lâu năm (CLN)', dienTich: 150, donGia: 1000000, thanhTien: 150000000 }
+    ],
+    giaTriCongTrinh: 150000000,
     giaTriTSBD: 600000000,
     tinhTrangPhapLyTSBD: 'Đầy đủ sổ đỏ hợp pháp, không có tranh chấp hay quy hoạch',
-    moTaTSBD: 'Thửa đất mặt đường liên thôn rộng 5m, xe tải vào tận nơi, hiện trạng nhà 2 tầng kiên cố.',
+    moTaTSBD: 'Thửa đất mặt đường liên thôn rộng 5m, xe tải vào tận nơi, hiện trạng nhà 2 tầng kiên cố 80m2 sàn.',
 
     // 3. Thực địa, Dòng tiền & CIC
-    thuNhapChinh: 25000000,
-    thuNhapPhu: 5000000,
-    chiPhiSinhHoat: 8000000,
-    chiPhiSXKD: 4000000,
+    thuNhapChinh: 35000000,
+    tongThuNhapThang: 35000000,
+    tongChiPhiThang: 15000000,
+    thangDuThang: 20000000,
     xepHangCIC: 'Nhóm 1 (Tốt)',
     soTCTDQuanHe: 1,
     duNoCICNgoai: 0,
     lichSuTraNo: 'Lịch sử trả nợ tốt, không có nợ quá hạn hay nợ xấu',
     ghiChuCIC: 'Tra cứu CIC ngày ' + new Date().toLocaleDateString('vi-VN') + ': Khách hàng có quan hệ tại 1 Ngân hàng, trả nợ đầy đủ.',
-    diaDiemThamDinh: 'Tại nhà riêng và xưởng sản xuất của khách hàng',
-    hienTrangSXKD: 'Xưởng hoạt động ổn định, máy móc vận hành bình thường, có đơn hàng thường xuyên',
+    diaDiemThamDinh: 'Tại nhà riêng và cơ sở sản xuất kinh doanh của khách hàng',
+    hienTrangSXKD: 'Cơ sở hoạt động ổn định, máy móc vận hành bình thường, đơn hàng đều đặn',
     tuCachKhachHang: 'Đạo đức tốt, lối sống gương mẫu, uy tín cao tại địa phương',
 
     // 4. Đề xuất của CBTD & Các chỉ số tài chính
     duyetVay: 200000000,
-    thoiHanThang: 12,
+    thoiHanThang: 24,
     laiSuatDuyet: 9.5,
     phuongThucGiaiNgan: 'Chuyển khoản qua tài khoản CASA',
+    phuongThucTraGoc: 'HANG_THANG',
+    phuongAnToiUu: '',
     bienPhapBaoDam: 'Thế chấp quyền sử dụng đất, công chứng và đăng ký GDBĐ đầy đủ',
     mucDoRuiRo: 'Thấp',
     dieuKienGiaiNgan: 'Hoàn tất thủ tục công chứng HĐTC và nhận kết quả đăng ký thế chấp tại VP ĐKĐĐ.',
 
     // 5. Phê duyệt & Kết luận
     ketLuan: 'Đồng ý cấp tín dụng',
-    canBoThamDinh: 'Lê Văn Tín',
+    canBoThamDinh: currentUser?.fullName || 'Lê Văn Tín (CBTD)',
+    canBoLapUsername: currentUser?.username || 'qtdyentho.cbtd',
     danhSachYKien: []
   });
 
@@ -98,10 +131,12 @@ export default function AppraisalFormModal({
     } else {
       setFormData((prev) => ({
         ...prev,
-        maBCTD: 'BCTD-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000))
+        maBCTD: 'BCTD-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000)),
+        canBoThamDinh: currentUser?.fullName || prev.canBoThamDinh,
+        canBoLapUsername: currentUser?.username || prev.canBoLapUsername
       }));
     }
-  }, [prefilledCustomer]);
+  }, [prefilledCustomer, currentUser]);
 
   if (!show) return null;
 
@@ -113,219 +148,390 @@ export default function AppraisalFormModal({
         maKH: cust.maKH,
         hoTen: cust.hoTen || prev.hoTen,
         soCCCD: cust.cccd || cust.gttt || prev.soCCCD,
-        dienThoai: cust.sdt || prev.dienThoai,
+        dienThoai: cust.dienThoaiDD || cust.dienThoai || prev.dienThoai,
         diaChi: cust.diaChi || prev.diaChi,
-        chuSoHuuTSBD: cust.hoTen || prev.chuSoHuuTSBD
+        chuSoHuuTSBD: cust.hoTen || prev.chuSoHuuTSBD,
+        canBoThamDinh: currentUser?.fullName || prev.canBoThamDinh,
+        canBoLapUsername: currentUser?.username || prev.canBoLapUsername
       }));
       setFormError('');
     }
   };
 
-  // --- TÍNH TOÁN CÁC CHỈ SỐ TÀI CHÍNH TỰ ĐỘNG ---
-  const tongThuNhap = Number(formData.thuNhapChinh || 0) + Number(formData.thuNhapPhu || 0);
-  const tongChiPhi = Number(formData.chiPhiSinhHoat || 0) + Number(formData.chiPhiSXKD || 0);
-  const thangDuThang = tongThuNhap - tongChiPhi;
+  // Tính toán Tài chính & Thu nhập ròng
+  const thuNhapVay = Number(formData.thuNhapNguoiVay) || 0;
+  const thuNhapDong = Number(formData.thuNhapDongVay) || 0;
+  const thuNhapKhac = Number(formData.thuNhapPhu) || 0;
+  const tongThuNhap = thuNhapVay + thuNhapDong + thuNhapKhac;
 
-  const giaTriTS = Number(formData.giaTriTSBD || 0);
-  const duyetVayNum = Number(formData.duyetVay || 0);
-  const thoiHanNum = Number(formData.thoiHanThang || 12);
-  const laiSuatNum = Number(formData.laiSuatDuyet || 0);
+  const cpSinhHoat = Number(formData.chiPhiSinhHoat) || 0;
+  const cpSXKD = Number(formData.chiPhiSXKD) || 0;
+  const cpKhac = Number(formData.chiPhiKhac) || 0;
+  const tongChiPhi = cpSinhHoat + cpSXKD + cpKhac;
 
-  // 1. Tỷ lệ LTV
-  const tyLeLTV = giaTriTS > 0 ? ((duyetVayNum / giaTriTS) * 100).toFixed(1) : '0.0';
+  const thuNhapRong = Math.max(0, tongThuNhap - tongChiPhi);
 
-  // 2. Nghĩa vụ trả nợ/tháng (Gốc bình quân + Lãi tháng đầu)
-  const gocThang = thoiHanNum > 0 ? duyetVayNum / thoiHanNum : 0;
-  const laiThang = (duyetVayNum * (laiSuatNum / 100)) / 12;
-  const nghiaVuTraNoThang = gocThang + laiThang;
+  // Tính toán TSBĐ theo bảng phân loại đất
+  const chiTietDat = formData.chiTietLoaiDat || [];
+  const tongDienTichDat = chiTietDat.reduce((sum, item) => sum + (Number(item.dienTich) || 0), 0);
+  const tongGiaTriDat = chiTietDat.reduce((sum, item) => sum + (Number(item.thanhTien) || 0), 0);
+  const giaTriCongTrinh = Number(formData.giaTriCongTrinh) || 0;
+  const tongGiaTriTSBD = formData.coTSBD === 'Có' ? (tongGiaTriDat + giaTriCongTrinh) : 0;
 
-  // 3. Tỷ lệ DSR (Debt Service Ratio)
-  const tyLeDSR = tongThuNhap > 0 ? ((nghiaVuTraNoThang / tongThuNhap) * 100).toFixed(1) : '0.0';
+  // Tính toán Phương án vay & Nghĩa vụ trả nợ
+  const duyetVay = Number(formData.duyetVay) || 0;
+  const thoiHan = Number(formData.thoiHanThang) || 12;
+  const laiSuat = Number(formData.laiSuatDuyet) || 0;
 
-  // 4. Hệ số bù đắp dòng tiền (Coverage Ratio)
-  const heSoBuDap = nghiaVuTraNoThang > 0 ? (thangDuThang / nghiaVuTraNoThang).toFixed(2) : '0.00';
+  // Gốc tháng bình quân
+  const gocThang = thoiHan > 0 ? duyetVay / thoiHan : 0;
+  // Lãi tháng đầu cao nhất
+  const laiThangDau = (duyetVay * (laiSuat / 100)) / 12;
+  
+  // Tính nghĩa vụ nợ theo phương thức trả gốc
+  let nghiaVuKyCaoNhat = gocThang + laiThangDau;
+  let moTaPhuongThuc = 'Gốc đều hàng tháng';
+  if (formData.phuongThucTraGoc === 'HANG_QUY') {
+    const gocQuy = thoiHan >= 3 ? duyetVay / (thoiHan / 3) : duyetVay;
+    nghiaVuKyCaoNhat = gocQuy + (laiThangDau * 3);
+    moTaPhuongThuc = 'Gốc đều hàng quý (3 tháng/lần), lãi hàng tháng';
+  } else if (formData.phuongThucTraGoc === 'HANG_NAM') {
+    const gocNam = thoiHan >= 12 ? duyetVay / (thoiHan / 12) : duyetVay;
+    nghiaVuKyCaoNhat = gocNam + (laiThangDau * 12);
+    moTaPhuongThuc = 'Gốc đều hàng năm (12 tháng/lần), lãi hàng tháng';
+  } else if (formData.phuongThucTraGoc === 'BAN_NIEN') {
+    const goc6Th = thoiHan >= 6 ? duyetVay / (thoiHan / 6) : duyetVay;
+    nghiaVuKyCaoNhat = goc6Th + (laiThangDau * 6);
+    moTaPhuongThuc = 'Gốc đều 6 tháng/lần, lãi hàng tháng';
+  } else if (formData.phuongThucTraGoc === 'CUOI_KY') {
+    nghiaVuKyCaoNhat = duyetVay + laiThangDau;
+    moTaPhuongThuc = 'Gốc trả cuối kỳ khi đáo hạn, lãi hàng tháng';
+  }
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.maKH || !formData.hoTen) {
-      setFormError('Vui lòng nhập đầy đủ Mã khách hàng và Họ tên.');
-      setActiveTab(1);
-      return;
+  // Nghĩa vụ quy đổi bình quân tháng
+  const emiThangQuyDoi = gocThang + laiThangDau;
+  const tyLeLTV = tongGiaTriTSBD > 0 ? ((duyetVay / tongGiaTriTSBD) * 100).toFixed(1) : '0.0';
+  const tyLeDTI = tongThuNhap > 0 ? ((emiThangQuyDoi / tongThuNhap) * 100).toFixed(1) : '0.0';
+  const tyLeDTI_Rong = thuNhapRong > 0 ? ((emiThangQuyDoi / thuNhapRong) * 100).toFixed(1) : '0.0';
+  const heSoDSCR = emiThangQuyDoi > 0 ? (thuNhapRong / emiThangQuyDoi).toFixed(2) : '0.00';
+
+  // Sinh gợi ý Phương án tối ưu tự động
+  const generateOptimalSuggestion = () => {
+    const dtiNum = Number(tyLeDTI);
+    const ltvNum = Number(tyLeLTV);
+    let reasons = [];
+
+    if (formData.coTSBD === 'Có') {
+      if (ltvNum <= 70) {
+        reasons.push(`Tỷ lệ LTV ${ltvNum}% đạt chuẩn an toàn TSBĐ (<= 70%).`);
+      } else if (ltvNum <= 75) {
+        reasons.push(`Tỷ lệ LTV ${ltvNum}% tiệm cận trần tối đa (75%), cần theo dõi chặt chẽ biến động giá trị TSBĐ.`);
+      } else {
+        reasons.push(`CẢNH BÁO: Tỷ lệ LTV ${ltvNum}% vượt mức quy định (75%). Đề nghị bổ sung thêm TSBĐ hoặc giảm số tiền cho vay xuống tối đa ${formatCurrencyVN(tongGiaTriTSBD * 0.7)}.`);
+      }
     }
 
-    if (formData.soCCCD && !isValidCCCD(formData.soCCCD)) {
-      setFormError('Số CCCD không hợp lệ (Phải đúng 12 chữ số bắt đầu bằng số 0).');
-      setActiveTab(1);
-      return;
+    if (dtiNum <= 50) {
+      reasons.push(`Tỷ lệ DTI ${dtiNum}% rất an toàn (<= 50%), dòng tiền thặng dư ${formatCurrencyVN(thuNhapRong)}/tháng đảm bảo trả nợ tốt.`);
+    } else if (dtiNum <= 60) {
+      reasons.push(`Tỷ lệ DTI ${dtiNum}% đạt chuẩn khả năng trả nợ (<= 60%).`);
+    } else {
+      reasons.push(`CẢNH BÁO: Nghĩa vụ trả nợ tháng ${formatCurrencyVN(emiThangQuyDoi)} chiếm ${dtiNum}% thu nhập. Đề xuất kéo dài thời hạn vay lên ${thoiHan + 12} tháng hoặc chuyển sang hình thức trả gốc định kỳ quý để giảm áp lực dòng tiền.`);
     }
 
-    if (Number(tyLeLTV) > 75 && formData.coTSBD === 'Có') {
-      const confirmOverLTV = window.confirm(
-        `Cảnh báo: Tỷ lệ LTV (${tyLeLTV}%) vượt quá mức trần quy định 75%. Bạn có chắc chắn muốn tiếp tục trình duyệt hồ sơ?`
-      );
-      if (!confirmOverLTV) return;
+    if (formData.phuongThucTraGoc === 'HANG_THANG') {
+      reasons.push(`Phương thức trả gốc hàng tháng giúp giảm nhanh dư nợ và tiết kiệm chi phí lãi vay cho khách hàng.`);
+    } else if (formData.phuongThucTraGoc === 'HANG_QUY') {
+      reasons.push(`Phương thức trả gốc hàng quý phù hợp với chu kỳ thu hoạch và thu hồi vốn lưu động của khách hàng.`);
+    } else if (formData.phuongThucTraGoc === 'CUOI_KY') {
+      reasons.push(`Phương thức trả gốc cuối kỳ chỉ nên áp dụng cho khoản vay thời hạn ngắn (<= 12 tháng) có nguồn thu đột biến vào cuối vụ.`);
     }
 
-    onSubmit({
-      ...formData,
-      tongThuNhapThang: tongThuNhap,
-      tongChiPhiThang: tongChiPhi,
-      thangDuThang: thangDuThang,
-      tyLeLTV: Number(tyLeLTV),
-      nghiaVuTraNoThang: Math.round(nghiaVuTraNoThang),
-      tyLeDSR: Number(tyLeDSR),
-      heSoBuDap: Number(heSoBuDap)
+    return reasons.join(' ');
+  };
+
+  // Thao tác bảng chi tiết đất
+  const handleAddLandRow = () => {
+    const newRow = {
+      id: Date.now().toString(),
+      loaiDat: 'Đất ở tại nông thôn (ONT)',
+      dienTich: 50,
+      donGia: 2000000,
+      thanhTien: 100000000
+    };
+    setFormData((prev) => ({
+      ...prev,
+      chiTietLoaiDat: [...(prev.chiTietLoaiDat || []), newRow]
+    }));
+  };
+
+  const handleUpdateLandRow = (index, field, val) => {
+    setFormData((prev) => {
+      const list = [...(prev.chiTietLoaiDat || [])];
+      const item = { ...list[index], [field]: val };
+      if (field === 'dienTich' || field === 'donGia') {
+        const dt = field === 'dienTich' ? Number(val) : Number(item.dienTich);
+        const dg = field === 'donGia' ? Number(val) : Number(item.donGia);
+        item.thanhTien = (dt || 0) * (dg || 0);
+      }
+      list[index] = item;
+      return { ...prev, chiTietLoaiDat: list };
     });
   };
 
+  const handleRemoveLandRow = (index) => {
+    setFormData((prev) => {
+      const list = (prev.chiTietLoaiDat || []).filter((_, i) => i !== index);
+      return { ...prev, chiTietLoaiDat: list };
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.hoTen || !formData.soCCCD) {
+      setFormError('Vui lòng điền Họ tên và Số CCCD khách hàng');
+      setActiveTab(1);
+      return;
+    }
+    if (!isValidCCCD(formData.soCCCD)) {
+      setFormError('Số CCCD không hợp lệ (yêu cầu chuẩn 12 chữ số)');
+      setActiveTab(1);
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      tongThuNhapThang: tongThuNhap,
+      thuNhapChinh: tongThuNhap,
+      tongChiPhiThang: tongChiPhi,
+      thuNhapRong: thuNhapRong,
+      thangDuThang: thuNhapRong,
+      dienTich: tongDienTichDat || formData.dienTich,
+      giaTriTSBD: tongGiaTriTSBD,
+      tyLeLTV: Number(tyLeLTV),
+      nghiaVuTraNoThang: Math.round(emiThangQuyDoi),
+      tyLeDSR: Number(tyLeDTI),
+      heSoBuDap: Number(heSoDSCR),
+      phuongAnToiUu: formData.phuongAnToiUu || generateOptimalSuggestion(),
+      canBoThamDinh: formData.canBoThamDinh || currentUser?.fullName || 'Lê Văn Tín (CBTD)',
+      canBoLapUsername: currentUser?.username || 'qtdyentho.cbtd'
+    };
+
+    onSubmit(payload);
+  };
+
   return (
-    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1050 }}>
+    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}>
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content card-modern p-3 p-md-4">
           {/* Header */}
           <div className="modal-header border-0 pb-2">
             <div>
-              <span className="badge bg-primary-subtle text-primary font-monospace fs-6 px-2.5 py-1 rounded-pill mb-1">
-                {formData.maBCTD || 'BCTD-2026-MỚI'}
-              </span>
-              <h4 className="modal-title fw-extrabold text-slate-900 font-heading">
-                Lập Hồ Sơ Thẩm Định Tín Dụng & Định Giá TSĐB (5 Nhóm Nghiệp Vụ)
+              <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <span className="badge bg-primary-subtle text-primary font-monospace fs-6 px-2.5 py-1 rounded-pill">
+                  {formData.maBCTD || 'MỚI'}
+                </span>
+                <span className="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill small fw-semibold">
+                  Chuẩn Nghiệp Vụ QTDND 5 Nhóm
+                </span>
+                <span className="badge bg-light text-muted border small">
+                  Người lập: <strong>{currentUser?.fullName || formData.canBoThamDinh}</strong>
+                </span>
+              </div>
+              <h4 className="fw-extrabold text-slate-900 font-heading m-0">
+                Lập Báo Cáo Thẩm Định & Đề Xuất Cấp Tín Dụng
               </h4>
             </div>
             <button type="button" className="btn-close" onClick={onClose} />
           </div>
 
-          {/* TAB NAVIGATION */}
-          <div className="border-bottom pb-2 mb-3">
-            <ul className="nav nav-pills gap-2 flex-nowrap overflow-auto py-1">
+          {/* 5 Tabs Navigation */}
+          <div className="border-bottom mt-2 mb-3">
+            <ul className="nav nav-tabs nav-fill border-0 gap-1 flex-nowrap overflow-auto" role="tablist">
               <li className="nav-item">
                 <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill d-flex align-items-center gap-1.5 fw-bold ${
-                    activeTab === 1 ? 'btn-primary shadow-sm' : 'btn-light text-secondary'
+                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
+                    activeTab === 1 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
                   onClick={() => setActiveTab(1)}
+                  type="button"
                 >
-                  <User size={14} /> 1. Pháp Lý & Nhu Cầu
+                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">1</span>
+                  Pháp Lý & Thu Nhập
                 </button>
               </li>
+
               <li className="nav-item">
                 <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill d-flex align-items-center gap-1.5 fw-bold ${
-                    activeTab === 2 ? 'btn-primary shadow-sm' : 'btn-light text-secondary'
+                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
+                    activeTab === 2 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
                   onClick={() => setActiveTab(2)}
+                  type="button"
                 >
-                  <Building2 size={14} /> 2. Tài Sản Bảo Đảm
+                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">2</span>
+                  Tài Sản Bảo Đảm
                 </button>
               </li>
+
               <li className="nav-item">
                 <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill d-flex align-items-center gap-1.5 fw-bold ${
-                    activeTab === 3 ? 'btn-primary shadow-sm' : 'btn-light text-secondary'
+                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
+                    activeTab === 3 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
                   onClick={() => setActiveTab(3)}
+                  type="button"
                 >
-                  <TrendingUp size={14} /> 3. Thực Địa & CIC
+                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">3</span>
+                  Thực Địa & CIC
                 </button>
               </li>
+
               <li className="nav-item">
                 <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill d-flex align-items-center gap-1.5 fw-bold ${
-                    activeTab === 4 ? 'btn-primary shadow-sm' : 'btn-light text-secondary'
+                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
+                    activeTab === 4 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
                   onClick={() => setActiveTab(4)}
+                  type="button"
                 >
-                  <Calculator size={14} /> 4. Đề Xuất & Chỉ Số
+                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">4</span>
+                  Đề Xuất & Phương Án
                 </button>
               </li>
+
               <li className="nav-item">
                 <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill d-flex align-items-center gap-1.5 fw-bold ${
-                    activeTab === 5 ? 'btn-primary shadow-sm' : 'btn-light text-secondary'
+                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
+                    activeTab === 5 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
                   }`}
                   onClick={() => setActiveTab(5)}
+                  type="button"
                 >
-                  <MessageSquare size={14} /> 5. Phê Duyệt & Kết Luận
+                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">5</span>
+                  Kết Luận & Ký Duyệt
                 </button>
               </li>
             </ul>
           </div>
 
-          <form onSubmit={handleFormSubmit}>
-            <div className="modal-body py-2">
-              {formError && (
-                <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mb-3">
-                  <AlertCircle size={16} />
-                  <div>{formError}</div>
+          {formError && (
+            <div className="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
+              <AlertCircle size={18} />
+              <span className="small">{formError}</span>
+            </div>
+          )}
+
+          {/* Form Body */}
+          <form onSubmit={handleSubmit} className="modal-body py-2">
+            {/* ========================================================================= */}
+            {/* TAB 1: THÔNG TIN PHÁP LÝ, NHU CẦU & CHI TIẾT THU NHẬP ĐỒNG VAY           */}
+            {/* ========================================================================= */}
+            {activeTab === 1 && (
+              <div className="d-flex flex-column gap-3">
+                {/* Chọn nhanh Khách hàng từ CSDL */}
+                <div className="p-3 bg-light rounded-3 border">
+                  <div className="row g-2 align-items-center">
+                    <div className="col-md-7">
+                      <label className="form-label small fw-bold text-dark m-0">
+                        <User size={14} className="me-1 inline text-primary" /> Chọn nhanh thành viên từ CoreBanking / Khách Hàng 360°:
+                      </label>
+                    </div>
+                    <div className="col-md-5">
+                      <select
+                        className="form-select form-select-sm fw-semibold"
+                        value={formData.maKH}
+                        onChange={(e) => handleSelectCustomer(e.target.value)}
+                      >
+                        <option value="">-- Chọn khách hàng đã có --</option>
+                        {allCustomers.map((c) => (
+                          <option key={c.maKH} value={c.maKH}>
+                            {c.hoTen} ({c.maKH} - CCCD: {c.cccd})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {/* ========================================================================= */}
-              {/* TAB 1: THÔNG TIN PHÁP LÝ & NHU CẦU VAY VỐN                                */}
-              {/* ========================================================================= */}
-              {activeTab === 1 && (
-                <div className="d-flex flex-column gap-3">
-                  <div className="p-3 bg-light rounded-3 border">
-                    <h6 className="fw-bold text-primary small mb-3 border-bottom pb-2">
-                      A. Thông Tin Định Danh Khách Hàng
-                    </h6>
-                    <div className="row g-3">
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Mã Khách Hàng (*)</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm font-monospace fw-bold"
-                          placeholder="Ví dụ: KH001"
-                          value={formData.maKH}
-                          onChange={(e) => {
-                            setFormData({ ...formData, maKH: e.target.value });
-                            handleSelectCustomer(e.target.value);
-                          }}
-                          required
-                        />
+                <div className="row g-3">
+                  {/* Cột Trái: Ảnh KH & Thông tin nhân thân */}
+                  <div className="col-md-4">
+                    <div className="p-3 bg-white rounded-3 border h-100 text-center d-flex flex-column align-items-center justify-content-center">
+                      <div className="mb-2 position-relative">
+                        {formData.hinhAnhKH ? (
+                          <img
+                            src={formData.hinhAnhKH}
+                            alt="Ảnh khách hàng"
+                            className="rounded-3 border object-fit-cover shadow-sm"
+                            style={{ width: '130px', height: '150px' }}
+                          />
+                        ) : (
+                          <div
+                            className="rounded-3 border bg-light d-flex flex-column align-items-center justify-content-center text-muted"
+                            style={{ width: '130px', height: '150px' }}
+                          >
+                            <Camera size={36} className="opacity-50 mb-1" />
+                            <span style={{ fontSize: '0.7rem' }}>Ảnh chân dung</span>
+                          </div>
+                        )}
                       </div>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm text-center"
+                        placeholder="Dán link ảnh KH (URL)..."
+                        value={formData.hinhAnhKH}
+                        onChange={(e) => setFormData({ ...formData, hinhAnhKH: e.target.value })}
+                      />
+                      <span className="text-muted mt-1" style={{ fontSize: '0.68rem' }}>
+                        Khổ ảnh chuẩn 3x4 hoặc 4x6
+                      </span>
+                    </div>
+                  </div>
 
-                      <div className="col-12 col-md-5">
-                        <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng (*)</label>
+                  {/* Cột Phải: Thông tin nhân thân chi tiết */}
+                  <div className="col-md-8">
+                    <div className="row g-2">
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold text-slate-700">Họ và Tên Khách Hàng <span className="text-danger">*</span></label>
                         <input
                           type="text"
-                          className="form-control form-control-sm fw-bold"
+                          className="form-control fw-semibold"
                           value={formData.hoTen}
-                          onChange={(e) => setFormData({ ...formData, hoTen: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, hoTen: e.target.value.toUpperCase() })}
+                          placeholder="NGUYỄN VĂN AN"
                           required
                         />
                       </div>
 
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Số CCCD / CMND (12 số) (*)</label>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold text-slate-700">Số CCCD (12 chữ số) <span className="text-danger">*</span></label>
                         <input
                           type="text"
-                          className="form-control form-control-sm font-monospace fw-bold"
+                          className="form-control font-monospace fw-bold"
                           value={formData.soCCCD}
-                          onChange={(e) => setFormData({ ...formData, soCCCD: e.target.value })}
+                          onChange={(e) => setFormData({ ...formData, soCCCD: e.target.value.replace(/\D/g, '') })}
+                          placeholder="038085001234"
+                          maxLength={12}
                           required
                         />
                       </div>
 
-                      <div className="col-6 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Ngày Sinh</label>
+                      <div className="col-md-4">
+                        <label className="form-label small fw-bold text-slate-700">Ngày Sinh</label>
                         <input
                           type="text"
-                          className="form-control form-control-sm"
+                          className="form-control"
                           value={formData.ngaySinh}
                           onChange={(e) => setFormData({ ...formData, ngaySinh: e.target.value })}
+                          placeholder="15/08/1985"
                         />
                       </div>
 
-                      <div className="col-6 col-md-2">
-                        <label className="form-label small fw-bold text-dark">Giới Tính</label>
+                      <div className="col-md-4">
+                        <label className="form-label small fw-bold text-slate-700">Giới Tính</label>
                         <select
-                          className="form-select form-select-sm"
+                          className="form-select"
                           value={formData.gioiTinh}
                           onChange={(e) => setFormData({ ...formData, gioiTinh: e.target.value })}
                         >
@@ -334,676 +540,952 @@ export default function AppraisalFormModal({
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Số Điện Thoại</label>
+                      <div className="col-md-4">
+                        <label className="form-label small fw-bold text-slate-700">Số Điện Thoại</label>
                         <input
                           type="text"
-                          className="form-control form-control-sm"
+                          className="form-control"
                           value={formData.dienThoai}
                           onChange={(e) => setFormData({ ...formData, dienThoai: e.target.value })}
+                          placeholder="0912345678"
                         />
                       </div>
 
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Tình Trạng Hôn Nhân</label>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold text-slate-700">Ngành Nghề / Lĩnh Vực Kinh Doanh</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.nganhNghe}
+                          onChange={(e) => setFormData({ ...formData, nganhNghe: e.target.value })}
+                          placeholder="Kinh doanh tạp hóa, Nông nghiệp..."
+                        />
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold text-slate-700">Trình Độ Học Vấn</label>
                         <select
-                          className="form-select form-select-sm"
-                          value={formData.tinhTrangHonNhan}
-                          onChange={(e) => setFormData({ ...formData, tinhTrangHonNhan: e.target.value })}
+                          className="form-select"
+                          value={formData.trinhDo}
+                          onChange={(e) => setFormData({ ...formData, trinhDo: e.target.value })}
                         >
-                          <option value="Đã kết hôn">Đã kết hôn</option>
-                          <option value="Độc thân">Độc thân</option>
-                          <option value="Ly hôn / Góa">Ly hôn / Góa</option>
+                          <option value="Đại học / Cao đẳng">Đại học / Cao đẳng</option>
+                          <option value="Trung cấp / Dạy nghề">Trung cấp / Dạy nghề</option>
+                          <option value="THPT (12/12)">THPT (12/12)</option>
+                          <option value="THCS (9/12)">THCS (9/12)</option>
+                          <option value="Khác">Khác</option>
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Địa Chỉ Thường Trú / Cư Trú</label>
+                      <div className="col-12">
+                        <label className="form-label small fw-bold text-slate-700">Địa Chỉ Thường Trú / Nơi Ở Hiện Tại</label>
                         <input
                           type="text"
-                          className="form-control form-control-sm"
+                          className="form-control"
                           value={formData.diaChi}
                           onChange={(e) => setFormData({ ...formData, diaChi: e.target.value })}
+                          placeholder="Thôn 3, Xã Yên Thọ, Huyện Ý Yên, Tỉnh Nam Định"
                         />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Người Đồng Vay / Vợ Chồng / Bảo Lãnh</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          placeholder="Họ tên, quan hệ, số CCCD..."
-                          value={formData.nguoiDongVay}
-                          onChange={(e) => setFormData({ ...formData, nguoiDongVay: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-light rounded-3 border">
-                    <h6 className="fw-bold text-primary small mb-3 border-bottom pb-2">
-                      B. Nhu Cầu Vay Vốn Của Khách Hàng
-                    </h6>
-                    <div className="row g-3">
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Số Tiền Khách Hàng Xin Vay (VNĐ)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-primary fs-6"
-                          value={formData.deXuatVay}
-                          onChange={(val) => setFormData({ ...formData, deXuatVay: val })}
-                        />
-                      </div>
-
-                      <div className="col-6 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Thời Hạn Vay Đề Nghị (Tháng)</label>
-                        <input
-                          type="number"
-                          className="form-control form-control-sm fw-bold"
-                          value={formData.thoiHanVay}
-                          onChange={(e) => setFormData({ ...formData, thoiHanVay: Number(e.target.value) })}
-                        />
-                      </div>
-
-                      <div className="col-6 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Lãi Suất Đề Nghị (%/năm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          className="form-control form-control-sm"
-                          value={formData.laiSuatDeNghi}
-                          onChange={(e) => setFormData({ ...formData, laiSuatDeNghi: Number(e.target.value) })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Mục Đích Sử Dụng Vốn</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.mucDichVay}
-                          onChange={(e) => setFormData({ ...formData, mucDichVay: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Phương Thức Trả Nợ Đề Xuất</label>
-                        <select
-                          className="form-select form-select-sm"
-                          value={formData.phuongThucTraNo}
-                          onChange={(e) => setFormData({ ...formData, phuongThucTraNo: e.target.value })}
-                        >
-                          <option value="Gốc đều hàng tháng, lãi tính trên dư nợ thực tế">Gốc đều hàng tháng, lãi giảm dần</option>
-                          <option value="Gốc cuối kỳ, lãi trả định kỳ hàng tháng">Gốc cuối kỳ, lãi hàng tháng</option>
-                          <option value="Niên kim cố định (Gốc + Lãi chia đều hàng tháng)">Niên kim cố định</option>
-                        </select>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {/* ========================================================================= */}
-              {/* TAB 2: THÔNG TIN VỀ TÀI SẢN BẢO ĐẢM (TSBĐ)                               */}
-              {/* ========================================================================= */}
-              {activeTab === 2 && (
+                {/* Khối Hôn Nhân & Người Đồng Vay */}
                 <div className="p-3 bg-light rounded-3 border">
-                  <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-                    <h6 className="fw-bold text-primary small m-0">2. Thông Tin Tài Sản Bảo Đảm (TSBĐ)</h6>
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="small text-muted fw-bold">Có TSĐB?</span>
+                  <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
+                    <User size={16} className="text-primary" /> Thông Tin Hôn Nhân & Người Đồng Vay (Vợ / Chồng)
+                  </h6>
+                  <div className="row g-2">
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Tình Trạng Hôn Nhân</label>
                       <select
-                        className="form-select form-select-sm"
-                        style={{ width: 110 }}
-                        value={formData.coTSBD}
-                        onChange={(e) => setFormData({ ...formData, coTSBD: e.target.value })}
+                        className="form-select"
+                        value={formData.tinhTrangHonNhan}
+                        onChange={(e) => setFormData({ ...formData, tinhTrangHonNhan: e.target.value })}
                       >
-                        <option value="Có">Có TSĐB</option>
-                        <option value="Không">Tín chấp</option>
+                        <option value="Đã kết hôn">Đã kết hôn</option>
+                        <option value="Độc thân">Độc thân</option>
+                        <option value="Ly hôn / Góa">Ly hôn / Góa</option>
                       </select>
                     </div>
-                  </div>
 
-                  {formData.coTSBD === 'Có' ? (
-                    <div className="row g-3">
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Hình Thức Bảo Đảm</label>
-                        <select
-                          className="form-select form-select-sm fw-bold"
-                          value={formData.hinhThucBaoDam}
-                          onChange={(e) => setFormData({ ...formData, hinhThucBaoDam: e.target.value })}
-                        >
-                          <option value="Thế chấp Quyền sử dụng đất (Sổ đỏ)">Thế chấp QSDĐ (Sổ đỏ)</option>
-                          <option value="Cầm cố Sổ tiết kiệm / Giấy tờ có giá">Cầm cố Sổ tiết kiệm</option>
-                          <option value="Thế chấp Phương tiện vận tải (Ô tô, tàu cá)">Thế chấp Phương tiện vận tải</option>
-                          <option value="Bảo lãnh của bên thứ ba">Bảo lãnh bên thứ ba</option>
-                        </select>
-                      </div>
-
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Loại Tài Sản Cụ Thể</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.loaiTSBD}
-                          onChange={(e) => setFormData({ ...formData, loaiTSBD: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Số Seri GCN / Số Sổ Đỏ</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm font-monospace fw-bold"
-                          value={formData.soGCN}
-                          onChange={(e) => setFormData({ ...formData, soGCN: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-4 col-md-2">
-                        <label className="form-label small fw-bold text-dark">Thửa Đất Số</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.thuaDatSo}
-                          onChange={(e) => setFormData({ ...formData, thuaDatSo: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-4 col-md-2">
-                        <label className="form-label small fw-bold text-dark">Tờ Bản Đồ Số</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.toBanDoSo}
-                          onChange={(e) => setFormData({ ...formData, toBanDoSo: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-4 col-md-2">
-                        <label className="form-label small fw-bold text-dark">Diện Tích (m²)</label>
-                        <input
-                          type="number"
-                          className="form-control form-control-sm fw-bold"
-                          value={formData.dienTich}
-                          onChange={(e) => setFormData({ ...formData, dienTich: Number(e.target.value) })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Địa Chỉ Nơi Có Tài Sản Thế Chấp</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.diaChiTSBD}
-                          onChange={(e) => setFormData({ ...formData, diaChiTSBD: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Chủ Sở Hữu Đứng Tên Trên GCN</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm fw-bold"
-                          value={formData.chuSoHuuTSBD}
-                          onChange={(e) => setFormData({ ...formData, chuSoHuuTSBD: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Mối Quan Hệ Với Người Vay</label>
-                        <select
-                          className="form-select form-select-sm"
-                          value={formData.quanHeVoiNguoiVay}
-                          onChange={(e) => setFormData({ ...formData, quanHeVoiNguoiVay: e.target.value })}
-                        >
-                          <option value="Chính chủ">Chính chủ</option>
-                          <option value="Vợ chồng cùng đứng tên">Vợ chồng cùng đứng tên</option>
-                          <option value="Bố mẹ ruột bảo lãnh">Bố mẹ ruột bảo lãnh</option>
-                          <option value="Bên thứ ba bảo lãnh">Bên thứ ba bảo lãnh</option>
-                        </select>
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Giá Trị Định Giá Nội Bộ QTDND (VNĐ) (*)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-success fs-6"
-                          value={formData.giaTriTSBD}
-                          onChange={(val) => setFormData({ ...formData, giaTriTSBD: val })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Tình Trạng Pháp Lý Của TSĐB</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.tinhTrangPhapLyTSBD}
-                          onChange={(e) => setFormData({ ...formData, tinhTrangPhapLyTSBD: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12">
-                        <label className="form-label small fw-bold text-dark">Mô Tả Hiện Trạng & Khả Năng Phát Mại TSĐB</label>
-                        <textarea
-                          rows={2}
-                          className="form-control form-control-sm"
-                          value={formData.moTaTSBD}
-                          onChange={(e) => setFormData({ ...formData, moTaTSBD: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 bg-white rounded border">
-                      <ShieldCheck size={32} className="text-primary mb-2" />
-                      <h6 className="fw-bold text-dark">Khoản Vay Tín Chấp Không Có Tài Sản Đảm Bảo</h6>
-                      <p className="small text-muted m-0">
-                        Khoản vay được thẩm định hoàn toàn dựa trên uy tín, năng lực tài chính và dòng tiền ròng của khách hàng.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ========================================================================= */}
-              {/* TAB 3: THU THẬP THỰC ĐỊA, DÒNG TIỀN & CIC                                 */}
-              {/* ========================================================================= */}
-              {activeTab === 3 && (
-                <div className="d-flex flex-column gap-3">
-                  {/* Năng lực tài chính & Dòng tiền */}
-                  <div className="p-3 bg-light rounded-3 border">
-                    <h6 className="fw-bold text-primary small mb-3 border-bottom pb-2 d-flex align-items-center justify-content-between">
-                      <span>A. Năng Lực Tài Chính & Dòng Tiền Thực Tế Hàng Tháng</span>
-                      <span className="badge bg-success-subtle text-success fs-6">
-                        Thặng dư: {formatCurrencyVN(thangDuThang)}/tháng
-                      </span>
-                    </h6>
-
-                    <div className="row g-3">
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Thu Nhập Chính/Tháng (VNĐ)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-success"
-                          value={formData.thuNhapChinh}
-                          onChange={(val) => setFormData({ ...formData, thuNhapChinh: val })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Thu Nhập Phụ/Tháng (VNĐ)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-success"
-                          value={formData.thuNhapPhu}
-                          onChange={(val) => setFormData({ ...formData, thuNhapPhu: val })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Chi Phí Sinh Hoạt/Tháng (VNĐ)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-danger"
-                          value={formData.chiPhiSinhHoat}
-                          onChange={(val) => setFormData({ ...formData, chiPhiSinhHoat: val })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Chi Phí SXKD/Tháng (VNĐ)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-danger"
-                          value={formData.chiPhiSXKD}
-                          onChange={(val) => setFormData({ ...formData, chiPhiSXKD: val })}
-                        />
-                      </div>
-
-                      <div className="col-12">
-                        <div className="p-2.5 bg-white rounded border d-flex justify-content-between align-items-center flex-wrap gap-2">
-                          <div className="small text-muted">
-                            Tổng thu nhập: <strong className="text-success">{formatCurrencyVN(tongThuNhap)}</strong> • 
-                            Tổng chi phí: <strong className="text-danger">{formatCurrencyVN(tongChiPhi)}</strong>
-                          </div>
-                          <div className="small fw-bold">
-                            Tỷ lệ tiết lũy: <span className="text-primary">{tongThuNhap > 0 ? ((thangDuThang / tongThuNhap) * 100).toFixed(1) : 0}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lịch sử CIC & Khảo sát thực địa */}
-                  <div className="p-3 bg-light rounded-3 border">
-                    <h6 className="fw-bold text-primary small mb-3 border-bottom pb-2">
-                      B. Lịch Sử Tín Dụng CIC & Đánh Giá Thực Địa CBTD
-                    </h6>
-
-                    <div className="row g-3">
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Xếp Hạng CIC</label>
-                        <select
-                          className="form-select form-select-sm fw-bold"
-                          value={formData.xepHangCIC}
-                          onChange={(e) => setFormData({ ...formData, xepHangCIC: e.target.value })}
-                        >
-                          <option value="Nhóm 1 (Tốt)">Nhóm 1 (Nợ đủ tiêu chuẩn - Tốt)</option>
-                          <option value="Nhóm 2 (Cần chú ý)">Nhóm 2 (Cần chú ý)</option>
-                          <option value="Nhóm 3 (Dưới tiêu chuẩn)">Nhóm 3 (Nợ dưới tiêu chuẩn)</option>
-                          <option value="Nhóm 4 (Nghi ngờ)">Nhóm 4 (Nợ nghi ngờ)</option>
-                          <option value="Nhóm 5 (Mất vốn)">Nhóm 5 (Nợ có khả năng mất vốn)</option>
-                        </select>
-                      </div>
-
-                      <div className="col-6 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Số TCTD Đang Quan Hệ</label>
-                        <input
-                          type="number"
-                          className="form-control form-control-sm fw-bold"
-                          value={formData.soTCTDQuanHe}
-                          onChange={(e) => setFormData({ ...formData, soTCTDQuanHe: Number(e.target.value) })}
-                        />
-                      </div>
-
-                      <div className="col-6 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Dư Nợ CIC Ngoài Quỹ (VNĐ)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm"
-                          value={formData.duNoCICNgoai}
-                          onChange={(val) => setFormData({ ...formData, duNoCICNgoai: val })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-3">
-                        <label className="form-label small fw-bold text-dark">Lịch Sử Trả Nợ</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.lichSuTraNo}
-                          onChange={(e) => setFormData({ ...formData, lichSuTraNo: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Ghi Chú Tra Cứu CIC Quốc Gia</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.ghiChuCIC}
-                          onChange={(e) => setFormData({ ...formData, ghiChuCIC: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Địa Điểm Thẩm Định Thực Địa</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.diaDiemThamDinh}
-                          onChange={(e) => setFormData({ ...formData, diaDiemThamDinh: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Hiện Trạng Hoạt Động SXKD</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.hienTrangSXKD}
-                          onChange={(e) => setFormData({ ...formData, hienTrangSXKD: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark">Đánh Giá Tư Cách & Uy Tín Khách Hàng</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.tuCachKhachHang}
-                          onChange={(e) => setFormData({ ...formData, tuCachKhachHang: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ========================================================================= */}
-              {/* TAB 4: ĐỀ XUẤT CỦA CBTD & BẢNG CHỈ SỐ TÀI CHÍNH TỰ ĐỘNG                   */}
-              {/* ========================================================================= */}
-              {activeTab === 4 && (
-                <div className="d-flex flex-column gap-3">
-                  {/* BẢNG CHỈ SỐ TÀI CHÍNH TỰ ĐỘNG */}
-                  <div className="row g-3">
-                    <div className="col-12 col-sm-6 col-lg-3">
-                      <div className="p-3 bg-white rounded-3 border shadow-sm h-100">
-                        <span className="text-muted small">Tỷ lệ LTV (Vay / TSĐB):</span>
-                        <div className="d-flex align-items-baseline gap-1 mt-1">
-                          <h4 className={`fw-extrabold m-0 ${Number(tyLeLTV) > 75 ? 'text-danger' : Number(tyLeLTV) > 70 ? 'text-warning' : 'text-success'}`}>
-                            {tyLeLTV}%
-                          </h4>
-                          <span className="small text-muted">/ Trần 75%</span>
-                        </div>
-                        <div className="small mt-1">
-                          <span className={`badge ${Number(tyLeLTV) > 75 ? 'bg-danger' : Number(tyLeLTV) > 70 ? 'bg-warning text-dark' : 'bg-success'}`}>
-                            {Number(tyLeLTV) <= 70 ? 'An toàn cao' : Number(tyLeLTV) <= 75 ? 'Hạn mức tối đa' : 'Vượt trần'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-12 col-sm-6 col-lg-3">
-                      <div className="p-3 bg-white rounded-3 border shadow-sm h-100">
-                        <span className="text-muted small">Nghĩa vụ trả nợ/tháng:</span>
-                        <div className="d-flex align-items-baseline gap-1 mt-1">
-                          <h4 className="fw-extrabold text-danger m-0 num-tabular">
-                            {formatCurrencyVN(Math.round(nghiaVuTraNoThang))}
-                          </h4>
-                        </div>
-                        <div className="small text-muted mt-1">
-                          Gốc: {formatCurrencyVN(Math.round(gocThang))} + Lãi: {formatCurrencyVN(Math.round(laiThang))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-12 col-sm-6 col-lg-3">
-                      <div className="p-3 bg-white rounded-3 border shadow-sm h-100">
-                        <span className="text-muted small">Tỷ lệ DSR (Nợ / Thu nhập):</span>
-                        <div className="d-flex align-items-baseline gap-1 mt-1">
-                          <h4 className={`fw-extrabold m-0 ${Number(tyLeDSR) > 60 ? 'text-danger' : 'text-success'}`}>
-                            {tyLeDSR}%
-                          </h4>
-                          <span className="small text-muted">/ Trần 60%</span>
-                        </div>
-                        <div className="small mt-1">
-                          <span className={`badge ${Number(tyLeDSR) <= 60 ? 'bg-success' : 'bg-danger'}`}>
-                            {Number(tyLeDSR) <= 60 ? 'Đạt chuẩn dòng tiền' : 'Rủi ro dòng tiền'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-12 col-sm-6 col-lg-3">
-                      <div className="p-3 bg-white rounded-3 border shadow-sm h-100">
-                        <span className="text-muted small">Hệ số bù đắp dòng tiền:</span>
-                        <div className="d-flex align-items-baseline gap-1 mt-1">
-                          <h4 className={`fw-extrabold m-0 ${Number(heSoBuDap) >= 1.2 ? 'text-success' : 'text-danger'}`}>
-                            {heSoBuDap}x
-                          </h4>
-                          <span className="small text-muted">/ Chuẩn ≥ 1.2x</span>
-                        </div>
-                        <div className="small mt-1">
-                          <span className={`badge ${Number(heSoBuDap) >= 1.2 ? 'bg-success' : 'bg-warning text-dark'}`}>
-                            {Number(heSoBuDap) >= 1.2 ? 'Dư nợ an toàn' : 'Cần theo dõi'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Form Đề Xuất Của CBTD */}
-                  <div className="p-3 bg-light rounded-3 border">
-                    <h6 className="fw-bold text-primary small mb-3 border-bottom pb-2">
-                      Đề Xuất Cấp Tín Dụng Của Cán Bộ Thẩm Định
-                    </h6>
-                    <div className="row g-3">
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Số Tiền Đề Xuất Cho Vay (VNĐ) (*)</label>
-                        <ThousandInput
-                          className="form-control form-control-sm fw-bold text-danger fs-6"
-                          value={formData.duyetVay}
-                          onChange={(val) => setFormData({ ...formData, duyetVay: val })}
-                        />
-                      </div>
-
-                      <div className="col-6 col-md-2">
-                        <label className="form-label small fw-bold text-dark">Thời Hạn Duyệt (Tháng)</label>
-                        <input
-                          type="number"
-                          className="form-control form-control-sm fw-bold"
-                          value={formData.thoiHanThang}
-                          onChange={(e) => setFormData({ ...formData, thoiHanThang: Number(e.target.value) })}
-                        />
-                      </div>
-
-                      <div className="col-6 col-md-2">
-                        <label className="form-label small fw-bold text-dark">Lãi Suất Duyệt (%/năm)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          className="form-control form-control-sm fw-bold"
-                          value={formData.laiSuatDuyet}
-                          onChange={(e) => setFormData({ ...formData, laiSuatDuyet: Number(e.target.value) })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Phương Thức Giải Ngân</label>
-                        <select
-                          className="form-select form-select-sm"
-                          value={formData.phuongThucGiaiNgan}
-                          onChange={(e) => setFormData({ ...formData, phuongThucGiaiNgan: e.target.value })}
-                        >
-                          <option value="Chuyển khoản qua tài khoản CASA">Chuyển khoản qua tài khoản CASA</option>
-                          <option value="Tiền mặt tại quầy">Tiền mặt tại quầy</option>
-                          <option value="Chuyển khoản thanh toán cho bên thứ ba">Chuyển khoản bên thứ ba</option>
-                        </select>
-                      </div>
-
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small fw-bold text-dark">Đánh Giá Mức Độ Rủi Ro</label>
-                        <select
-                          className="form-select form-select-sm fw-bold"
-                          value={formData.mucDoRuiRo}
-                          onChange={(e) => setFormData({ ...formData, mucDoRuiRo: e.target.value })}
-                        >
-                          <option value="Thấp">Mức độ rủi ro: Thấp (Ưu tiên)</option>
-                          <option value="Trung bình">Mức độ rủi ro: Trung bình</option>
-                          <option value="Cao">Mức độ rủi ro: Cao</option>
-                        </select>
-                      </div>
-
-                      <div className="col-12 col-md-8">
-                        <label className="form-label small fw-bold text-dark">Biện Pháp Bảo Đảm & Quản Lý Rủi Ro</label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm"
-                          value={formData.bienPhapBaoDam}
-                          onChange={(e) => setFormData({ ...formData, bienPhapBaoDam: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12">
-                        <label className="form-label small fw-bold text-dark">Điều Kiện Tiên Quyết Trước Khi Giải Ngân</label>
-                        <textarea
-                          rows={2}
-                          className="form-control form-control-sm"
-                          placeholder="Ví dụ: Hoàn tất công chứng hợp đồng thế chấp và nộp phiếu hẹn đăng ký GDBĐ..."
-                          value={formData.dieuKienGiaiNgan}
-                          onChange={(e) => setFormData({ ...formData, dieuKienGiaiNgan: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ========================================================================= */}
-              {/* TAB 5: PHÊ DUYỆT ĐA CẤP & KẾT LUẬN CUỐI CÙNG                               */}
-              {/* ========================================================================= */}
-              {activeTab === 5 && (
-                <div className="p-3 bg-light rounded-3 border">
-                  <h6 className="fw-bold text-primary small mb-3 border-bottom pb-2">
-                    5. Phê Duyệt & Kết Luận Cấp Tín Dụng
-                  </h6>
-
-                  <div className="row g-3">
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-bold text-dark">Họ Và Tên Cán Bộ Tín Dụng Lập Báo Cáo (*)</label>
+                    <div className="col-md-8">
+                      <label className="form-label small fw-bold text-slate-700">Họ Tên & Số CCCD Người Đồng Vay (nếu có)</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm fw-bold"
-                        value={formData.canBoThamDinh}
-                        onChange={(e) => setFormData({ ...formData, canBoThamDinh: e.target.value })}
+                        className="form-control"
+                        value={formData.nguoiDongVay}
+                        onChange={(e) => setFormData({ ...formData, nguoiDongVay: e.target.value })}
+                        placeholder="Nguyễn Thị Hoa (Vợ - CCCD: 038186001234)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Khối Chi Tiết Thu Nhập, Nguồn Gốc & Thu Nhập Ròng */}
+                <div className="p-3 bg-light rounded-3 border">
+                  <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-1.5">
+                      <DollarSign size={16} className="text-success" /> Kê Khai Thu Nhập & Nguồn Gốc (Người Vay + Đồng Vay)
+                    </h6>
+                    <span className="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold">
+                      Thu Nhập Ròng: {formatCurrencyVN(thuNhapRong)}/tháng
+                    </span>
+                  </div>
+
+                  <div className="row g-3">
+                    {/* Người Vay Chính */}
+                    <div className="col-md-6">
+                      <div className="p-2.5 bg-white rounded-3 border">
+                        <span className="small fw-bold text-primary d-block mb-1">1. Thu nhập Người Vay Chính (VNĐ/tháng)</span>
+                        <ThousandInput
+                          className="form-control fw-bold text-success mb-2"
+                          value={formData.thuNhapNguoiVay}
+                          onChange={(val) => setFormData({ ...formData, thuNhapNguoiVay: val })}
+                          placeholder="25,000,000"
+                        />
+                        <label className="form-label small text-muted mb-0">Nguồn gốc thu nhập người vay:</label>
+                        <textarea
+                          rows={2}
+                          className="form-control form-control-sm"
+                          value={formData.nguonThuNguoiVay}
+                          onChange={(e) => setFormData({ ...formData, nguonThuNguoiVay: e.target.value })}
+                          placeholder="Lương, lợi nhuận SXKD, bán nông sản..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Người Đồng Vay / Vợ Chồng */}
+                    <div className="col-md-6">
+                      <div className="p-2.5 bg-white rounded-3 border">
+                        <span className="small fw-bold text-info d-block mb-1">2. Thu nhập Người Đồng Vay / Vợ Chồng (VNĐ/tháng)</span>
+                        <ThousandInput
+                          className="form-control fw-bold text-info mb-2"
+                          value={formData.thuNhapDongVay}
+                          onChange={(val) => setFormData({ ...formData, thuNhapDongVay: val })}
+                          placeholder="10,000,000"
+                        />
+                        <label className="form-label small text-muted mb-0">Nguồn gốc thu nhập đồng vay:</label>
+                        <textarea
+                          rows={2}
+                          className="form-control form-control-sm"
+                          value={formData.nguonThuDongVay}
+                          onChange={(e) => setFormData({ ...formData, nguonThuDongVay: e.target.value })}
+                          placeholder="Lương, buôn bán tạp hóa, làm thêm..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Chi Phí & Chứng Minh */}
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Chi Phí Sinh Hoạt Gia Đình</label>
+                      <ThousandInput
+                        className="form-control text-danger fw-semibold"
+                        value={formData.chiPhiSinhHoat}
+                        onChange={(val) => setFormData({ ...formData, chiPhiSinhHoat: val })}
+                        placeholder="10,000,000"
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Chi Phí SXKD / Vận Hành</label>
+                      <ThousandInput
+                        className="form-control text-danger fw-semibold"
+                        value={formData.chiPhiSXKD}
+                        onChange={(val) => setFormData({ ...formData, chiPhiSXKD: val })}
+                        placeholder="5,000,000"
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Chi Phí Khác (nếu có)</label>
+                      <ThousandInput
+                        className="form-control text-danger fw-semibold"
+                        value={formData.chiPhiKhac}
+                        onChange={(val) => setFormData({ ...formData, chiPhiKhac: val })}
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label small fw-bold text-slate-700">Tài Liệu Chứng Minh Nguồn Thu Nhập (Hóa đơn, hợp đồng, sao kê...)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.chungMinhThuNhap}
+                        onChange={(e) => setFormData({ ...formData, chungMinhThuNhap: e.target.value })}
+                        placeholder="Mô tả chứng từ hoặc dán link tài liệu chứng minh thu nhập..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Khối Nhu Cầu Vay Vốn */}
+                <div className="p-3 bg-light rounded-3 border">
+                  <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
+                    <TrendingUp size={16} className="text-primary" /> Nhu Cầu Vốn Đề Xuất
+                  </h6>
+                  <div className="row g-2">
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Số Tiền Đề Xuất Vay (VNĐ)</label>
+                      <ThousandInput
+                        className="form-control fw-bold text-primary"
+                        value={formData.deXuatVay}
+                        onChange={(val) => setFormData({ ...formData, deXuatVay: val, duyetVay: val })}
+                        placeholder="200,000,000"
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Thời Hạn Vay (tháng)</label>
+                      <input
+                        type="number"
+                        className="form-control fw-semibold"
+                        value={formData.thoiHanVay}
+                        onChange={(e) => setFormData({ ...formData, thoiHanVay: Number(e.target.value), thoiHanThang: Number(e.target.value) })}
+                        min={1}
+                        max={120}
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Lãi Suất Đề Nghị (%/năm)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-control fw-semibold"
+                        value={formData.laiSuatDeNghi}
+                        onChange={(e) => setFormData({ ...formData, laiSuatDeNghi: Number(e.target.value), laiSuatDuyet: Number(e.target.value) })}
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label small fw-bold text-slate-700">Mục Đích Sử Dụng Vốn Vay</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.mucDichVay}
+                        onChange={(e) => setFormData({ ...formData, mucDichVay: e.target.value })}
+                        placeholder="Đầu tư mở rộng xưởng cơ khí & mua thêm nguyên vật liệu..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB 2: TÀI SẢN BẢO ĐẢM & BẢNG PHÂN LOẠI DIỆN TÍCH ĐẤT ĐA LOẠI             */}
+            {/* ========================================================================= */}
+            {activeTab === 2 && (
+              <div className="d-flex flex-column gap-3">
+                <div className="row g-2 align-items-center">
+                  <div className="col-md-4">
+                    <label className="form-label small fw-bold text-slate-700">Có Tài Sản Bảo Đảm Không?</label>
+                    <select
+                      className="form-select fw-semibold"
+                      value={formData.coTSBD}
+                      onChange={(e) => setFormData({ ...formData, coTSBD: e.target.value })}
+                    >
+                      <option value="Có">Có TSBĐ (Thế chấp / Cầm cố)</option>
+                      <option value="Không">Không (Cho vay tín chấp)</option>
+                    </select>
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label small fw-bold text-slate-700">Hình Thức Bảo Đảm</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={formData.hinhThucBaoDam}
+                      onChange={(e) => setFormData({ ...formData, hinhThucBaoDam: e.target.value })}
+                      placeholder="Thế chấp QSDĐ (Sổ đỏ)"
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label small fw-bold text-slate-700">Nguồn Gốc Tài Sản</label>
+                    <select
+                      className="form-select"
+                      value={formData.nguonGocTSBD}
+                      onChange={(e) => setFormData({ ...formData, nguonGocTSBD: e.target.value })}
+                    >
+                      <option value="Nhận chuyển nhượng quyền sử dụng đất">Nhận chuyển nhượng (Mua bán)</option>
+                      <option value="Nhà nước giao đất có thu tiền / Công nhận QSDĐ">Nhà nước giao / Công nhận QSDĐ</option>
+                      <option value="Thừa kế quyền sử dụng đất">Thừa kế</option>
+                      <option value="Tặng cho quyền sử dụng đất">Tặng cho</option>
+                      <option value="Khác">Nguồn gốc khác</option>
+                    </select>
+                  </div>
+                </div>
+
+                {formData.coTSBD === 'Có' && (
+                  <>
+                    {/* Bảng kê chi tiết các loại diện tích đất & đơn giá */}
+                    <div className="p-3 bg-light rounded-3 border">
+                      <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <div>
+                          <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-1.5">
+                            <Building2 size={16} className="text-primary" /> Phân Loại Diện Tích & Định Giá Từng Loại Đất (VNĐ/m²)
+                          </h6>
+                          <span className="text-muted small">
+                            Hỗ trợ thửa đất có nhiều mục đích sử dụng (Đất ở ONT, Đất trồng cây CLN, Đất nuôi trồng thủy sản...)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary fw-semibold"
+                          onClick={handleAddLandRow}
+                        >
+                          <Plus size={14} className="me-1 inline" /> Thêm Loại Đất
+                        </button>
+                      </div>
+
+                      <div className="table-responsive">
+                        <table className="table table-sm table-bordered bg-white align-middle mb-2">
+                          <thead className="table-light small">
+                            <tr>
+                              <th style={{ width: '35%' }}>Loại Đất / Mục Đích Sử Dụng</th>
+                              <th style={{ width: '20%' }} className="text-end">Diện Tích (m²)</th>
+                              <th style={{ width: '20%' }} className="text-end">Đơn Giá Định Giá (VNĐ/m²)</th>
+                              <th style={{ width: '20%' }} className="text-end">Thành Tiền (VNĐ)</th>
+                              <th style={{ width: '5%' }} className="text-center">Xóa</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {chiTietDat.map((row, idx) => (
+                              <tr key={row.id || idx}>
+                                <td>
+                                  <select
+                                    className="form-select form-select-sm fw-semibold"
+                                    value={row.loaiDat}
+                                    onChange={(e) => handleUpdateLandRow(idx, 'loaiDat', e.target.value)}
+                                  >
+                                    <option value="Đất ở tại nông thôn (ONT)">Đất ở tại nông thôn (ONT)</option>
+                                    <option value="Đất ở tại đô thị (ODT)">Đất ở tại đô thị (ODT)</option>
+                                    <option value="Đất trồng cây lâu năm (CLN)">Đất trồng cây lâu năm (CLN)</option>
+                                    <option value="Đất trồng cây hàng năm khác (HNK)">Đất trồng cây hàng năm khác (HNK)</option>
+                                    <option value="Đất trồng lúa (LUC/LUK)">Đất trồng lúa (LUC/LUK)</option>
+                                    <option value="Đất nuôi trồng thủy sản (NTS)">Đất nuôi trồng thủy sản (NTS)</option>
+                                    <option value="Đất rừng sản xuất (RSX)">Đất rừng sản xuất (RSX)</option>
+                                    <option value="Đất thương mại, dịch vụ (TMD)">Đất thương mại, dịch vụ (TMD)</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    className="form-control form-control-sm text-end fw-bold"
+                                    value={row.dienTich}
+                                    onChange={(e) => handleUpdateLandRow(idx, 'dienTich', e.target.value)}
+                                    placeholder="100"
+                                  />
+                                </td>
+                                <td>
+                                  <ThousandInput
+                                    className="form-control form-control-sm text-end fw-semibold text-primary"
+                                    value={row.donGia}
+                                    onChange={(val) => handleUpdateLandRow(idx, 'donGia', val)}
+                                    placeholder="3,000,000"
+                                  />
+                                </td>
+                                <td className="text-end fw-bold text-success num-tabular">
+                                  {formatCurrencyVN(row.thanhTien || 0)}
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-outline-danger p-1"
+                                    onClick={() => handleRemoveLandRow(idx)}
+                                    disabled={chiTietDat.length <= 1}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="table-light fw-bold small">
+                            <tr>
+                              <td>TỔNG DIỆN TÍCH & GIÁ TRỊ QUYỀN SỬ DỤNG ĐẤT:</td>
+                              <td className="text-end text-primary num-tabular">{tongDienTichDat.toLocaleString('vi-VN')} m²</td>
+                              <td className="text-end">---</td>
+                              <td className="text-end text-success num-tabular">{formatCurrencyVN(tongGiaTriDat)}</td>
+                              <td></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+
+                      {/* Công trình xây dựng trên đất & Giá trị thị trường */}
+                      <div className="row g-2 mt-2 pt-2 border-top">
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold text-slate-700">Giá Trị Công Trình / Nhà Ở Trên Đất (VNĐ)</label>
+                          <ThousandInput
+                            className="form-control text-primary fw-semibold"
+                            value={formData.giaTriCongTrinh}
+                            onChange={(val) => setFormData({ ...formData, giaTriCongTrinh: val })}
+                            placeholder="150,000,000"
+                          />
+                        </div>
+
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold text-slate-700">Giá Trị Thị Trường Tham Khảo (VNĐ)</label>
+                          <ThousandInput
+                            className="form-control fw-semibold"
+                            value={formData.giaTriThiTruong}
+                            onChange={(val) => setFormData({ ...formData, giaTriThiTruong: val })}
+                            placeholder="700,000,000"
+                          />
+                        </div>
+
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold text-slate-700">Tổng Giá Trị Định Giá QTDND (VNĐ)</label>
+                          <div className="form-control bg-success-subtle text-success fw-extrabold num-tabular">
+                            {formatCurrencyVN(tongGiaTriTSBD)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Thông tin Giấy chứng nhận và Pháp lý */}
+                    <div className="row g-2">
+                      <div className="col-md-3">
+                        <label className="form-label small fw-bold text-slate-700">Số Giấy Chứng Nhận (GCN / Sổ đỏ)</label>
+                        <input
+                          type="text"
+                          className="form-control font-monospace fw-bold text-primary"
+                          value={formData.soGCN}
+                          onChange={(e) => setFormData({ ...formData, soGCN: e.target.value })}
+                          placeholder="CH 892341"
+                        />
+                      </div>
+
+                      <div className="col-md-3">
+                        <label className="form-label small fw-bold text-slate-700">Thửa Đất Số</label>
+                        <input
+                          type="text"
+                          className="form-control font-monospace"
+                          value={formData.thuaDatSo}
+                          onChange={(e) => setFormData({ ...formData, thuaDatSo: e.target.value })}
+                          placeholder="112"
+                        />
+                      </div>
+
+                      <div className="col-md-3">
+                        <label className="form-label small fw-bold text-slate-700">Tờ Bản Đồ Số</label>
+                        <input
+                          type="text"
+                          className="form-control font-monospace"
+                          value={formData.toBanDoSo}
+                          onChange={(e) => setFormData({ ...formData, toBanDoSo: e.target.value })}
+                          placeholder="08"
+                        />
+                      </div>
+
+                      <div className="col-md-3">
+                        <label className="form-label small fw-bold text-slate-700">Chủ Sở Hữu Ghi Trên Sổ</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.chuSoHuuTSBD}
+                          onChange={(e) => setFormData({ ...formData, chuSoHuuTSBD: e.target.value })}
+                          placeholder="Nguyễn Văn An và vợ Nguyễn Thị Hoa"
+                        />
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold text-slate-700">Địa Chỉ Nơi Có Tài Sản Bảo Đảm</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.diaChiTSBD}
+                          onChange={(e) => setFormData({ ...formData, diaChiTSBD: e.target.value })}
+                          placeholder="Thôn Yên Lãng, Xã Yên Thọ, Huyện Ý Yên, Nam Định"
+                        />
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold text-slate-700">Tình Trạng Pháp Lý & Quy Hoạch</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.tinhTrangPhapLyTSBD}
+                          onChange={(e) => setFormData({ ...formData, tinhTrangPhapLyTSBD: e.target.value })}
+                          placeholder="Đầy đủ sổ đỏ hợp pháp, không có tranh chấp hay quy hoạch"
+                        />
+                      </div>
+
+                      <div className="col-md-8">
+                        <label className="form-label small fw-bold text-slate-700">Mô Tả Hiện Trạng & Ghi Chú Tài Sản</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.moTaTSBD}
+                          onChange={(e) => setFormData({ ...formData, moTaTSBD: e.target.value })}
+                          placeholder="Đường liên thôn rộng 5m, xe tải vào tận nơi..."
+                        />
+                      </div>
+
+                      <div className="col-md-4">
+                        <label className="form-label small fw-bold text-slate-700">Hình Ảnh Tài Sản / Sổ Đỏ (URL)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={formData.hinhAnhTSBD}
+                          onChange={(e) => setFormData({ ...formData, hinhAnhTSBD: e.target.value })}
+                          placeholder="Dán link ảnh thực địa tài sản..."
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB 3: THỰC ĐỊA, KHẢ NĂNG TÀI CHÍNH & LỊCH SỬ CIC                         */}
+            {/* ========================================================================= */}
+            {activeTab === 3 && (
+              <div className="d-flex flex-column gap-3">
+                {/* Tóm tắt tài chính lấy từ Tab 1 */}
+                <div className="p-3 bg-light rounded-3 border">
+                  <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
+                    <Calculator size={16} className="text-primary" /> Năng Lực Tài Chính & Dòng Tiền Thặng Dư (Kế Thừa Từ Kê Khai)
+                  </h6>
+                  <div className="row g-2 text-center">
+                    <div className="col-md-4">
+                      <div className="p-2.5 bg-white rounded-3 border">
+                        <span className="text-muted small d-block">Tổng Thu Nhập Hàng Tháng:</span>
+                        <span className="fw-bold text-success fs-6 num-tabular">{formatCurrencyVN(tongThuNhap)}</span>
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="p-2.5 bg-white rounded-3 border">
+                        <span className="text-muted small d-block">Tổng Chi Phí Hàng Tháng:</span>
+                        <span className="fw-bold text-danger fs-6 num-tabular">{formatCurrencyVN(tongChiPhi)}</span>
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="p-2.5 bg-white rounded-3 border">
+                        <span className="text-muted small d-block">Thu Nhập Ròng Thặng Dư:</span>
+                        <span className="fw-extrabold text-primary fs-6 num-tabular">{formatCurrencyVN(thuNhapRong)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Khối Tra Cứu CIC */}
+                <div className="p-3 bg-light rounded-3 border">
+                  <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
+                    <ShieldCheck size={16} className="text-primary" /> Lịch Sử Quan Hệ Tín Dụng & Tra Cứu CIC
+                  </h6>
+                  <div className="row g-2">
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Xếp Hạng Nhóm Nợ CIC</label>
+                      <select
+                        className="form-select fw-semibold"
+                        value={formData.xepHangCIC}
+                        onChange={(e) => setFormData({ ...formData, xepHangCIC: e.target.value })}
+                      >
+                        <option value="Nhóm 1 (Tốt)">Nhóm 1 (Nợ đủ tiêu chuẩn - Tốt)</option>
+                        <option value="Nhóm 2 (Cần chú ý)">Nhóm 2 (Nợ cần chú ý)</option>
+                        <option value="Nhóm 3 (Dưới tiêu chuẩn)">Nhóm 3 (Nợ dưới tiêu chuẩn)</option>
+                        <option value="Nhóm 4 (Nghi ngờ)">Nhóm 4 (Nợ nghi ngờ)</option>
+                        <option value="Nhóm 5 (Có khả năng mất vốn)">Nhóm 5 (Nợ có khả năng mất vốn)</option>
+                      </select>
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Số TCTD Đang Có Quan Hệ</label>
+                      <input
+                        type="number"
+                        className="form-control fw-semibold"
+                        value={formData.soTCTDQuanHe}
+                        onChange={(e) => setFormData({ ...formData, soTCTDQuanHe: Number(e.target.value) })}
+                        min={0}
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Tổng Dư Nợ Tại Các TCTD Khác (VNĐ)</label>
+                      <ThousandInput
+                        className="form-control fw-semibold"
+                        value={formData.duNoCICNgoai}
+                        onChange={(val) => setFormData({ ...formData, duNoCICNgoai: val })}
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-slate-700">Lịch Sử Trả Nợ Tại Các TCTD</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.lichSuTraNo}
+                        onChange={(e) => setFormData({ ...formData, lichSuTraNo: e.target.value })}
+                        placeholder="Trả nợ đúng hạn, không có nợ quá hạn"
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-slate-700">Ghi Chú Kết Quả Tra Cứu CIC</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.ghiChuCIC}
+                        onChange={(e) => setFormData({ ...formData, ghiChuCIC: e.target.value })}
+                        placeholder="Tra cứu CIC ngày dd/mm/yyyy: Lịch sử tín dụng tốt..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Đánh Giá Thực Địa & Tư Cách */}
+                <div className="row g-2">
+                  <div className="col-md-6">
+                    <label className="form-label small fw-bold text-slate-700">Địa Điểm Thẩm Định Thực Tế</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={formData.diaDiemThamDinh}
+                      onChange={(e) => setFormData({ ...formData, diaDiemThamDinh: e.target.value })}
+                      placeholder="Tại nhà riêng và xưởng sản xuất..."
+                    />
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label small fw-bold text-slate-700">Tư Cách Khách Hàng & Uy Tín Xã Hội</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={formData.tuCachKhachHang}
+                      onChange={(e) => setFormData({ ...formData, tuCachKhachHang: e.target.value })}
+                      placeholder="Đạo đức tốt, lối sống lành mạnh, có uy tín cao..."
+                    />
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label small fw-bold text-slate-700">Đánh Giá Hiện Trạng Hoạt Động SXKD / Sử Dụng Vốn</label>
+                    <textarea
+                      rows={2}
+                      className="form-control"
+                      value={formData.hienTrangSXKD}
+                      onChange={(e) => setFormData({ ...formData, hienTrangSXKD: e.target.value })}
+                      placeholder="Quy mô hoạt động ổn định, máy móc vận hành bình thường, đơn hàng đều đặn..."
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB 4: ĐỀ XUẤT, PHƯƠNG THỨC TRẢ GỐC/LÃI & PHƯƠNG ÁN TỐI ƯU              */}
+            {/* ========================================================================= */}
+            {activeTab === 4 && (
+              <div className="d-flex flex-column gap-3">
+                {/* Thông số khoản vay duyệt */}
+                <div className="p-3 bg-light rounded-3 border">
+                  <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
+                    <TrendingUp size={16} className="text-primary" /> Đề Xuất Cấp Tín Dụng Của Cán Bộ Thẩm Định
+                  </h6>
+                  <div className="row g-2">
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Số Tiền Cho Vay Đề Xuất (VNĐ) <span className="text-danger">*</span></label>
+                      <ThousandInput
+                        className="form-control fw-bold text-danger"
+                        value={formData.duyetVay}
+                        onChange={(val) => setFormData({ ...formData, duyetVay: val })}
+                        placeholder="200,000,000"
                         required
                       />
                     </div>
 
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-bold text-dark">Kết Luận Cấp Tín Dụng (*)</label>
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Thời Hạn Vay (Tháng)</label>
+                      <input
+                        type="number"
+                        className="form-control fw-bold"
+                        value={formData.thoiHanThang}
+                        onChange={(e) => setFormData({ ...formData, thoiHanThang: Number(e.target.value) })}
+                        min={1}
+                        max={120}
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label small fw-bold text-slate-700">Lãi Suất Cho Vay (%/năm)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-control fw-bold text-success"
+                        value={formData.laiSuatDuyet}
+                        onChange={(e) => setFormData({ ...formData, laiSuatDuyet: Number(e.target.value) })}
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-slate-700">
+                        Phương Thức Trả Gốc <span className="text-primary fw-bold">(*)</span>
+                      </label>
                       <select
-                        className="form-select form-select-sm fw-bold"
-                        value={formData.ketLuan}
-                        onChange={(e) => setFormData({ ...formData, ketLuan: e.target.value })}
+                        className="form-select fw-semibold"
+                        value={formData.phuongThucTraGoc}
+                        onChange={(e) => setFormData({ ...formData, phuongThucTraGoc: e.target.value })}
                       >
-                        <option value="Đồng ý cấp tín dụng">Đồng ý cấp tín dụng</option>
-                        <option value="Có điều kiện bổ sung">Có điều kiện bổ sung</option>
-                        <option value="Từ chối cấp tín dụng">Từ chối cấp tín dụng</option>
+                        <option value="HANG_THANG">1. Trả gốc đều hàng tháng (Định kỳ tháng)</option>
+                        <option value="HANG_QUY">2. Trả gốc đều hàng quý (3 tháng/lần)</option>
+                        <option value="BAN_NIEN">3. Trả gốc đều 6 tháng/lần (Bán niên)</option>
+                        <option value="HANG_NAM">4. Trả gốc đều hàng năm (12 tháng/lần)</option>
+                        <option value="CUOI_KY">5. Trả toàn bộ gốc cuối kỳ (Khi đáo hạn)</option>
                       </select>
                     </div>
 
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-slate-700">Phương Thức Trả Lãi</label>
+                      <input
+                        type="text"
+                        className="form-control bg-light"
+                        readOnly
+                        value="Lãi thu hàng tháng theo dư nợ thực tế (Chuẩn TT 14/2017/TT-NHNN)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Thẻ Chỉ Số Tài Chính & Tỷ Lệ An Toàn */}
+                <div className="row g-2 text-center">
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-light rounded-3 border">
+                      <span className="text-muted small d-block">Tỷ lệ LTV (Vay/TSBĐ):</span>
+                      <div className={`fw-extrabold fs-6 ${Number(tyLeLTV) > 75 ? 'text-danger' : Number(tyLeLTV) > 70 ? 'text-warning' : 'text-success'}`}>
+                        {tyLeLTV}%
+                      </div>
+                      <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                        {Number(tyLeLTV) <= 70 ? 'Đạt chuẩn an toàn (≤70%)' : Number(tyLeLTV) <= 75 ? 'Mức tối đa cho phép' : 'Vượt trần quy định'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-light rounded-3 border">
+                      <span className="text-muted small d-block">Tỷ lệ DTI (Nợ/Thu nhập):</span>
+                      <div className={`fw-extrabold fs-6 ${Number(tyLeDTI) > 60 ? 'text-danger' : 'text-success'}`}>
+                        {tyLeDTI}%
+                      </div>
+                      <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                        {Number(tyLeDTI) <= 60 ? 'Dòng tiền đạt chuẩn (≤60%)' : 'Áp lực trả nợ cao'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-light rounded-3 border">
+                      <span className="text-muted small d-block">Nghĩa vụ tháng bình quân:</span>
+                      <div className="fw-extrabold text-danger fs-6 num-tabular">
+                        {formatCurrencyVN(emiThangQuyDoi)}
+                      </div>
+                      <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                        Gốc: {formatCurrencyVN(gocThang)} + Lãi
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-6 col-md-3">
+                    <div className="p-2.5 bg-light rounded-3 border">
+                      <span className="text-muted small d-block">Hệ số bù đắp (DSCR):</span>
+                      <div className={`fw-extrabold fs-6 ${Number(heSoDSCR) >= 1.2 ? 'text-success' : 'text-warning'}`}>
+                        {heSoDSCR}x
+                      </div>
+                      <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+                        {Number(heSoDSCR) >= 1.2 ? 'Dòng tiền thặng dư tốt' : 'Thặng dư mỏng'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Khối Phân Tích & Gợi Ý Phương Án Tối Ưu */}
+                <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <h6 className="fw-bold text-primary m-0 d-flex align-items-center gap-1.5">
+                      <Sparkles size={16} /> Đánh Giá Khả Năng Trả Nợ & Đề Xuất Phương Án Tối Ưu
+                    </h6>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-primary"
+                      onClick={() => setFormData({ ...formData, phuongAnToiUu: generateOptimalSuggestion() })}
+                    >
+                      Tự động phân tích lại
+                    </button>
+                  </div>
+                  <textarea
+                    rows={3}
+                    className="form-control form-control-sm bg-white"
+                    value={formData.phuongAnToiUu || generateOptimalSuggestion()}
+                    onChange={(e) => setFormData({ ...formData, phuongAnToiUu: e.target.value })}
+                    placeholder="Nhập nhận định phân tích phương án tối ưu..."
+                  />
+                  <div className="text-muted small mt-1" style={{ fontSize: '0.72rem' }}>
+                    Hệ thống tự động đối chiếu DTI, LTV, dòng tiền thặng dư và phương thức trả gốc để đưa ra khuyến nghị an toàn nhất.
+                  </div>
+                </div>
+
+                <div className="row g-2">
+                  <div className="col-md-6">
+                    <label className="form-label small fw-bold text-slate-700">Hình Thức Giải Ngân</label>
+                    <select
+                      className="form-select"
+                      value={formData.phuongThucGiaiNgan}
+                      onChange={(e) => setFormData({ ...formData, phuongThucGiaiNgan: e.target.value })}
+                    >
+                      <option value="Chuyển khoản qua tài khoản CASA">Chuyển khoản qua tài khoản CASA (Khuyến khích)</option>
+                      <option value="Tiền mặt tại quầy">Tiền mặt tại quầy</option>
+                      <option value="Chuyển khoản cho bên thụ hưởng thứ 3">Chuyển khoản cho bên thụ hưởng thứ 3</option>
+                    </select>
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label small fw-bold text-slate-700">Biện Pháp Bảo Đảm Thực Hiện Nghĩa Vụ</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={formData.bienPhapBaoDam}
+                      onChange={(e) => setFormData({ ...formData, bienPhapBaoDam: e.target.value })}
+                      placeholder="Thế chấp QSDĐ, công chứng và đăng ký GDBĐ đầy đủ"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB 5: KIẾN NGHỊ KẾT LUẬN & KÝ DUYỆT ĐA CẤP                             */}
+            {/* ========================================================================= */}
+            {activeTab === 5 && (
+              <div className="d-flex flex-column gap-3">
+                <div className="p-3 bg-light rounded-3 border">
+                  <h6 className="fw-bold text-slate-800 mb-2 d-flex align-items-center gap-1.5">
+                    <CheckCircle2 size={16} className="text-success" /> Kết Luận Của Cán Bộ Thẩm Định
+                  </h6>
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold text-slate-700">Đề Xuất Kết Luận <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select fw-bold"
+                        value={formData.ketLuan}
+                        onChange={(e) => setFormData({ ...formData, ketLuan: e.target.value })}
+                      >
+                        <option value="Đồng ý cấp tín dụng">1. Đồng ý cấp tín dụng</option>
+                        <option value="Có điều kiện bổ sung">2. Đồng ý nhưng có điều kiện bổ sung</option>
+                        <option value="Từ chối cấp tín dụng">3. Từ chối cấp tín dụng</option>
+                      </select>
+                    </div>
+
+                    <div className="col-md-3">
+                      <label className="form-label small fw-bold text-slate-700">Đánh Giá Mức Độ Rủi Ro</label>
+                      <select
+                        className="form-select"
+                        value={formData.mucDoRuiRo}
+                        onChange={(e) => setFormData({ ...formData, mucDoRuiRo: e.target.value })}
+                      >
+                        <option value="Thấp">Thấp (Khách hàng tốt)</option>
+                        <option value="Trung bình">Trung bình</option>
+                        <option value="Cao">Cao (Cần giám sát)</option>
+                      </select>
+                    </div>
+
+                    <div className="col-md-3">
+                      <label className="form-label small fw-bold text-slate-700">Cán Bộ Lập Báo Cáo</label>
+                      <input
+                        type="text"
+                        className="form-control bg-light fw-semibold"
+                        readOnly
+                        value={currentUser?.fullName || formData.canBoThamDinh}
+                      />
+                    </div>
+
                     <div className="col-12">
-                      <div className="p-3 bg-white rounded border">
-                        <span className="fw-bold text-dark small d-block mb-1">Tóm Tắt Tờ Trình Thẩm Định:</span>
-                        <p className="small text-secondary m-0">
-                          Đề xuất cấp tín dụng cho khách hàng <strong>{formData.hoTen || '...'}</strong> (Mã KH: {formData.maKH || '...'}) 
-                          với số tiền duyệt <strong>{formatCurrencyVN(duyetVayNum)}</strong>, thời hạn <strong>{formData.thoiHanThang} tháng</strong>, 
-                          lãi suất <strong>{formData.laiSuatDuyet}%/năm</strong>. 
-                          Tỷ lệ LTV <strong>{tyLeLTV}%</strong>, Tỷ lệ DSR <strong>{tyLeDSR}%</strong>, Hệ số bù đắp dòng tiền <strong>{heSoBuDap}x</strong>.
-                        </p>
+                      <label className="form-label small fw-bold text-slate-700">Điều Kiện Giải Ngân / Lưu Ý Giám Sát Sau Cho Vay</label>
+                      <textarea
+                        rows={3}
+                        className="form-control"
+                        value={formData.dieuKienGiaiNgan}
+                        onChange={(e) => setFormData({ ...formData, dieuKienGiaiNgan: e.target.value })}
+                        placeholder="Hoàn tất thủ tục công chứng HĐTC và nhận kết quả đăng ký thế chấp tại VP ĐKĐĐ; kiểm tra tiến độ sử dụng vốn sau 30 ngày..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Khung ký duyệt đa cấp mô phỏng */}
+                <div className="p-3 bg-white rounded-3 border">
+                  <span className="small fw-bold text-muted text-uppercase d-block mb-2 text-center" style={{ letterSpacing: '0.5px' }}>
+                    Quy Trình Ký Duyệt Báo Cáo Thẩm Định 4 Cấp (QTDND)
+                  </span>
+                  <div className="row g-2 text-center">
+                    <div className="col-3">
+                      <div className="p-2 border rounded bg-light">
+                        <span className="small fw-bold text-primary d-block">1. CBTD Lập</span>
+                        <div className="fw-semibold small mt-1">{currentUser?.fullName || formData.canBoThamDinh}</div>
+                        <span className="badge bg-success-subtle text-success small mt-1">Đã ký lập</span>
+                      </div>
+                    </div>
+                    <div className="col-3">
+                      <div className="p-2 border rounded bg-light">
+                        <span className="small fw-bold text-secondary d-block">2. Trưởng Phòng TD</span>
+                        <div className="text-muted small mt-1">Chờ duyệt</div>
+                      </div>
+                    </div>
+                    <div className="col-3">
+                      <div className="p-2 border rounded bg-light">
+                        <span className="small fw-bold text-secondary d-block">3. Ban Kiểm Soát</span>
+                        <div className="text-muted small mt-1">Chờ thẩm tra</div>
+                      </div>
+                    </div>
+                    <div className="col-3">
+                      <div className="p-2 border rounded bg-light">
+                        <span className="small fw-bold text-secondary d-block">4. Giám Đốc / HĐTD</span>
+                        <div className="text-muted small mt-1">Chờ phê duyệt</div>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Modal Footer */}
-            <div className="modal-footer border-0 pt-2 d-flex justify-content-between">
-              <div className="d-flex gap-1">
+            {/* Modal Footer Controls */}
+            <div className="modal-footer border-0 pt-3 pb-0 px-0 d-flex justify-content-between">
+              <div>
                 {activeTab > 1 && (
                   <button
                     type="button"
-                    className="btn btn-light btn-sm fw-semibold"
-                    onClick={() => setActiveTab(activeTab - 1)}
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => setActiveTab((p) => p - 1)}
                   >
-                    Quay Lại (Bước {activeTab - 1})
-                  </button>
-                )}
-                {activeTab < 5 && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary btn-sm fw-semibold"
-                    onClick={() => setActiveTab(activeTab + 1)}
-                  >
-                    Tiếp Theo (Bước {activeTab + 1})
+                    ← Quay Lại
                   </button>
                 )}
               </div>
 
               <div className="d-flex gap-2">
-                <button type="button" className="btn btn-light btn-sm" onClick={onClose}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
                   Hủy Bỏ
                 </button>
-                <button type="submit" className="btn btn-brand btn-sm fw-bold px-4 shadow-sm">
-                  <FileCheck2 size={14} className="me-1" /> Lưu Hồ Sơ Thẩm Định
-                </button>
+
+                {activeTab < 5 ? (
+                  <button
+                    type="button"
+                    className="btn btn-brand btn-sm fw-semibold"
+                    onClick={() => setActiveTab((p) => p + 1)}
+                  >
+                    Tiếp Theo →
+                  </button>
+                ) : (
+                  <button type="submit" className="btn btn-success btn-sm fw-bold px-3">
+                    <FileCheck2 size={16} className="me-1 inline" /> Hoàn Tất & Lưu Hồ Sơ Thẩm Định
+                  </button>
+                )}
               </div>
             </div>
           </form>

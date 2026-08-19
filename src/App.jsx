@@ -217,6 +217,7 @@ export default function App() {
 
           {activeTab === 'appraisal' && (
             <Appraisal 
+              currentUser={currentUser}
               prefilledCustomer={prefilledCustomer} 
               onOpenCustomerQuickView={handleOpenCustomerQuickView}
             />

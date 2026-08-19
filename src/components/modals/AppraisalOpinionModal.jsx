@@ -2,10 +2,18 @@ import React, { useState } from 'react';
 import { CheckCircle2, AlertCircle, MessageSquare, ShieldCheck, UserCheck } from 'lucide-react';
 import { formatDateTimeVN } from '../../utils/dateUtils';
 
-export default function AppraisalOpinionModal({ appraisal, onClose, onSubmit }) {
+export default function AppraisalOpinionModal({ appraisal, onClose, onSubmit, currentUser }) {
+  const defaultChucVu = currentUser?.role === 'LANHDAO' 
+    ? 'Ban Giám Đốc / HĐQT' 
+    : currentUser?.role === 'BKS' 
+    ? 'Ban Kiểm Soát' 
+    : currentUser?.role === 'KETOAN'
+    ? 'Kế Toán Trưởng / Kế Toán Viên'
+    : 'Cán Bộ Tín Dụng';
+
   const [opinionData, setOpinionData] = useState({
-    nguoiDanhGia: 'Lê Văn Tín',
-    chucVu: 'Tổ Trưởng / Trưởng Phòng Tín Dụng',
+    nguoiDanhGia: currentUser?.fullName || 'Lê Văn Tín (CBTD)',
+    chucVu: defaultChucVu,
     yKien: 'Đồng ý',
     noiDung: 'Hồ sơ pháp lý đầy đủ, khách hàng có phương án vay vốn khả thi, nguồn trả nợ minh bạch và tài sản đảm bảo đủ điều kiện thế chấp.'
   });

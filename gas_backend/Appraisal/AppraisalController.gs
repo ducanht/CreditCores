@@ -209,6 +209,15 @@ var AppraisalController = {
           diaChi: getVal(r, "DiaChi", ""),
           tinhTrangHonNhan: getVal(r, "TinhTrangHonNhan", "Đã kết hôn"),
           nguoiDongVay: getVal(r, "NguoiDongVay", ""),
+          hinhAnhKH: getVal(r, "HinhAnhKH", ""),
+          nganhNghe: getVal(r, "NganhNghe", "Kinh doanh tự do"),
+          trinhDo: getVal(r, "TrinhDo", "Đại học / Cao đẳng"),
+          thuNhapNguoiVay: Number(getVal(r, "ThuNhapNguoiVay", 0)) || 0,
+          nguonThuNguoiVay: getVal(r, "NguonThuNguoiVay", "Thu nhập từ SXKD và lương"),
+          thuNhapDongVay: Number(getVal(r, "ThuNhapDongVay", 0)) || 0,
+          nguonThuDongVay: getVal(r, "NguonThuDongVay", "Thu nhập từ kinh doanh"),
+          chungMinhThuNhap: getVal(r, "ChungMinhThuNhap", ""),
+          thuNhapRong: Number(getVal(r, "ThuNhapRong", 0)) || 0,
           deXuatVay: Number(getVal(r, "DeXuatVay", 0)) || 0,
           mucDichVay: getVal(r, "MucDichVay", "Sản xuất kinh doanh"),
           thoiHanVay: Number(getVal(r, "ThoiHanVay", 12)) || 12,
@@ -227,6 +236,11 @@ var AppraisalController = {
           chuSoHuuTSBD: getVal(r, "ChuSoHuuTSBD", ""),
           quanHeVoiNguoiVay: getVal(r, "QuanHeVoiNguoiVay", "Chính chủ"),
           giaTriTSBD: Number(getVal(r, "GiaTriTSBD", 0)) || 0,
+          nguonGocTSBD: getVal(r, "NguonGocTSBD", "Nhận chuyển nhượng quyền sử dụng đất"),
+          giaTriThiTruong: Number(getVal(r, "GiaTriThiTruong", 0)) || 0,
+          hinhAnhTSBD: getVal(r, "HinhAnhTSBD", ""),
+          chiTietLoaiDat: getVal(r, "ChiTietLoaiDat", "[]"),
+          giaTriCongTrinh: Number(getVal(r, "GiaTriCongTrinh", 0)) || 0,
           tinhTrangPhapLyTSBD: getVal(r, "TinhTrangPhapLyTSBD", "Hợp pháp, không tranh chấp"),
           moTaTSBD: getVal(r, "MoTaTSBD", ""),
 
@@ -252,6 +266,8 @@ var AppraisalController = {
           thoiHanThang: Number(getVal(r, "ThoiHanThang", 12)) || 12,
           laiSuatDuyet: Number(getVal(r, "LaiSuatDuyet", 0)) || 0,
           phuongThucGiaiNgan: getVal(r, "PhuongThucGiaiNgan", "Chuyển khoản qua tài khoản CASA"),
+          phuongThucTraGoc: getVal(r, "PhuongThucTraGoc", "HANG_THANG"),
+          phuongAnToiUu: getVal(r, "PhuongAnToiUu", "Phương án trả nợ gốc đều hàng tháng đảm bảo khả năng trả nợ tốt."),
           bienPhapBaoDam: getVal(r, "BienPhapBaoDam", "Thế chấp QSDĐ, công chứng đăng ký GDBĐ"),
           tyLeLTV: getVal(r, "TyLeLTV", "0.0"),
           nghiaVuTraNoThang: Number(getVal(r, "NghiaVuTraNoThang", 0)) || 0,
@@ -263,6 +279,7 @@ var AppraisalController = {
           // 5. Phê duyệt & Kết luận
           ketLuan: getVal(r, "KetLuan", "Đồng ý cấp tín dụng"),
           canBoThamDinh: getVal(r, "CanBoThamDinh", "Lê Văn Tín"),
+          canBoLapUsername: getVal(r, "CanBoLapUsername", "qtdyentho.cbtd"),
           danhSachYKien: approvalOpinions,
           ngayLap: formatGasDate(getVal(r, "NgayLap", new Date()))
         };
@@ -286,8 +303,9 @@ var AppraisalController = {
 
     var maBCTD = data.maBCTD || ("BCTD-" + Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd-HHmmss"));
     var opinionsJson = JSON.stringify(data.danhSachYKien || []);
+    var chiTietLoaiDatJson = typeof data.chiTietLoaiDat === 'string' ? data.chiTietLoaiDat : JSON.stringify(data.chiTietLoaiDat || []);
 
-    // Ensure schema has all 57 columns
+    // Ensure schema has all columns
     SchemaSetup.ensureDatabaseSchema(ss);
 
     var numCols = sheet.getLastColumn();
@@ -317,6 +335,15 @@ var AppraisalController = {
     setCol("DiaChi", data.diaChi || "");
     setCol("TinhTrangHonNhan", data.tinhTrangHonNhan || "Đã kết hôn");
     setCol("NguoiDongVay", data.nguoiDongVay || "");
+    setCol("HinhAnhKH", data.hinhAnhKH || "");
+    setCol("NganhNghe", data.nganhNghe || "");
+    setCol("TrinhDo", data.trinhDo || "");
+    setCol("ThuNhapNguoiVay", Number(data.thuNhapNguoiVay) || 0);
+    setCol("NguonThuNguoiVay", data.nguonThuNguoiVay || "");
+    setCol("ThuNhapDongVay", Number(data.thuNhapDongVay) || 0);
+    setCol("NguonThuDongVay", data.nguonThuDongVay || "");
+    setCol("ChungMinhThuNhap", data.chungMinhThuNhap || "");
+    setCol("ThuNhapRong", Number(data.thuNhapRong) || 0);
     setCol("DeXuatVay", Number(data.deXuatVay) || 0);
     setCol("MucDichVay", data.mucDichVay || "");
     setCol("ThoiHanVay", Number(data.thoiHanVay) || 12);
@@ -334,6 +361,11 @@ var AppraisalController = {
     setCol("ChuSoHuuTSBD", data.chuSoHuuTSBD || "");
     setCol("QuanHeVoiNguoiVay", data.quanHeVoiNguoiVay || "");
     setCol("GiaTriTSBD", Number(data.giaTriTSBD) || 0);
+    setCol("NguonGocTSBD", data.nguonGocTSBD || "");
+    setCol("GiaTriThiTruong", Number(data.giaTriThiTruong) || 0);
+    setCol("HinhAnhTSBD", data.hinhAnhTSBD || "");
+    setCol("ChiTietLoaiDat", chiTietLoaiDatJson);
+    setCol("GiaTriCongTrinh", Number(data.giaTriCongTrinh) || 0);
     setCol("TinhTrangPhapLyTSBD", data.tinhTrangPhapLyTSBD || "");
     setCol("MoTaTSBD", data.moTaTSBD || "");
 
@@ -359,6 +391,8 @@ var AppraisalController = {
     setCol("ThoiHanThang", Number(data.thoiHanThang) || 12);
     setCol("LaiSuatDuyet", Number(data.laiSuatDuyet) || 0);
     setCol("PhuongThucGiaiNgan", data.phuongThucGiaiNgan || "");
+    setCol("PhuongThucTraGoc", data.phuongThucTraGoc || "HANG_THANG");
+    setCol("PhuongAnToiUu", data.phuongAnToiUu || "");
     setCol("BienPhapBaoDam", data.bienPhapBaoDam || "");
     setCol("TyLeLTV", data.tyLeLTV || "0.0");
     setCol("NghiaVuTraNoThang", Number(data.nghiaVuTraNoThang) || 0);
@@ -369,7 +403,8 @@ var AppraisalController = {
 
     // 5. Phê duyệt & Kết luận
     setCol("KetLuan", data.ketLuan || "Đồng ý cấp tín dụng");
-    setCol("CanBoThamDinh", data.canBoThamDinh || "Lê Văn Tín");
+    setCol("CanBoThamDinh", data.canBoThamDinh || "Lê Văn Tín (CBTD)");
+    setCol("CanBoLapUsername", data.canBoLapUsername || "qtdyentho.cbtd");
     setCol("DanhSachYKien", opinionsJson);
     setCol("NgayLap", new Date());
 

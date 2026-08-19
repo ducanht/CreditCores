@@ -103,16 +103,17 @@ var SchemaSetup = {
       aliases: ["BAO_CAO_THAM_DINH"],
       headers: [
         "MaBCTD", "MaKH", "HoTen", "SoCCCD", "NgaySinh", "GioiTinh", "DienThoai", "DiaChi", "TinhTrangHonNhan", "NguoiDongVay",
+        "HinhAnhKH", "NganhNghe", "TrinhDo", "ThuNhapNguoiVay", "NguonThuNguoiVay", "ThuNhapDongVay", "NguonThuDongVay", "ChungMinhThuNhap", "ThuNhapRong",
         "DeXuatVay", "MucDichVay", "ThoiHanVay", "PhuongThucTraNo", "CoTSBD", "HinhThucBaoDam", "LoaiTSBD", "SoGCN", "ThuaDatSo", "ToBanDoSo",
-        "DienTich", "DiaChiTSBD", "ChuSoHuuTSBD", "QuanHeVoiNguoiVay", "GiaTriTSBD", "TinhTrangPhapLyTSBD", "MoTaTSBD",
+        "DienTich", "DiaChiTSBD", "ChuSoHuuTSBD", "QuanHeVoiNguoiVay", "GiaTriTSBD", "NguonGocTSBD", "GiaTriThiTruong", "HinhAnhTSBD", "ChiTietLoaiDat", "GiaTriCongTrinh", "TinhTrangPhapLyTSBD", "MoTaTSBD",
         "ThuNhapChinh", "ThuNhapPhu", "TongThuNhapThang", "ChiPhiSinhHoat", "ChiPhiSXKD", "TongChiPhiThang", "ThangDuThang",
         "XepHangCIC", "SoTCTDQuanHe", "DuNoCICNgoai", "LichSuTraNo", "GhiChuCIC", "DiaDiemThamDinh", "HienTrangSXKD", "TuCachKhachHang",
-        "DuyetVay", "ThoiHanThang", "LaiSuatDuyet", "PhuongThucGiaiNgan", "BienPhapBaoDam", "TyLeLTV", "NghiaVuTraNoThang", "TyLeDSR",
-        "HeSoBuDap", "DieuKienGiaiNgan", "MucDoRuiRo", "KetLuan", "CanBoThamDinh", "DanhSachYKien", "NgayLap"
+        "DuyetVay", "ThoiHanThang", "LaiSuatDuyet", "PhuongThucGiaiNgan", "PhuongThucTraGoc", "PhuongAnToiUu", "BienPhapBaoDam", "TyLeLTV", "NghiaVuTraNoThang", "TyLeDSR",
+        "HeSoBuDap", "DieuKienGiaiNgan", "MucDoRuiRo", "KetLuan", "CanBoThamDinh", "CanBoLapUsername", "DanhSachYKien", "NgayLap"
       ],
       color: "#1A237E",
-      formats: { "K:K": "#,##0", "U:U": "#,##0", "Y:Y": "#,##0", "AB:AH": "#,##0", "AQ:AQ": "#,##0", "AW:AW": "#,##0", "BC:BC": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 120, 2: 100, 3: 180, 4: 130, 11: 130, 17: 160, 25: 140, 30: 130, 34: 130, 43: 130, 48: 90, 53: 110, 54: 150, 55: 140, 56: 250, 57: 160 }
+      formats: { "N:N": "#,##0", "P:P": "#,##0", "S:T": "#,##0", "AD:AD": "#,##0", "AF:AF": "#,##0", "AM:AS": "#,##0", "BA:BA": "#,##0", "BH:BH": "#,##0", "BV:BV": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 120, 2: 100, 3: 180, 4: 130, 11: 150, 14: 130, 16: 130, 19: 130, 20: 130, 26: 160, 34: 140, 36: 140, 38: 200, 44: 130, 57: 130, 61: 140, 62: 250, 65: 130, 70: 140, 71: 140, 72: 140, 73: 250, 74: 160 }
     },
     KIEM_TRA_VON: {
       headers: ["MaBBKT", "SoHDTD", "MaKH", "HoTen", "LoaiDoanKT", "ThanhPhanDoan", "NgayKiemTra", "LanKiemTra", "NgayKTNext", "HinhThuc", "DiaDiemKT", "DanhGiaMucDich", "TienDoSuDungVon", "MucDoRuiRo", "MoTaThucTe", "KienNghi", "FileBienBanUrl", "HinhAnhKiemTra", "TrangThai", "NgayTao"],

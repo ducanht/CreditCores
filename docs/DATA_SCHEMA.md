@@ -159,11 +159,11 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 
 ### 10. `THAM_DINH_TD` / `BAO_CAO_THAM_DINH` (Hồ Sơ Thẩm Định 5 Nhóm Nghiệp Vụ)
 
-Bảng CSDL `BAO_CAO_THAM_DINH` gồm **57 cột** chuẩn hóa, phân chia chặt chẽ theo 5 nhóm thông tin:
+Bảng CSDL `BAO_CAO_THAM_DINH` gồm **74 cột** chuẩn hóa, phân chia chặt chẽ theo 5 nhóm thông tin:
 
-#### 🔹 Nhóm 1: Thông Tin Pháp Lý & Nhu Cầu Vay Vốn
+#### 🔹 Nhóm 1: Thông Tin Pháp Lý, Nhu Cầu & Kê Khai Thu Nhập Chi Tiết
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
+| :--- | :--- | :--- | :--- | :--- |
 | A | `MaBCTD` | String | `@` | Mã báo cáo thẩm định (PK: `BCTD-2026-081`) |
 | B | `MaKH` | String | `@` | Mã khách hàng (FK `KH_CORE`) |
 | C | `HoTen` | String | `@` | Họ và tên khách hàng |
@@ -174,69 +174,86 @@ Bảng CSDL `BAO_CAO_THAM_DINH` gồm **57 cột** chuẩn hóa, phân chia ch�
 | H | `DiaChi` | String | `@` | Địa chỉ cư trú thường trú |
 | I | `TinhTrangHonNhan` | Enum | `@` | Tình trạng hôn nhân (`Đã kết hôn`, `Độc thân`...) |
 | J | `NguoiDongVay` | String | `@` | Thông tin người đồng vay / Vợ / Chồng / Bảo lãnh |
-| K | `DeXuatVay` | Number | `#,##0` | Số tiền khách hàng xin vay (VNĐ) |
-| L | `MucDichVay` | String | `@` | Mục đích sử dụng vốn chi tiết |
-| M | `ThoiHanVay` | Number | `#,##0` | Thời hạn vay đề nghị (tháng) |
-| N | `PhuongThucTraNo` | String | `@` | Phương thức trả nợ (Gốc đều/Kỳ hạn, Lãi dư nợ) |
+| K | `HinhAnhKH` | String (URL) | `@` | Ảnh chân dung khách hàng |
+| L | `NganhNghe` | String | `@` | Ngành nghề hoạt động chính |
+| M | `TrinhDo` | String | `@` | Trình độ học vấn văn hóa |
+| N | `ThuNhapNguoiVay` | Number | `#,##0` | Thu nhập của người đứng vay chính (VNĐ/tháng) |
+| O | `NguonThuNguoiVay` | String | `@` | Nguồn gốc tạo ra thu nhập của người vay |
+| P | `ThuNhapDongVay` | Number | `#,##0` | Thu nhập của người đồng vay / Vợ chồng (VNĐ/tháng) |
+| Q | `NguonThuDongVay` | String | `@` | Nguồn gốc tạo ra thu nhập của người đồng vay |
+| R | `ChungMinhThuNhap` | String | `@` | Danh sách tài liệu/chứng từ chứng minh nguồn thu |
+| S | `ThuNhapRong` | Number | `#,##0` | Thu nhập ròng hàng tháng = Tổng thu nhập - Tổng chi phí |
+| T | `DeXuatVay` | Number | `#,##0` | Số tiền khách hàng xin vay (VNĐ) |
+| U | `MucDichVay` | String | `@` | Mục đích sử dụng vốn chi tiết |
+| V | `ThoiHanVay` | Number | `#,##0` | Thời hạn vay đề nghị (tháng) |
+| W | `PhuongThucTraNo` | String | `@` | Phương thức trả nợ |
 
-#### 🔹 Nhóm 2: Thông Tin Tài Sản Bảo Đảm (TSBĐ)
+#### 🔹 Nhóm 2: Thông Tin Tài Sản Bảo Đảm (TSBĐ & Đất Đa Loại Diện Tích)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
-| O | `CoTSBD` | Enum | `@` | Có TSBĐ hay Tín chấp (`Có`, `Không`) |
-| P | `HinhThucBaoDam` | String | `@` | Hình thức bảo đảm (Thế chấp QSDĐ, Sổ tiết kiệm...) |
-| Q | `LoaiTSBD` | String | `@` | Loại tài sản (Đất ở, Đất SXKD, Nhà xưởng, Xe...) |
-| R | `SoGCN` | String | `@` | Số seri Giấy chứng nhận QSDĐ / Đăng ký xe |
-| S | `ThuaDatSo` | String | `@` | Thửa đất số |
-| T | `ToBanDoSo` | String | `@` | Tờ bản đồ số |
-| U | `DienTich` | Number | `#,##0.0` | Diện tích tài sản ($m^2$) |
-| V | `DiaChiTSBD` | String | `@` | Địa chỉ nơi có tài sản bảo đảm |
-| W | `ChuSoHuuTSBD` | String | `@` | Họ tên chủ sở hữu đứng tên trên GCN |
-| X | `QuanHeVoiNguoiVay` | String | `@` | Quan hệ với người vay (Chính chủ, Bố mẹ...) |
-| Y | `GiaTriTSBD` | Number | `#,##0` | Giá trị định giá nội bộ QTDND (VNĐ) |
-| Z | `TinhTrangPhapLyTSBD` | String | `@` | Tình trạng pháp lý (Hợp pháp, không tranh chấp) |
-| AA | `MoTaTSBD` | String | `@` | Mô tả chi tiết hiện trạng tài sản thực tế |
+| :--- | :--- | :--- | :--- | :--- |
+| X | `CoTSBD` | Enum | `@` | Có TSBĐ hay Tín chấp (`Có`, `Không`) |
+| Y | `HinhThucBaoDam` | String | `@` | Hình thức bảo đảm (Thế chấp QSDĐ, Sổ tiết kiệm...) |
+| Z | `LoaiTSBD` | String | `@` | Loại tài sản (Đất ở, Đất CLN, Nhà xưởng...) |
+| AA | `SoGCN` | String | `@` | Số seri Giấy chứng nhận QSDĐ / Sổ đỏ |
+| AB | `ThuaDatSo` | String | `@` | Thửa đất số |
+| AC | `ToBanDoSo` | String | `@` | Tờ bản đồ số |
+| AD | `DienTich` | Number | `#,##0.0` | Tổng diện tích thửa đất ($m^2$) |
+| AE | `DiaChiTSBD` | String | `@` | Địa chỉ nơi có tài sản bảo đảm |
+| AF | `ChuSoHuuTSBD` | String | `@` | Họ tên chủ sở hữu đứng tên trên GCN |
+| AG | `QuanHeVoiNguoiVay`| String | `@` | Quan hệ với người vay (Chính chủ, Bố mẹ...) |
+| AH | `GiaTriTSBD` | Number | `#,##0` | Tổng giá trị định giá nội bộ QTDND (VNĐ) |
+| AI | `NguonGocTSBD` | String | `@` | Nguồn gốc tài sản (Chuyển nhượng, Thừa kế, Tặng cho...) |
+| AJ | `GiaTriThiTruong` | Number | `#,##0` | Giá trị thị trường tham khảo (VNĐ) |
+| AK | `HinhAnhTSBD` | String (URL) | `@` | Ảnh thực địa tài sản bảo đảm / Sổ đỏ |
+| AL | `ChiTietLoaiDat` | String (JSON)| `@` | Bảng mảng JSON chi tiết các loại đất (ONT, CLN, NTS...) kèm đơn giá/m² |
+| AM | `GiaTriCongTrinh` | Number | `#,##0` | Giá trị công trình xây dựng / Nhà ở trên đất (VNĐ) |
+| AN | `TinhTrangPhapLyTSBD`| String | `@` | Tình trạng pháp lý (Hợp pháp, không tranh chấp) |
+| AO | `MoTaTSBD` | String | `@` | Mô tả chi tiết hiện trạng tài sản thực tế |
 
 #### 🔹 Nhóm 3: Thông Tin Thực Địa, Dòng Tiền & Lịch Sử Tín Dụng CIC
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
-| AB | `ThuNhapChinh` | Number | `#,##0` | Thu nhập chính hàng tháng từ SXKD/Lương (VNĐ) |
-| AC | `ThuNhapPhu` | Number | `#,##0` | Thu nhập phụ (Cho thuê, chăn nuôi thêm...) (VNĐ) |
-| AD | `TongThuNhapThang` | Number | `#,##0` | Tổng thu nhập hàng tháng = Chính + Phụ (VNĐ) |
-| AE | `ChiPhiSinhHoat` | Number | `#,##0` | Chi phí sinh hoạt gia đình / tháng (VNĐ) |
-| AF | `ChiPhiSXKD` | Number | `#,##0` | Chi phí hoạt động sản xuất kinh doanh / tháng (VNĐ) |
-| AG | `TongChiPhiThang` | Number | `#,##0` | Tổng chi phí / tháng = Sinh hoạt + SXKD (VNĐ) |
-| AH | `ThangDuThang` | Number | `#,##0` | Thặng dư tích lũy hàng tháng = Thu - Chi (VNĐ) |
-| AI | `XepHangCIC` | String | `@` | Xếp hạng tín dụng CIC (`Nhóm 1 (Tốt)`, `Nhóm 2`...) |
-| AJ | `SoTCTDQuanHe` | Number | `#,##0` | Số lượng TCTD đang có quan hệ tín dụng |
-| AK | `DuNoCICNgoai` | Number | `#,##0` | Tổng dư nợ tại các TCTD khác ngoài QTD (VNĐ) |
-| AL | `LichSuTraNo` | String | `@` | Lịch sử trả nợ (Tốt, không quá hạn) |
-| AM | `GhiChuCIC` | String | `@` | Ghi chú chi tiết kết quả tra cứu CIC |
-| AN | `DiaDiemThamDinh` | String | `@` | Địa điểm thực hiện thẩm định thực tế |
-| AO | `HienTrangSXKD` | String | `@` | Đánh giá hiện trạng cơ sở SXKD / việc làm |
-| AP | `TuCachKhachHang` | String | `@` | Đánh giá tư cách đạo đức, uy tín tại địa phương |
+| :--- | :--- | :--- | :--- | :--- |
+| AP | `ThuNhapChinh` | Number | `#,##0` | Tổng thu nhập hàng tháng (VNĐ) |
+| AQ | `ThuNhapPhu` | Number | `#,##0` | Thu nhập phụ khác (VNĐ) |
+| AR | `TongThuNhapThang` | Number | `#,##0` | Tổng thu nhập hàng tháng (VNĐ) |
+| AS | `ChiPhiSinhHoat` | Number | `#,##0` | Chi phí sinh hoạt gia đình / tháng (VNĐ) |
+| AT | `ChiPhiSXKD` | Number | `#,##0` | Chi phí hoạt động sản xuất kinh doanh / tháng (VNĐ) |
+| AU | `TongChiPhiThang` | Number | `#,##0` | Tổng chi phí / tháng = Sinh hoạt + SXKD (VNĐ) |
+| AV | `ThangDuThang` | Number | `#,##0` | Thặng dư tích lũy hàng tháng = Thu - Chi (VNĐ) |
+| AW | `XepHangCIC` | String | `@` | Xếp hạng tín dụng CIC (`Nhóm 1 (Tốt)`, `Nhóm 2`...) |
+| AX | `SoTCTDQuanHe` | Number | `#,##0` | Số lượng TCTD đang có quan hệ tín dụng |
+| AY | `DuNoCICNgoai` | Number | `#,##0` | Tổng dư nợ tại các TCTD khác ngoài QTD (VNĐ) |
+| AZ | `LichSuTraNo` | String | `@` | Lịch sử trả nợ (Tốt, không quá hạn) |
+| BA | `GhiChuCIC` | String | `@` | Ghi chú chi tiết kết quả tra cứu CIC |
+| BB | `DiaDiemThamDinh` | String | `@` | Địa điểm thực hiện thẩm định thực tế |
+| BC | `HienTrangSXKD` | String | `@` | Đánh giá hiện trạng cơ sở SXKD / việc làm |
+| BD | `TuCachKhachHang` | String | `@` | Đánh giá tư cách đạo đức, uy tín tại địa phương |
 
-#### 🔹 Nhóm 4: Đề Xuất CBTD & Các Chỉ Số Tài Chính
+#### 🔹 Nhóm 4: Đề Xuất CBTD, Phương Án Tối Ưu & Các Chỉ Số Tài Chính
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
-| AQ | `DuyetVay` | Number | `#,##0` | Số tiền CBTD đề xuất duyệt cho vay (VNĐ) |
-| AR | `ThoiHanThang` | Number | `#,##0` | Thời hạn vay đề xuất (tháng) |
-| AS | `LaiSuatDuyet` | Number | `0.00` | Lãi suất cho vay đề xuất (%/năm) |
-| AT | `PhuongThucGiaiNgan` | String | `@` | Phương thức giải ngân (Tài khoản CASA / Tiền mặt) |
-| AU | `BienPhapBaoDam` | String | `@` | Biện pháp bảo đảm & thủ tục công chứng GDBĐ |
-| AV | `TyLeLTV` | Number | `0.0` | Tỷ lệ Vay/TSĐB $LTV = \frac{Duyệt Vay}{Giá Trị TS} \times 100\%$ |
-| AW | `NghiaVuTraNoThang` | Number | `#,##0` | Nghĩa vụ nợ tháng $EMI = Gốc + Lãi$ ước tính (VNĐ) |
-| AX | `TyLeDSR` | Number | `0.0` | Tỷ lệ Nghĩa vụ nợ / Thu nhập $DSR = \frac{EMI}{Thu Nhập} \times 100\%$ |
-| AY | `HeSoBuDap` | Number | `0.00` | Hệ số bù đắp dòng tiền $Coverage = \frac{Thặng Dư}{EMI}$ |
-| AZ | `DieuKienGiaiNgan` | String | `@` | Các điều kiện tiên quyết trước khi giải ngân vốn |
-| BA | `MucDoRuiRo` | Enum | `@` | Đánh giá mức độ rủi ro (`Thấp`, `Trung bình`, `Cao`) |
+| :--- | :--- | :--- | :--- | :--- |
+| BE | `DuyetVay` | Number | `#,##0` | Số tiền CBTD đề xuất duyệt cho vay (VNĐ) |
+| BF | `ThoiHanThang` | Number | `#,##0` | Thời hạn vay đề xuất (tháng) |
+| BG | `LaiSuatDuyet` | Number | `0.00` | Lãi suất cho vay đề xuất (%/năm) |
+| BH | `PhuongThucGiaiNgan`| String | `@` | Phương thức giải ngân (Tài khoản CASA / Tiền mặt) |
+| BI | `PhuongThucTraGoc` | Enum | `@` | `HANG_THANG`, `HANG_QUY`, `BAN_NIEN`, `HANG_NAM`, `CUOI_KY` |
+| BJ | `PhuongAnToiUu` | String | `@` | Nhận định phân tích và đề xuất phương án tối ưu |
+| BK | `BienPhapBaoDam` | String | `@` | Biện pháp bảo đảm & thủ tục công chứng GDBĐ |
+| BL | `TyLeLTV` | Number | `0.0` | Tỷ lệ Vay/TSĐB $LTV = \frac{Duyệt Vay}{Giá Trị TS} \times 100\%$ |
+| BM | `NghiaVuTraNoThang` | Number | `#,##0` | Nghĩa vụ nợ tháng $EMI = Gốc + Lãi$ ước tính (VNĐ) |
+| BN | `TyLeDSR` | Number | `0.0` | Tỷ lệ Nghĩa vụ nợ / Thu nhập $DTI = \frac{EMI}{Thu Nhập} \times 100\%$ |
+| BO | `HeSoBuDap` | Number | `0.00` | Hệ số bù đắp dòng tiền $DSCR = \frac{Thu Nhập Ròng}{EMI}$ |
+| BP | `DieuKienGiaiNgan` | String | `@` | Các điều kiện tiên quyết trước khi giải ngân vốn |
+| BQ | `MucDoRuiRo` | Enum | `@` | Đánh giá mức độ rủi ro (`Thấp`, `Trung bình`, `Cao`) |
 
-#### 🔹 Nhóm 5: Ý Kiến Phê Duyệt Đa Cấp & Kết Luận
+#### 🔹 Nhóm 5: Ý Kiến Phê Duyệt Đa Cấp, Ký Duyệt & Xuất Bản
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :---: | :---: | :--- |
-| BB | `KetLuan` | Enum | `@` | Kết luận (`Đồng ý cấp tín dụng`, `Có điều kiện`, `Từ chối`) |
-| BC | `CanBoThamDinh` | String | `@` | Họ tên Cán bộ tín dụng thực hiện |
-| BD | `DanhSachYKien` | String (JSON) | `@` | Mảng JSON lưu ý kiến phê duyệt 4 tầng chức danh |
-| BE | `NgayLap` | DateTime | `dd/MM/yyyy HH:mm:ss` | Ngày giờ lập báo cáo thẩm định |
+| :--- | :--- | :--- | :--- | :--- |
+| BR | `KetLuan` | Enum | `@` | Kết luận (`Đồng ý cấp tín dụng`, `Có điều kiện`, `Từ chối`) |
+| BS | `CanBoThamDinh` | String | `@` | Họ tên Cán bộ tín dụng thực hiện |
+| BT | `CanBoLapUsername` | String | `@` | Username cán bộ lập hồ sơ (`qtdyentho.cbtd`) |
+| BU | `DanhSachYKien` | String (JSON) | `@` | Mảng JSON lưu ý kiến phê duyệt 4 tầng chức danh |
+| BV | `NgayLap` | DateTime | `dd/MM/yyyy HH:mm:ss` | Ngày giờ lập báo cáo thẩm định |
 
 ### 11. `KIEM_TRA_VON` (Biên Bản Kiểm Tra Sử Dụng Vốn)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
