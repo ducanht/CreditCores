@@ -16,8 +16,7 @@ export default function TopHeader({
   isDarkMode,
   onToggleTheme
 }) {
-  const isDaemonSuccess = syncStatus?.status === 'SUCCESS';
-  const isDaemonProcessing = syncStatus?.status === 'PROCESSING' || syncStatus?.status === 'PENDING' || isSyncing;
+  const isProcessing = Boolean(isSyncing);
 
   return (
     <header
@@ -70,30 +69,28 @@ export default function TopHeader({
           {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
-        {/* Smart Integrated Sync Button (Icon quay khi đồng bộ, dừng khi xong) */}
+        {/* Smart Integrated Sync Button (Chỉ quay khi người dùng bấm đồng bộ, xong trở về trạng thái chờ tĩnh) */}
         <button
           type="button"
           className={`btn btn-sm ${
-            isDaemonProcessing
+            isProcessing
               ? 'btn-warning text-dark'
-              : isDaemonSuccess
-              ? 'btn-brand text-white'
               : 'btn-brand text-white'
           } d-flex align-items-center gap-1.5 fw-medium px-3 shadow-sm`}
           style={{ height: '34px', borderRadius: '8px', fontSize: '0.80rem' }}
           onClick={onTriggerSync}
-          disabled={isDaemonProcessing}
+          disabled={isProcessing}
           title={
-            isDaemonProcessing
+            isProcessing
               ? 'Đang thực hiện đồng bộ dữ liệu SQL Server Core...'
-              : `Đồng bộ dữ liệu CoreBanking (Trạng thái: ${syncStatus?.status || 'Sẵn sàng'})`
+              : `Bấm để đồng bộ dữ liệu CoreBanking (Lần cuối: ${syncStatus?.lastSyncTime || 'Sẵn sàng'})`
           }
         >
           <RefreshCw
             size={13}
-            className={isDaemonProcessing ? 'fa-spin' : ''}
+            className={isProcessing ? 'fa-spin' : ''}
           />
-          <span>{isDaemonProcessing ? 'Đang đồng bộ...' : 'Đồng bộ'}</span>
+          <span>{isProcessing ? 'Đang đồng bộ...' : 'Đồng bộ'}</span>
         </button>
       </div>
     </header>

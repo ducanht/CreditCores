@@ -101,13 +101,6 @@ export default function App() {
   useEffect(() => {
     if (currentUser) {
       fetchInitialData();
-      const interval = setInterval(async () => {
-        try {
-          const resSync = await api.getSyncStatus();
-          if (resSync && resSync.status === 'success') setSyncStatus(resSync.data);
-        } catch (e) {}
-      }, 45000);
-      return () => clearInterval(interval);
     }
   }, [currentUser]);
 
@@ -125,13 +118,19 @@ export default function App() {
   };
 
   const handleTriggerSync = async () => {
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
       const res = await api.triggerSqlSync();
       if (res.status === 'success') {
-        alert(res.message || 'Đã gửi lệnh đồng bộ!');
-        const sRes = await api.getSyncStatus();
-        if (sRes.status === 'success') setSyncStatus(sRes.data);
+        api.clearCache();
+        const [sRes, statsRes] = await Promise.all([
+          api.getSyncStatus(),
+          api.getDashboardStats(true)
+        ]);
+        if (sRes && sRes.status === 'success') setSyncStatus(sRes.data);
+        if (statsRes && statsRes.status === 'success') setStats(statsRes.data);
+        alert(res.message || 'Đồng bộ dữ liệu SQL Server Core thành công!');
       }
     } catch (e) {
       alert('Lỗi kích hoạt đồng bộ: ' + e.message);
