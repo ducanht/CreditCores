@@ -100,6 +100,27 @@ export default function InspectionFormModal({
                 </div>
               )}
 
+              {/* Khối Chọn Hợp Đồng & Khách Hàng Từ HDTD_CORE / KH_CORE */}
+              <div className="p-3 bg-light rounded-3 border mb-3">
+                <label className="form-label small fw-bold text-success mb-1.5 d-flex justify-content-between">
+                  <span>Chọn Hợp Đồng / Khách Hàng từ CSDL Core (*):</span>
+                  <span className="badge bg-success-subtle text-success small">KH_CORE & HDTD_CORE Linked</span>
+                </label>
+                <select
+                  className="form-select form-select-sm fw-bold border-success"
+                  value={formData.soHDTD}
+                  onChange={(e) => handleSelectContract(e.target.value)}
+                  required
+                >
+                  <option value="">-- Bấm để chọn Hợp Đồng Khách Hàng ({allContracts.length} HĐ) --</option>
+                  {allContracts.map((ct) => (
+                    <option key={ct.soHDTD} value={ct.soHDTD}>
+                      {ct.soHDTD} • {ct.hoTen} ({ct.maKH}) • Dư nợ: {Number(ct.duNo || 0).toLocaleString('vi-VN')} đ
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="row g-3">
                 <div className="col-12 col-sm-6 col-md-4">
                   <label className="form-label small fw-bold text-dark">Mã Biên Bản (*)</label>
@@ -113,30 +134,24 @@ export default function InspectionFormModal({
                 </div>
 
                 <div className="col-12 col-sm-6 col-md-4">
-                  <label className="form-label small fw-bold text-dark">Số Khế Ước / HĐTD (*)</label>
+                  <label className="form-label small fw-bold text-dark">Số Khế Ước / HĐTD</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm font-monospace fw-bold text-primary"
+                    className="form-control form-control-sm font-monospace fw-bold text-primary bg-light"
                     placeholder="HD-2025-081"
                     value={formData.soHDTD}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setFormData({ ...formData, soHDTD: val });
-                      handleSelectContract(val);
-                    }}
-                    required
+                    readOnly
                   />
                 </div>
 
                 <div className="col-12 col-sm-6 col-md-4">
-                  <label className="form-label small fw-bold text-dark">Mã Khách Hàng (*)</label>
+                  <label className="form-label small fw-bold text-dark">Mã Khách Hàng</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm font-monospace"
+                    className="form-control form-control-sm font-monospace bg-light"
                     placeholder="KH008892"
                     value={formData.maKH}
-                    onChange={(e) => setFormData({ ...formData, maKH: e.target.value })}
-                    required
+                    readOnly
                   />
                 </div>
 
@@ -144,10 +159,10 @@ export default function InspectionFormModal({
                   <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm"
+                    className="form-control form-control-sm bg-light fw-bold"
                     placeholder="NGUYỄN VĂN AN"
                     value={formData.hoTen}
-                    onChange={(e) => setFormData({ ...formData, hoTen: e.target.value })}
+                    readOnly
                   />
                 </div>
 

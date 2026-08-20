@@ -85,32 +85,47 @@ export default function DebitRegisterModal({
                 </div>
               )}
 
+              {/* Khối Chọn Khách Hàng Từ KH_CORE */}
+              <div className="p-3 bg-light rounded-3 border mb-3">
+                <label className="form-label small fw-bold text-primary mb-1.5 d-flex justify-content-between">
+                  <span>Chọn Thành Viên / Khách Hàng từ CSDL KH_CORE (*):</span>
+                  <span className="badge bg-primary-subtle text-primary small">KH_CORE Single Source</span>
+                </label>
+                <select
+                  className="form-select form-select-sm fw-bold border-primary"
+                  value={formData.maKH}
+                  onChange={(e) => handleSelectCustomer(e.target.value)}
+                  required
+                >
+                  <option value="">-- Bấm để chọn Khách Hàng từ KH_CORE ({allCustomers.length} KH) --</option>
+                  {allCustomers.map((c) => (
+                    <option key={c.maKH} value={c.maKH}>
+                      {c.hoTen} • Mã: {c.maKH} • CCCD: {c.cccd || c.gttt} • TK CASA: {c.soTK || 'Chưa có'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="row g-3">
                 <div className="col-12 col-md-4">
-                  <label className="form-label small fw-bold text-dark">Mã Khách Hàng (*)</label>
+                  <label className="form-label small fw-bold text-dark">Mã Khách Hàng</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm font-monospace fw-bold"
+                    className="form-control form-control-sm font-monospace fw-bold bg-light"
                     placeholder="KH008892"
                     value={formData.maKH}
-                    onChange={(e) => {
-                      const val = e.target.value.toUpperCase();
-                      setFormData({ ...formData, maKH: val });
-                      handleSelectCustomer(val);
-                    }}
-                    required
+                    readOnly
                   />
                 </div>
 
                 <div className="col-12 col-md-8">
-                  <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng (*)</label>
+                  <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm fw-bold"
+                    className="form-control form-control-sm fw-bold bg-light"
                     placeholder="NGUYỄN VĂN AN"
                     value={formData.hoTen}
-                    onChange={(e) => setFormData({ ...formData, hoTen: e.target.value })}
-                    required
+                    readOnly
                   />
                 </div>
 
@@ -118,11 +133,11 @@ export default function DebitRegisterModal({
                   <label className="form-label small fw-bold text-dark">Số CCCD (12 chữ số)</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm font-monospace"
+                    className="form-control form-control-sm font-monospace bg-light"
                     placeholder="038088001234"
                     maxLength={12}
                     value={formData.gttt}
-                    onChange={(e) => setFormData({ ...formData, gttt: e.target.value })}
+                    readOnly
                   />
                 </div>
 
@@ -142,10 +157,10 @@ export default function DebitRegisterModal({
                   <label className="form-label small fw-bold text-dark">Địa Chỉ Thường Trú</label>
                   <input
                     type="text"
-                    className="form-control form-control-sm"
+                    className="form-control form-control-sm bg-light"
                     placeholder="Thôn 3, Xã Yên Thọ..."
                     value={formData.diaChi}
-                    onChange={(e) => setFormData({ ...formData, diaChi: e.target.value })}
+                    readOnly
                   />
                 </div>
 
