@@ -17,7 +17,10 @@ export default class ErrorBoundary extends React.Component {
   }
 
   handleReload = () => {
-    window.location.reload();
+    try {
+      localStorage.removeItem('CREDITCORES_ACTIVE_TAB');
+    } catch (e) {}
+    window.location.href = window.location.origin + window.location.pathname;
   };
 
   render() {
