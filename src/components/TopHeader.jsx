@@ -54,12 +54,9 @@ export default function TopHeader({
         </button>
 
         <div>
-          <h2 className="fs-6 fw-extrabold m-0 text-slate-900 font-heading text-truncate">
+          <h2 className="fs-6 fw-semibold m-0 text-slate-900 font-heading text-truncate">
             {activeTabTitle}
           </h2>
-          <span className="small d-none d-sm-inline" style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 600 }}>
-            Thôn Tân Lộc, xã Quý Lộc, tỉnh Thanh Hoá &mdash; SL: 01/12/2003
-          </span>
         </div>
       </div>
 
