@@ -16,10 +16,12 @@ import {
   RefreshCw,
   Layers,
   Code,
-  Download
+  Download,
+  User,
+  Check
 } from 'lucide-react';
 import { api } from '../services/api';
-import { formatDateVN, formatCurrencyVN, getTodayISO } from '../utils/dateUtils';
+import { formatDateVN, formatCurrencyVN, getTodayISO, getTodayVN } from '../utils/dateUtils';
 import Pagination from './Pagination';
 
 // DANH MỤC BIỂU MẪU MẶC ĐỊNH MỞ RỘNG
@@ -148,11 +150,21 @@ const INITIAL_TEMPLATES = [
   }
 ];
 
+const AVAILABLE_TAGS_DICTIONARY = [
+  { group: '1. Khách Hàng & Thành Viên', tags: ['{{HoTen}}', '{{MaKH}}', '{{SoCCCD}}', '{{NgayCapCCCD}}', '{{DiaChi}}', '{{DienThoai}}', '{{SoTV}}', '{{SoTKCASA}}'] },
+  { group: '2. Hợp Đồng & Dư Nợ', tags: ['{{SoHDTD}}', '{{TienVay}}', '{{DuNo}}', '{{LaiSuat}}', '{{NgayVay}}', '{{DenHan}}', '{{MucDichVay}}'] },
+  { group: '3. Thẩm Định & TSĐB', tags: ['{{DeXuatVay}}', '{{DuyetVay}}', '{{ThoiHanThang}}', '{{LaiSuatDuyet}}', '{{ThuNhapThang}}', '{{ChiPhiThang}}', '{{XepHangCIC}}', '{{LoaiTSBD}}', '{{GiaTriTSBD}}', '{{TyLeLTV}}', '{{CanBoThamDinh}}', '{{KetLuan}}'] },
+  { group: '4. Kiểm Tra Vốn & Trích Nợ', tags: ['{{NgayKiemTra}}', '{{ThanhPhanDoan}}', '{{DiaDiemKT}}', '{{KetLuanKT}}', '{{NgayKTNext}}', '{{MaDot}}', '{{KyTrich}}', '{{ThangNam}}', '{{SoTienTrich}}'] }
+];
+
 export default function TemplateManager() {
   const [templates, setTemplates] = useState(() => {
     const saved = localStorage.getItem('creditcore_templates');
     return saved ? JSON.parse(saved) : INITIAL_TEMPLATES;
   });
+
+  const [customersList, setCustomersList] = useState([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPhanHe, setFilterPhanHe] = useState('ALL');
@@ -167,6 +179,7 @@ export default function TemplateManager() {
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showTagDictionary, setShowTagDictionary] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [copiedTag, setCopiedTag] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -186,27 +199,71 @@ export default function TemplateManager() {
     HoTen: 'NGUYỄN VĂN AN',
     MaKH: 'KH008892',
     SoCCCD: '038088001234',
+    NgayCapCCCD: '12/05/2021',
     DiaChi: 'Thôn Tân Lộc, xã Quý Lộc, huyện Yên Định, tỉnh Thanh Hoá',
-    SoHDTD: 'HD-2025-081',
+    DienThoai: '0912.345.678',
+    SoTV: 'TV-008892',
+    SoHDTD: 'KU-2026-0312',
     TienVay: '300.000.000 đ',
     DuNo: '285.000.000 đ',
     LaiSuat: '9.5%/năm',
-    SoTKCASA: '3500205123456',
+    SoTKCASA: '0381000123456',
+    NgayVay: '12/02/2026',
+    DenHan: '12/02/2027',
     NgayKiemTra: '19/08/2026',
     ThanhPhanDoan: 'Lê Văn Tín (CBTD) & Ban Kiểm Soát',
     DiaDiemKT: 'Trang trại chăn nuôi xã Quý Lộc',
-    MucDichVay: 'Đầu tư mở rộng chuồng trại chăn nuôi',
-    KetLuanKT: 'Sử dụng vốn đúng mục đích 100%, kinh doanh hiệu quả',
-    NgayKTNext: '19/11/2026'
+    MucDichVay: 'Đầu tư mở rộng chuồng trại chăn nuôi bò sữa',
+    KetLuanKT: 'Sử dụng vốn đúng mục đích 100%, trang trại phát triển tốt',
+    NgayKTNext: '19/11/2026',
+    DeXuatVay: '300.000.000 đ',
+    DuyetVay: '300.000.000 đ',
+    ThoiHanThang: '12 tháng',
+    LaiSuatDuyet: '9.5%/năm',
+    ThuNhapThang: '45.000.000 đ',
+    ChiPhiThang: '15.000.000 đ',
+    XepHangCIC: 'Nhóm 1 (Tốt)',
+    LoaiTSBD: 'Quyền sử dụng đất & nhà ở',
+    GiaTriTSBD: '850.000.000 đ',
+    TyLeLTV: '35.3%',
+    CanBoThamDinh: 'Lê Văn Tín',
+    KetLuan: 'Đủ điều kiện cấp tín dụng',
+    KyTrichNo: 'Kỳ 1 (Ngày 05)',
+    NgayTrichHangThang: 'Ngày 05 hàng tháng',
+    DieuKhoanUyQuyen: 'Ủy quyền trích tự động toàn bộ gốc và lãi khi đến hạn',
+    NgayKy: getTodayVN(),
+    MaDot: 'DOT-202608-K1',
+    KyTrich: '1',
+    ThangNam: '202608',
+    TongSoKH: '48',
+    TongTienPhaiThu: '125.650.000 đ',
+    TongDaTrich: '125.650.000 đ',
+    TongNoTon: '0 đ',
+    NgayLapBang: getTodayVN(),
+    SoTienGocDenHan: '0 đ',
+    SoTienLaiDenHan: '1.643.836 đ',
+    SoTienNoTon: '0 đ',
+    TongPhaiNop: '1.643.836 đ',
+    HanChotNop: '05/08/2026',
+    DienThoaiLienHe: '0237.3888.999'
   });
 
   useEffect(() => {
     const loadBackendTemplates = async () => {
       try {
-        const res = await api.getTemplates();
-        if (res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-          setTemplates(res.data);
-          localStorage.setItem('creditcore_templates', JSON.stringify(res.data));
+        const [resTpl, resCust] = await Promise.all([
+          api.getTemplates(),
+          api.searchCustomer360('')
+        ]);
+
+        if (resTpl.status === 'success' && Array.isArray(resTpl.data) && resTpl.data.length > 0) {
+          setTemplates(resTpl.data);
+          localStorage.setItem('creditcore_templates', JSON.stringify(resTpl.data));
+        }
+
+        if (resCust.status === 'success' && resCust.data) {
+          const list = resCust.data.customers || resCust.data || [];
+          setCustomersList(list);
         }
       } catch (e) {
         console.warn('Dùng offline templates cache:', e);
@@ -214,6 +271,24 @@ export default function TemplateManager() {
     };
     loadBackendTemplates();
   }, []);
+
+  const handleSelectCustomerForMerge = (maKH) => {
+    setSelectedCustomerId(maKH);
+    const found = customersList.find((c) => c.maKH === maKH);
+    if (found) {
+      setSampleData((prev) => ({
+        ...prev,
+        HoTen: found.hoTen || prev.HoTen,
+        MaKH: found.maKH || prev.MaKH,
+        SoCCCD: found.soCCCD || found.gttt || prev.SoCCCD,
+        DiaChi: found.diaChi || prev.DiaChi,
+        DienThoai: found.dienThoai || prev.DienThoai,
+        SoTV: found.soTV || `TV-${found.maKH}`,
+        SoTKCASA: found.soTK || prev.SoTKCASA,
+        DuNo: found.tongDuNo ? formatCurrencyVN(found.tongDuNo) : prev.DuNo
+      }));
+    }
+  };
 
   const saveToStorage = async (updated, itemToSave = null, deleteId = null) => {
     setTemplates(updated);
@@ -251,6 +326,14 @@ export default function TemplateManager() {
       truongTronStr: tpl.truongTron ? tpl.truongTron.join(', ') : ''
     });
     setShowEditModal(true);
+  };
+
+  const handleAddTagToForm = (tag) => {
+    const current = formData.truongTronStr ? formData.truongTronStr.split(',').map((t) => t.trim()) : [];
+    if (!current.includes(tag)) {
+      current.push(tag);
+      setFormData({ ...formData, truongTronStr: current.join(', ') });
+    }
   };
 
   const handleSaveTemplate = async (e) => {
@@ -296,7 +379,8 @@ export default function TemplateManager() {
 
   const handleCopyTag = (tag) => {
     navigator.clipboard.writeText(tag);
-    alert(`Đã sao chép thẻ biến: ${tag}`);
+    setCopiedTag(tag);
+    setTimeout(() => setCopiedTag(''), 2000);
   };
 
   const handleExportMergedDocx = () => {
@@ -319,7 +403,7 @@ export default function TemplateManager() {
           .header-table td { border: none; padding: 2px; }
           .text-center { text-align: center; }
           .bold { font-weight: bold; }
-          .title { font-size: 16pt; font-weight: bold; text-align: center; margin-top: 10px; margin-bottom: 5px; }
+          .title { font-size: 15pt; font-weight: bold; text-align: center; margin-top: 10px; margin-bottom: 5px; }
         </style>
       </head>
       <body>
@@ -413,7 +497,7 @@ export default function TemplateManager() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Header Controls */}
+      {/* 1. Header Controls */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div className="d-flex align-items-center flex-wrap gap-2">
           {/* Bộ lọc Phân hệ */}
@@ -451,8 +535,8 @@ export default function TemplateManager() {
 
           {/* Tìm kiếm */}
           <div className="input-group input-group-sm" style={{ width: 240 }}>
-            <span className="input-group-text bg-white border-end-0 text-muted">
-              <Search size={14} />
+            <span className="input-group-text bg-light border-end-0 text-muted">
+              <Search size={13} />
             </span>
             <input
               type="text"
@@ -469,33 +553,40 @@ export default function TemplateManager() {
 
         <div className="d-flex align-items-center gap-2">
           <button
-            className="btn btn-outline-secondary btn-sm fw-semibold d-flex align-items-center gap-1"
+            type="button"
+            className="btn btn-outline-secondary btn-sm fw-medium d-flex align-items-center gap-1"
             onClick={() => setShowTagDictionary(true)}
           >
-            <Code size={15} /> Từ Điển Thẻ Biến Mail Merge
+            <Code size={14} /> Từ Điển Thẻ Biến Mail Merge
           </button>
           <button
-            className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm"
+            type="button"
+            className="btn btn-brand btn-sm fw-medium d-flex align-items-center gap-1.5 shadow-sm text-white"
             onClick={handleOpenAdd}
           >
-            <Plus size={16} /> Thêm Biểu Mẫu Mới
+            <Plus size={15} /> Thêm Biểu Mẫu Mới
           </button>
         </div>
       </div>
 
-      {/* Bảng Danh Sách Biểu Mẫu */}
+      {/* 2. Bảng Danh Sách Biểu Mẫu */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h5 className="fw-bold text-slate-800 m-0 font-heading d-flex align-items-center gap-2">
-            <Layers size={20} className="text-primary" /> Trung Tâm Cấu Hình Biểu Mẫu & Trộn Dữ Liệu (Mail Merge Hub)
-          </h5>
+          <div>
+            <h5 className="fw-semibold text-slate-900 m-0 font-heading d-flex align-items-center gap-2">
+              <Layers size={18} className="text-primary" /> Trung Tâm Cấu Hình Biểu Mẫu & Trộn Dữ Liệu (Mail Merge Hub)
+            </h5>
+            <div className="text-muted small mt-0.5">
+              Quản lý danh mục biểu mẫu và ánh xạ tự động trường dữ liệu khách hàng vào Google Docs / Word
+            </div>
+          </div>
           <span className="badge bg-light text-muted border">
             {filteredTemplates.length} biểu mẫu
           </span>
         </div>
 
         <div className="table-responsive">
-          <table className="table table-custom align-middle">
+          <table className="table table-custom align-middle small">
             <thead>
               <tr>
                 <th>Mã Biểu Mẫu</th>
@@ -512,19 +603,19 @@ export default function TemplateManager() {
                 paginatedTemplates.map((tpl) => (
                   <tr key={tpl.id}>
                     <td>
-                      <span className="fw-bold font-monospace text-primary">{tpl.maBM}</span>
-                      <div className="small text-muted">{tpl.ngayCapNhat}</div>
+                      <span className="fw-medium font-monospace text-primary">{tpl.maBM}</span>
+                      <div className="text-muted" style={{ fontSize: '0.72rem' }}>{tpl.ngayCapNhat}</div>
                     </td>
 
                     <td>
-                      <div className="fw-bold text-dark">{tpl.tenBM}</div>
-                      <div className="small text-muted text-truncate" style={{ maxWidth: 260 }} title={tpl.moTa}>
+                      <div className="fw-medium text-slate-900">{tpl.tenBM}</div>
+                      <div className="text-muted text-truncate" style={{ maxWidth: 260, fontSize: '0.75rem' }} title={tpl.moTa}>
                         {tpl.moTa || 'Không có mô tả chi tiết'}
                       </div>
                     </td>
 
                     <td>
-                      <span className="badge bg-primary-subtle text-primary fw-semibold">
+                      <span className="badge bg-primary-subtle text-primary fw-medium">
                         {tpl.phanHe}
                       </span>
                     </td>
@@ -532,13 +623,14 @@ export default function TemplateManager() {
                     <td>
                       <a
                         href={tpl.linkNguon}
-                        target="_blank" rel="noopener noreferrer"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-1 px-2 text-truncate"
                         style={{ maxWidth: 180, fontSize: '0.75rem' }}
                         title={tpl.linkNguon}
                       >
-                        <Link2 size={13} /> {tpl.loaiNguon === 'GOOGLE_DOCS' ? 'Google Docs' : 'Google Sheets'}
-                        <ExternalLink size={11} className="ms-1 text-muted" />
+                        <Link2 size={12} /> {tpl.loaiNguon === 'GOOGLE_DOCS' ? 'Google Docs' : 'Google Sheets'}
+                        <ExternalLink size={10} className="ms-1 text-muted" />
                       </a>
                     </td>
 
@@ -547,7 +639,7 @@ export default function TemplateManager() {
                         {(tpl.truongTron || []).slice(0, 3).map((tag, idx) => (
                           <span
                             key={idx}
-                            className="badge bg-light text-dark border font-monospace"
+                            className={`badge border font-monospace ${copiedTag === tag ? 'bg-success text-white' : 'bg-light text-dark'}`}
                             style={{ fontSize: '0.68rem', cursor: 'pointer' }}
                             onClick={() => handleCopyTag(tag)}
                             title="Nhấp để sao chép"
@@ -576,28 +668,31 @@ export default function TemplateManager() {
                     <td className="text-center">
                       <div className="d-inline-flex gap-1">
                         <button
-                          className="btn btn-sm btn-brand d-inline-flex align-items-center gap-1 fw-semibold"
+                          type="button"
+                          className="btn btn-sm btn-brand d-inline-flex align-items-center gap-1 fw-medium text-white shadow-sm"
                           onClick={() => {
                             setSelectedTemplate(tpl);
                             setShowMergeModal(true);
                           }}
                           title="Trộn dữ liệu tài liệu (Mail Merge)"
                         >
-                          <Printer size={13} /> Trộn Dữ Liệu
+                          <Printer size={12} /> Trộn Dữ Liệu
                         </button>
                         <button
+                          type="button"
                           className="btn btn-sm btn-outline-secondary p-1 px-2"
                           onClick={() => handleOpenEdit(tpl)}
                           title="Chỉnh sửa cấu hình mẫu"
                         >
-                          <Edit2 size={13} />
+                          <Edit2 size={12} />
                         </button>
                         <button
+                          type="button"
                           className="btn btn-sm btn-outline-danger p-1 px-2"
                           onClick={() => handleDeleteTemplate(tpl.id)}
                           title="Xóa biểu mẫu"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </td>
@@ -632,8 +727,8 @@ export default function TemplateManager() {
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content card-modern p-4">
               <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-                  <FileText size={20} className="text-primary" /> Cấu Hình Biểu Mẫu Báo Cáo
+                <h5 className="modal-title fw-semibold text-dark font-heading d-flex align-items-center gap-2">
+                  <FileText size={18} className="text-primary" /> Cấu Hình Biểu Mẫu Báo Cáo
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setShowEditModal(false)} />
               </div>
@@ -642,10 +737,10 @@ export default function TemplateManager() {
                 <div className="modal-body py-3">
                   <div className="row g-3">
                     <div className="col-12 col-md-4">
-                      <label className="form-label small fw-bold text-dark">Mã Biểu Mẫu (*)</label>
+                      <label className="form-label small fw-medium text-dark">Mã Biểu Mẫu (*)</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm font-monospace fw-bold"
+                        className="form-control form-control-sm font-monospace fw-medium"
                         placeholder="vd: BM_KT_01"
                         value={formData.maBM}
                         onChange={(e) => setFormData({ ...formData, maBM: e.target.value })}
@@ -654,10 +749,10 @@ export default function TemplateManager() {
                     </div>
 
                     <div className="col-12 col-md-8">
-                      <label className="form-label small fw-bold text-dark">Tên Biểu Mẫu (*)</label>
+                      <label className="form-label small fw-medium text-dark">Tên Biểu Mẫu (*)</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm fw-bold"
+                        className="form-control form-control-sm fw-medium"
                         placeholder="vd: Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân"
                         value={formData.tenBM}
                         onChange={(e) => setFormData({ ...formData, tenBM: e.target.value })}
@@ -666,7 +761,7 @@ export default function TemplateManager() {
                     </div>
 
                     <div className="col-12 col-md-4">
-                      <label className="form-label small fw-bold text-dark">Phân Hệ Nghiệp Vụ</label>
+                      <label className="form-label small fw-medium text-dark">Phân Hệ Nghiệp Vụ</label>
                       <select
                         className="form-select form-select-sm"
                         value={formData.phanHe}
@@ -682,7 +777,7 @@ export default function TemplateManager() {
                     </div>
 
                     <div className="col-12 col-md-4">
-                      <label className="form-label small fw-bold text-dark">Loại Nguồn Mẫu</label>
+                      <label className="form-label small fw-medium text-dark">Loại Nguồn Mẫu</label>
                       <select
                         className="form-select form-select-sm"
                         value={formData.loaiNguon}
@@ -695,7 +790,7 @@ export default function TemplateManager() {
                     </div>
 
                     <div className="col-12 col-md-4">
-                      <label className="form-label small fw-bold text-dark">Trạng Thái Sử Dụng</label>
+                      <label className="form-label small fw-medium text-dark">Trạng Thái Sử Dụng</label>
                       <select
                         className="form-select form-select-sm"
                         value={formData.trangThai}
@@ -707,7 +802,7 @@ export default function TemplateManager() {
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-bold text-dark">
+                      <label className="form-label small fw-medium text-dark">
                         Đường Link Google Docs / Google Sheets Mẫu (*)
                       </label>
                       <input
@@ -719,25 +814,46 @@ export default function TemplateManager() {
                         required
                       />
                       <span className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                        * Nhớ chia sẻ quyền "Người xem" (Viewer) hoặc "Người chỉnh sửa" (Editor) cho link này.
+                        * Cần chia sẻ quyền "Người xem" (Viewer) hoặc "Người chỉnh sửa" (Editor) cho đường dẫn này.
                       </span>
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-bold text-dark">
-                        Danh Sách Thẻ Biến Trộn Dữ Liệu (Cách nhau bởi dấu phẩy)
-                      </label>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="form-label small fw-medium text-dark m-0">
+                          Danh Sách Thẻ Biến Trộn Dữ Liệu (cách nhau bởi dấu phẩy)
+                        </label>
+                        <span className="text-muted small" style={{ fontSize: '0.72rem' }}>Bấm thẻ bên dưới để chèn nhanh</span>
+                      </div>
                       <textarea
-                        className="form-control form-control-sm font-monospace"
+                        className="form-control form-control-sm font-monospace mb-2"
                         rows="3"
                         placeholder="{{HoTen}}, {{MaKH}}, {{SoCCCD}}, {{DiaChi}}, {{SoHDTD}}, {{TienVay}}..."
                         value={formData.truongTronStr}
                         onChange={(e) => setFormData({ ...formData, truongTronStr: e.target.value })}
                       />
+
+                      {/* Quick Add Tag Chips */}
+                      <div className="p-2 bg-light rounded-2 border">
+                        <span className="text-muted small d-block mb-1.5" style={{ fontSize: '0.72rem' }}>Gợi ý thẻ biến phổ biến:</span>
+                        <div className="d-flex flex-wrap gap-1">
+                          {AVAILABLE_TAGS_DICTIONARY.flatMap((g) => g.tags).slice(0, 14).map((tag, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              className="btn btn-outline-secondary btn-xs py-0.5 px-1.5 font-monospace small"
+                              style={{ fontSize: '0.70rem' }}
+                              onClick={() => handleAddTagToForm(tag)}
+                            >
+                              + {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-bold text-dark">Mô Tả & Hướng Dẫn Sử Dụng</label>
+                      <label className="form-label small fw-medium text-dark">Mô Tả & Hướng Dẫn Sử Dụng</label>
                       <textarea
                         className="form-control form-control-sm"
                         rows="2"
@@ -750,10 +866,10 @@ export default function TemplateManager() {
                 </div>
 
                 <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-light" onClick={() => setShowEditModal(false)}>
+                  <button type="button" className="btn btn-light btn-sm" onClick={() => setShowEditModal(false)}>
                     Hủy
                   </button>
-                  <button type="submit" className="btn btn-brand fw-bold">
+                  <button type="submit" className="btn btn-brand btn-sm fw-medium text-white">
                     Lưu Cấu Hình Biểu Mẫu
                   </button>
                 </div>
@@ -775,7 +891,7 @@ export default function TemplateManager() {
                   <span className="badge bg-primary-subtle text-primary mb-1">
                     {selectedTemplate.maBM} • {selectedTemplate.phanHe}
                   </span>
-                  <h5 className="modal-title fw-bold text-dark font-heading">
+                  <h5 className="modal-title fw-semibold text-dark font-heading">
                     Trộn Dữ Liệu Tự Động: {selectedTemplate.tenBM}
                   </h5>
                 </div>
@@ -783,28 +899,44 @@ export default function TemplateManager() {
               </div>
 
               <div className="modal-body py-3">
+                {/* Chọn khách hàng thực tế */}
                 <div className="p-3 bg-light rounded-3 border mb-3">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <strong className="text-dark small">Dữ Liệu Khách Hàng / Hợp Đồng Mẫu Được Trộn:</strong>
-                    <span className="badge bg-success">Dữ liệu thực tế CSDL</span>
+                  <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <strong className="text-dark small d-flex align-items-center gap-1.5">
+                      <User size={14} className="text-primary" /> Chọn Thành Viên / Khách Hàng Trộn Dữ Liệu:
+                    </strong>
+                    <select
+                      className="form-select form-select-sm fw-medium"
+                      style={{ maxWidth: 280 }}
+                      value={selectedCustomerId}
+                      onChange={(e) => handleSelectCustomerForMerge(e.target.value)}
+                    >
+                      <option value="">-- Dữ liệu mẫu mặc định --</option>
+                      {customersList.map((c) => (
+                        <option key={c.maKH} value={c.maKH}>
+                          {c.maKH} - {c.hoTen}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+
                   <div className="row g-2 small">
                     <div className="col-sm-6">
                       <span className="text-muted">Khách hàng:</span> <strong className="text-dark">{sampleData.HoTen}</strong> ({sampleData.MaKH})
                     </div>
                     <div className="col-sm-6">
-                      <span className="text-muted">Hợp đồng:</span> <strong className="text-primary">{sampleData.SoHDTD}</strong>
+                      <span className="text-muted">Hợp đồng:</span> <strong className="text-primary font-monospace">{sampleData.SoHDTD}</strong>
                     </div>
                     <div className="col-sm-6">
-                      <span className="text-muted">Số tiền vay:</span> <strong className="text-danger">{sampleData.TienVay}</strong>
+                      <span className="text-muted">Số tiền vay:</span> <strong className="text-danger num-tabular">{sampleData.TienVay}</strong>
                     </div>
                     <div className="col-sm-6">
-                      <span className="text-muted">Số TK CASA:</span> <strong className="text-success">{sampleData.SoTKCASA}</strong>
+                      <span className="text-muted">Số TK CASA:</span> <strong className="text-success font-monospace">{sampleData.SoTKCASA}</strong>
                     </div>
                   </div>
                 </div>
 
-                <h6 className="fw-bold text-dark mb-2 small">Xem Trước Bảng Ánh Xạ Biến Trộn (Mail Merge Mapping):</h6>
+                <h6 className="fw-semibold text-dark mb-2 small">Xem Trước Bảng Ánh Xạ Biến Trộn (Mail Merge Mapping):</h6>
                 <div className="table-responsive border rounded-3 bg-white mb-3" style={{ maxHeight: 220, overflowY: 'auto' }}>
                   <table className="table table-custom align-middle m-0 small">
                     <thead className="bg-light">
@@ -818,19 +950,21 @@ export default function TemplateManager() {
                       {(selectedTemplate.truongTron || []).map((tag, idx) => {
                         const cleanKey = tag.replace(/[{}]/g, '');
                         const val = sampleData[cleanKey] || `[${cleanKey} của khách hàng]`;
+                        const isCopied = copiedTag === tag;
                         return (
                           <tr key={idx}>
                             <td>
                               <span className="badge bg-light text-primary border font-monospace">{tag}</span>
                             </td>
-                            <td className="fw-semibold text-dark">{val}</td>
+                            <td className="fw-medium text-dark">{val}</td>
                             <td className="text-center">
                               <button
+                                type="button"
                                 className="btn btn-xs btn-outline-secondary p-1 px-2"
                                 onClick={() => handleCopyTag(tag)}
                                 title="Sao chép thẻ này để dán vào file Word"
                               >
-                                <Copy size={12} />
+                                {isCopied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
                               </button>
                             </td>
                           </tr>
@@ -840,7 +974,7 @@ export default function TemplateManager() {
                   </table>
                 </div>
 
-                <div className="p-3 bg-light rounded-3 border small text-muted">
+                <div className="p-3 bg-light rounded-3 border small text-muted" style={{ fontSize: '0.78rem' }}>
                   <strong>💡 Hướng Dẫn Soạn Thảo:</strong> Mở file Google Docs mẫu của bạn, chèn các thẻ biến dạng <code>{'{{HoTen}}'}</code>, <code>{'{{TienVay}}'}</code> vào đúng vị trí cần điền. Khi xuất báo cáo, hệ thống sẽ tự động thay thế bằng dữ liệu khách hàng được chọn.
                 </div>
               </div>
@@ -848,27 +982,28 @@ export default function TemplateManager() {
               <div className="modal-footer border-0 pt-0 d-flex justify-content-between flex-wrap gap-2">
                 <a
                   href={selectedTemplate.linkNguon}
-                  target="_blank" rel="noopener noreferrer"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
                 >
-                  <ExternalLink size={14} /> Mở Tệp Google Docs Mẫu
+                  <ExternalLink size={13} /> Mở Tệp Google Docs Mẫu
                 </a>
                 <div className="d-flex gap-2">
                   <button
                     type="button"
-                    className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1"
+                    className="btn btn-outline-primary btn-sm fw-medium d-flex align-items-center gap-1"
                     onClick={handleExportMergedDocx}
                     title="Tải về file Microsoft Word (.doc) sau khi trộn"
                   >
-                    <Download size={14} /> Xuất File Word (.doc)
+                    <Download size={13} /> Xuất File Word (.doc)
                   </button>
                   <button
                     type="button"
-                    className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 text-white"
+                    className="btn btn-brand btn-sm fw-medium d-flex align-items-center gap-1 text-white"
                     onClick={() => window.print()}
                     title="In trực tiếp hoặc Lưu dưới dạng PDF"
                   >
-                    <Printer size={14} /> In / Lưu PDF
+                    <Printer size={13} /> In / Lưu PDF
                   </button>
                   <button type="button" className="btn btn-light btn-sm" onClick={() => setShowMergeModal(false)}>
                     Đóng
@@ -888,87 +1023,51 @@ export default function TemplateManager() {
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content card-modern p-4">
               <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-                  <Code size={20} className="text-primary" /> Từ Điển Thẻ Biến Trộn Dữ Liệu Chuẩn (Mail Merge Tags)
+                <h5 className="modal-title fw-semibold text-dark font-heading d-flex align-items-center gap-2">
+                  <Code size={18} className="text-primary" /> Từ Điển Thẻ Biến Trộn Dữ Liệu Chuẩn (Mail Merge Tags)
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setShowTagDictionary(false)} />
               </div>
 
               <div className="modal-body py-3">
                 <p className="small text-muted mb-3">
-                  Bạn có thể sao chép bất kỳ thẻ biến nào dưới đây và dán trực tiếp vào file Word / Google Docs mẫu. Hệ thống sẽ tự động điền dữ liệu tương ứng:
+                  Nhấp vào bất kỳ thẻ biến nào dưới đây để sao chép và dán trực tiếp vào file Word / Google Docs mẫu:
                 </p>
 
                 <div className="row g-3">
-                  {/* Nhóm Thông tin Khách hàng */}
-                  <div className="col-md-6">
-                    <div className="p-3 bg-light rounded-3 border h-100">
-                      <h6 className="fw-bold text-dark small mb-2 text-primary">1. Thông Tin Khách Hàng & Thành Viên</h6>
-                      <ul className="list-unstyled small d-flex flex-column gap-1 m-0">
-                        <li><code>{'{{HoTen}}'}</code>: Họ và tên khách hàng</li>
-                        <li><code>{'{{MaKH}}'}</code>: Mã khách hàng (KH008892)</li>
-                        <li><code>{'{{SoCCCD}}'}</code>: Số CCCD 12 chữ số</li>
-                        <li><code>{'{{NgayCapCCCD}}'}</code>: Ngày cấp CCCD</li>
-                        <li><code>{'{{DiaChi}}'}</code>: Địa chỉ thường trú</li>
-                        <li><code>{'{{DienThoai}}'}</code>: Số điện thoại liên hệ</li>
-                        <li><code>{'{{SoTV}}'}</code>: Mã số thành viên QTDND</li>
-                        <li><code>{'{{SoTKCASA}}'}</code>: Số tài khoản tiền gửi CASA</li>
-                      </ul>
+                  {AVAILABLE_TAGS_DICTIONARY.map((group, gIdx) => (
+                    <div key={gIdx} className="col-12 col-md-6">
+                      <div className="p-3 bg-light rounded-3 border h-100">
+                        <h6 className="fw-semibold text-dark small mb-2 text-primary">{group.group}</h6>
+                        <div className="d-flex flex-wrap gap-1.5">
+                          {group.tags.map((tag, tIdx) => {
+                            const isCopied = copiedTag === tag;
+                            return (
+                              <button
+                                key={tIdx}
+                                type="button"
+                                className={`btn btn-sm py-1 px-2 font-monospace d-flex align-items-center gap-1 ${
+                                  isCopied ? 'btn-success text-white' : 'btn-outline-secondary bg-white'
+                                }`}
+                                style={{ fontSize: '0.74rem' }}
+                                onClick={() => handleCopyTag(tag)}
+                                title="Nhấp để sao chép"
+                              >
+                                {isCopied ? <Check size={11} /> : <Copy size={11} className="text-muted" />}
+                                {tag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Nhóm Hợp đồng & Tín dụng */}
-                  <div className="col-md-6">
-                    <div className="p-3 bg-light rounded-3 border h-100">
-                      <h6 className="fw-bold text-dark small mb-2 text-success">2. Hợp Đồng Tín Dụng & Dư Nợ</h6>
-                      <ul className="list-unstyled small d-flex flex-column gap-1 m-0">
-                        <li><code>{'{{SoHDTD}}'}</code>: Số hợp đồng / khế ước</li>
-                        <li><code>{'{{TienVay}}'}</code>: Số tiền giải ngân ban đầu</li>
-                        <li><code>{'{{DuNo}}'}</code>: Dư nợ gốc hiện tại</li>
-                        <li><code>{'{{LaiSuat}}'}</code>: Lãi suất cho vay (%/năm)</li>
-                        <li><code>{'{{NgayVay}}'}</code>: Ngày bắt đầu nhận nợ</li>
-                        <li><code>{'{{DenHan}}'}</code>: Ngày kết thúc thời hạn vay</li>
-                        <li><code>{'{{TraLaiDenNgay}}'}</code>: Ngày đã thu lãi gần nhất</li>
-                        <li><code>{'{{MucDichVay}}'}</code>: Phương án sản xuất kinh doanh</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Nhóm Thẩm định & Tài sản */}
-                  <div className="col-md-6">
-                    <div className="p-3 bg-light rounded-3 border h-100">
-                      <h6 className="fw-bold text-dark small mb-2 text-warning">3. Thẩm Định & Tài Sản Thế Chấp</h6>
-                      <ul className="list-unstyled small d-flex flex-column gap-1 m-0">
-                        <li><code>{'{{LoaiTSBD}}'}</code>: Loại tài sản bảo đảm (QSDĐ, Xe...)</li>
-                        <li><code>{'{{GiaTriTSBD}}'}</code>: Giá trị định giá TSĐB</li>
-                        <li><code>{'{{TyLeLTV}}'}</code>: Tỷ lệ cho vay trên TSĐB</li>
-                        <li><code>{'{{XepHangCIC}}'}</code>: Điểm tín dụng và xếp hạng CIC</li>
-                        <li><code>{'{{CanBoThamDinh}}'}</code>: Họ tên cán bộ lập thẩm định</li>
-                        <li><code>{'{{KetLuan}}'}</code>: Kết luận phê duyệt cấp tín dụng</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Nhóm Kiểm tra & Trích nợ */}
-                  <div className="col-md-6">
-                    <div className="p-3 bg-light rounded-3 border h-100">
-                      <h6 className="fw-bold text-dark small mb-2 text-danger">4. Kiểm Tra Vốn & Trích Nợ</h6>
-                      <ul className="list-unstyled small d-flex flex-column gap-1 m-0">
-                        <li><code>{'{{NgayKiemTra}}'}</code>: Ngày thực hiện kiểm tra vốn</li>
-                        <li><code>{'{{ThanhPhanDoan}}'}</code>: Danh sách thành viên đoàn KT</li>
-                        <li><code>{'{{DiaDiemKT}}'}</code>: Địa điểm kiểm tra thực tế</li>
-                        <li><code>{'{{NgayKTNext}}'}</code>: Ngày kiểm tra định kỳ lần tới</li>
-                        <li><code>{'{{SoTienTrich}}'}</code>: Số tiền trích nợ tự động</li>
-                        <li><code>{'{{KyTrichNo}}'}</code>: Kỳ trích nợ (Kỳ 1, 2, 3)</li>
-                      </ul>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               <div className="modal-footer border-0 pt-0">
-                <button type="button" className="btn btn-brand fw-bold" onClick={() => setShowTagDictionary(false)}>
-                  Đã Hiểu
+                <button type="button" className="btn btn-brand btn-sm fw-medium text-white" onClick={() => setShowTagDictionary(false)}>
+                  Đóng
                 </button>
               </div>
             </div>
