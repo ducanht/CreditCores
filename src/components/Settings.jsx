@@ -12,13 +12,25 @@ import {
   Sliders,
   FileCheck2,
   Lock,
-  Layers
+  Layers,
+  Activity,
+  Trash2,
+  Info,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import { getGasApiUrl, setGasApiUrl, api } from '../services/api';
 
 export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
   const [gasUrlInput, setGasUrlInput] = useState(getGasApiUrl());
   const [saveMsg, setSaveMsg] = useState('');
+
+  // Ping state
+  const [isPinging, setIsPinging] = useState(false);
+  const [pingResult, setPingResult] = useState(null);
+
+  // Cache storage state
+  const [cacheSize, setCacheSize] = useState('0 KB');
 
   // Drive Folder Configuration State
   const [driveConfig, setDriveConfig] = useState({
@@ -34,7 +46,22 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
   const [driveSaveMsg, setDriveSaveMsg] = useState('');
   const [loadingDrive, setLoadingDrive] = useState(false);
 
+  const calculateCacheSize = () => {
+    try {
+      let total = 0;
+      for (let x in localStorage) {
+        if (localStorage.hasOwnProperty(x)) {
+          total += (localStorage[x].length * 2);
+        }
+      }
+      setCacheSize((total / 1024).toFixed(1) + ' KB');
+    } catch (e) {
+      setCacheSize('---');
+    }
+  };
+
   useEffect(() => {
+    calculateCacheSize();
     const loadDriveCfg = async () => {
       try {
         const res = await api.getDriveSettings();
@@ -55,6 +82,56 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
     setTimeout(() => setSaveMsg(''), 3000);
   };
 
+  const handlePingHealthcheck = async () => {
+    setIsPinging(true);
+    setPingResult(null);
+    const startTime = performance.now();
+    try {
+      const res = await api.getSyncStatus();
+      const endTime = performance.now();
+      const latency = Math.round(endTime - startTime);
+      if (res.status === 'success') {
+        setPingResult({
+          status: 'ONLINE',
+          latency,
+          mode: gasUrlInput ? 'Live GAS WebApp Endpoint' : 'Dual-Mode Local Engine',
+          message: 'Kết nối ổn định, dữ liệu phản hồi trong ' + latency + ' ms'
+        });
+      } else {
+        setPingResult({
+          status: 'WARNING',
+          latency,
+          mode: 'Fallback Mode',
+          message: res.message || 'Phản hồi cảnh báo từ máy chủ'
+        });
+      }
+    } catch (err) {
+      const endTime = performance.now();
+      setPingResult({
+        status: 'ERROR',
+        latency: Math.round(endTime - startTime),
+        mode: 'Offline / Fallback',
+        message: 'Lỗi kết nối: ' + err.message
+      });
+    } finally {
+      setIsPinging(false);
+    }
+  };
+
+  const handleClearCache = () => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa bộ nhớ đệm cục bộ của trình duyệt?')) {
+      const token = localStorage.getItem('CREDITCORES_USER');
+      const theme = localStorage.getItem('CREDITCORES_THEME');
+      const gasUrl = localStorage.getItem('CREDITCORES_GAS_API_URL');
+      localStorage.clear();
+      if (token) localStorage.setItem('CREDITCORES_USER', token);
+      if (theme) localStorage.setItem('CREDITCORES_THEME', theme);
+      if (gasUrl) localStorage.setItem('CREDITCORES_GAS_API_URL', gasUrl);
+      calculateCacheSize();
+      alert('Đã xóa bộ nhớ đệm thành công!');
+    }
+  };
+
   const handleSaveDriveConfig = async (e) => {
     e.preventDefault();
     setLoadingDrive(true);
@@ -73,11 +150,22 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* 1. API Configuration */}
+      {/* 1. API Configuration & Ping Healthcheck */}
       <div className="card-modern p-4">
-        <h5 className="fw-bold mb-2 text-slate-900 font-heading d-flex align-items-center gap-2">
-          <Globe size={18} className="text-primary" /> Cấu Hình Máy Chủ Google Apps Script Web App
-        </h5>
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
+            <Globe size={18} className="text-primary" /> Cấu Hình Máy Chủ Google Apps Script Web App
+          </h5>
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1.5"
+            onClick={handlePingHealthcheck}
+            disabled={isPinging}
+          >
+            <Activity size={14} className={isPinging ? 'fa-spin text-primary' : ''} />
+            {isPinging ? 'Đang kiểm tra...' : 'Kiểm Tra Kết Nối (Ping)'}
+          </button>
+        </div>
         <p className="text-muted small mb-3">
           Điền URL triển khai Web App từ Google Apps Script. Nếu để trống, hệ thống sử dụng cơ chế dữ liệu nội bộ.
         </p>
@@ -100,6 +188,21 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
         </form>
 
         {saveMsg && <div className="alert alert-success mt-2 py-1.5 px-3 small fw-semibold">{saveMsg}</div>}
+
+        {/* Ping Result Box */}
+        {pingResult && (
+          <div className={`p-3 mt-3 rounded-3 border small ${
+            pingResult.status === 'ONLINE' ? 'bg-success-subtle border-success-subtle' : 'bg-warning-subtle border-warning-subtle'
+          }`}>
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <strong className={pingResult.status === 'ONLINE' ? 'text-success' : 'text-warning'}>
+                ● {pingResult.status === 'ONLINE' ? 'Máy Chủ Trực Tuyến' : 'Cảnh Báo Kết Nối'}
+              </strong>
+              <span className="font-monospace fw-bold">{pingResult.latency} ms</span>
+            </div>
+            <div className="text-muted">{pingResult.message} • Chế độ: <strong className="text-dark">{pingResult.mode}</strong></div>
+          </div>
+        )}
       </div>
 
       {/* 2. Google Drive Storage & Auto Compression Settings */}
@@ -207,7 +310,35 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
         {driveSaveMsg && <div className="alert alert-success mt-3 py-1.5 px-3 small fw-semibold">{driveSaveMsg}</div>}
       </div>
 
-      {/* 3. Quy Chuẩn Đặt Tên Tệp Lưu Trữ */}
+      {/* 3. Local Cache & Performance Management */}
+      <div className="card-modern p-4">
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
+            <HardDrive size={18} className="text-info" /> Quản Lý Bộ Nhớ Đệm & Hiệu Năng Trình Duyệt
+          </h5>
+          <span className="badge bg-light text-muted border small">
+            Dung lượng đệm: <strong>{cacheSize}</strong>
+          </span>
+        </div>
+        <p className="text-muted small mb-3">
+          Hệ thống lưu đệm danh mục biểu mẫu, cấu hình giao diện và thông tin phiên để tối ưu tốc độ phản hồi.
+        </p>
+
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-outline-danger btn-sm fw-semibold d-flex align-items-center gap-1.5"
+            onClick={handleClearCache}
+          >
+            <Trash2 size={14} /> Dọn Sạch Bộ Nhớ Đệm (Clear Cache)
+          </button>
+          <span className="text-muted small" style={{ fontSize: '0.78rem' }}>
+            Không làm mất dữ liệu trên máy chủ Google Sheets hay Google Drive.
+          </span>
+        </div>
+      </div>
+
+      {/* 4. Quy Chuẩn Đặt Tên Tệp Lưu Trữ */}
       <div className="card-modern p-4">
         <h5 className="fw-bold mb-2 text-slate-900 font-heading d-flex align-items-center gap-2">
           <FileCheck2 size={18} className="text-primary" /> Quy Chuẩn Đặt Tên Tệp Lưu Trữ Tự Động
@@ -252,7 +383,7 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
         </div>
       </div>
 
-      {/* 4. Sync Daemon & Queue Monitor */}
+      {/* 5. Sync Daemon & Queue Monitor */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
