@@ -179,7 +179,7 @@ export default function ImageUploader({
     <div className="card-modern p-3 border bg-light-subtle rounded-3">
       <div className="d-flex justify-content-between align-items-center mb-2">
         <label className="form-label small fw-bold text-dark m-0 d-flex align-items-center gap-1.5">
-          <CloudUpload size={15} className="text-primary" /> {label}
+          <UploadCloud size={15} className="text-primary" /> {label}
         </label>
         {previewUrl && (
           <span className="badge bg-success-subtle text-success small d-flex align-items-center gap-1">
