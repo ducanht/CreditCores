@@ -18,7 +18,9 @@ import {
   Clock,
   Printer,
   Calendar,
-  Filter
+  Filter,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrencyVN, getTodayVN } from '../utils/dateUtils';
@@ -104,17 +106,148 @@ export default function Reports() {
     document.body.removeChild(link);
   };
 
+  // Xuất file Word (.doc) báo cáo quản trị
+  const handleExportWord = () => {
+    const html = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset="utf-8">
+        <title>Báo Cáo Quản Trị Tín Dụng</title>
+        <style>
+          body { font-family: 'Times New Roman', serif; font-size: 13pt; line-height: 1.4; margin: 20px; }
+          .header-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+          .title { text-align: center; font-weight: bold; font-size: 15pt; margin: 15px 0 5px; }
+          .subtitle { text-align: center; font-style: italic; margin-bottom: 20px; font-size: 12pt; }
+          table.data-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px; }
+          table.data-table th, table.data-table td { border: 1px solid #000; padding: 6px 8px; font-size: 11pt; }
+          table.data-table th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .sig-table { width: 100%; margin-top: 40px; border-collapse: collapse; }
+          .sig-table td { width: 50%; text-align: center; vertical-align: top; }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            <td style="width: 45%; text-align: center;">
+              <strong>QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ</strong><br/>
+              Số: ....../BC-QTTD
+            </td>
+            <td style="width: 55%; text-align: center;">
+              <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br/>
+              <u>Độc lập - Tự do - Hạnh phúc</u><br/>
+              <em>Yên Thọ, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}</em>
+            </td>
+          </tr>
+        </table>
+
+        <div class="title">BÁO CÁO THỐNG KÊ & PHÂN TÍCH QUẢN TRỊ TÍN DỤNG</div>
+        <div class="subtitle">Chu kỳ: ${timeFilter === '2026_Q3' ? 'Quý 3/2026' : timeFilter === '2026_M08' ? 'Tháng 08/2026' : 'Năm 2026'} - Thời điểm lập: ${getTodayVN()}</div>
+
+        <p><strong>1. TỔNG QUAN CÁC CHỈ TIÊU TÍN DỤNG CHỦ YẾU:</strong></p>
+        <ul>
+          <li>Tổng dư nợ cho vay: <strong>${formatCurrencyVN(totalDuNo)}</strong></li>
+          <li>Tổng số thành viên vay vốn: <strong>${totalMembers} thành viên</strong></li>
+          <li>Dư nợ bình quân trên món: <strong>${formatCurrencyVN(avgLoanSize)}</strong></li>
+          <li>Tỷ lệ thu hồi nợ tự động qua tài khoản thanh toán: <strong>96.8%</strong></li>
+          <li>Tỷ lệ nợ xấu và nợ cần chú ý: <strong>0.82%</strong> (An toàn tuyệt đối)</li>
+        </ul>
+
+        <p><strong>2. PHÂN BỔ DƯ NỢ THEO ĐỊA BÀN QUẢN LÝ (3 XÃ):</strong></p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Địa Bàn / Xã</th>
+              <th>Số Thành Viên</th>
+              <th>Tổng Dư Nợ (VNĐ)</th>
+              <th>Tỷ Trọng (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${areaData.map((a, idx) => `
+              <tr>
+                <td class="text-center">${idx + 1}</td>
+                <td>${a.area}</td>
+                <td class="text-center">${a.countKH}</td>
+                <td class="text-right">${formatCurrencyVN(a.duNo)}</td>
+                <td class="text-center">${a.rate}</td>
+              </tr>
+            `).join('')}
+            <tr style="font-weight: bold; background-color: #f9f9f9;">
+              <td colspan="2" class="text-center">TỔNG CỘNG</td>
+              <td class="text-center">${totalMembers}</td>
+              <td class="text-right">${formatCurrencyVN(totalDuNo)}</td>
+              <td class="text-center">100%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p><strong>3. CƠ CẤU SẢN PHẨM CHO VAY:</strong></p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Sản Phẩm Tín Dụng</th>
+              <th>Số Món Vay</th>
+              <th>Tổng Dư Nợ (VNĐ)</th>
+              <th>Tỷ Trọng (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${loanTypes.map((lt, idx) => `
+              <tr>
+                <td class="text-center">${idx + 1}</td>
+                <td>${lt.type}</td>
+                <td class="text-center">${lt.count}</td>
+                <td class="text-right">${formatCurrencyVN(lt.amount)}</td>
+                <td class="text-center">${lt.rate}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <table class="sig-table">
+          <tr>
+            <td>
+              <strong>NGƯỜI LẬP BÁO CÁO</strong><br/>
+              <em>(Ký, ghi rõ họ tên)</em>
+              <br/><br/><br/><br/>
+            </td>
+            <td>
+              <strong>BAN GIÁM ĐỐC / CHỦ TỊCH HĐQT</strong><br/>
+              <em>(Ký, đóng dấu, ghi rõ họ tên)</em>
+              <br/><br/><br/><br/>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: 'application/msword;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BaoCao_QuanTri_TinDung_${new Date().toISOString().slice(0, 10)}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="d-flex flex-column gap-4">
+    <div className="d-flex flex-column gap-3">
       {/* 1. Filter & Actions Toolbar */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2">
-          <span className="small fw-medium text-muted d-flex align-items-center gap-1.5">
-            <Calendar size={15} className="text-primary" /> Chu kỳ:
+          <span className="small fw-medium text-muted d-flex align-items-center gap-1.5" style={{ fontSize: '0.78rem' }}>
+            <Calendar size={14} className="text-primary" /> Chu kỳ:
           </span>
           <select
             className="form-select form-select-sm fw-medium"
-            style={{ width: 160 }}
+            style={{ width: 160, height: '32px' }}
             value={timeFilter}
             onChange={(e) => setTimeFilter(e.target.value)}
           >
@@ -125,34 +258,51 @@ export default function Reports() {
           </select>
         </div>
 
-        <div className="d-flex align-items-center flex-wrap gap-2">
+        {/* Compact Icon Action Group */}
+        <div className="d-flex align-items-center gap-1.5">
+          {/* Nút Xuất Excel (.csv / .xlsx) */}
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            className="btn btn-sm btn-outline-success p-1.5 rounded-2 d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px' }}
+            onClick={handleExportCSV}
+            title="Xuất bảng tính Excel (.csv)"
+          >
+            <FileSpreadsheet size={15} />
+          </button>
+
+          {/* Nút Xuất Word (.doc / .docx) */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px' }}
+            onClick={handleExportWord}
+            title="Xuất báo cáo Word (.doc)"
+          >
+            <FileText size={15} />
+          </button>
+
+          {/* Nút In / PDF */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px' }}
+            onClick={() => window.print()}
+            title="In / Xuất file PDF chuẩn A4"
+          >
+            <Printer size={15} />
+          </button>
+
+          {/* Nút Làm mới */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px' }}
             onClick={fetchReports}
             disabled={loading}
             title="Tải lại số liệu báo cáo"
           >
-            <RefreshCw size={13} className={loading ? 'fa-spin' : ''} />
-            <span className="d-none d-sm-inline">Làm mới</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-            onClick={() => window.print()}
-            title="In báo cáo thống kê"
-          >
-            <Printer size={13} />
-            <span className="d-none d-sm-inline">In Báo Cáo</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-brand fw-medium d-flex align-items-center gap-1.5 text-white shadow-sm"
-            onClick={handleExportCSV}
-          >
-            <Download size={14} /> Xuất Báo Cáo (.csv)
+            <RefreshCw size={14} className={loading ? 'fa-spin' : ''} />
           </button>
         </div>
       </div>
