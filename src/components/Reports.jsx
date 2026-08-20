@@ -106,24 +106,12 @@ export default function Reports() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* 1. Header Toolbar */}
+      {/* 1. Filter & Actions Toolbar */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div className="d-flex align-items-center gap-2">
-          <div className="p-2 rounded-2 bg-primary-subtle text-primary">
-            <FileBarChart2 size={18} />
-          </div>
-          <div>
-            <h5 className="fw-semibold m-0 text-slate-900 font-heading">
-              Báo Cáo Thống Kê & Phân Tích Quản Trị Tín Dụng
-            </h5>
-            <div className="text-muted small mt-0.5" style={{ fontSize: '0.75rem' }}>
-              Số liệu tổng hợp phân tích đa chiều phục vụ công tác chỉ đạo điều hành
-            </div>
-          </div>
-        </div>
-
-        <div className="d-flex align-items-center flex-wrap gap-2">
-          {/* Bộ lọc chu kỳ */}
+          <span className="small fw-medium text-muted d-flex align-items-center gap-1.5">
+            <Calendar size={15} className="text-primary" /> Chu kỳ:
+          </span>
           <select
             className="form-select form-select-sm fw-medium"
             style={{ width: 160 }}
@@ -135,7 +123,9 @@ export default function Reports() {
             <option value="2026_M07">Tháng 07/2026</option>
             <option value="2026_ALL">Cả Năm 2026</option>
           </select>
+        </div>
 
+        <div className="d-flex align-items-center flex-wrap gap-2">
           <button
             type="button"
             className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"

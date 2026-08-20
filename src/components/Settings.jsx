@@ -17,7 +17,8 @@ import {
   Trash2,
   Info,
   ShieldCheck,
-  Zap
+  Zap,
+  HelpCircle
 } from 'lucide-react';
 import { getGasApiUrl, setGasApiUrl, api } from '../services/api';
 
@@ -152,23 +153,28 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
     <div className="d-flex flex-column gap-4">
       {/* 1. API Configuration & Ping Healthcheck */}
       <div className="card-modern p-4">
-        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-          <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-            <Globe size={18} className="text-primary" /> Cấu Hình Máy Chủ Google Apps Script Web App
-          </h5>
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="fw-semibold text-slate-900 m-0 d-flex align-items-center gap-1.5 small">
+              <Globe size={16} className="text-primary" /> Kết Nối Máy Chủ Web App (GAS Endpoint)
+            </span>
+            <span
+              className="text-muted cursor-pointer d-inline-flex align-items-center"
+              title="Điền URL triển khai Web App từ Google Apps Script để kết nối dữ liệu trực tiếp"
+            >
+              <HelpCircle size={14} />
+            </span>
+          </div>
           <button
             type="button"
-            className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1.5"
+            className="btn btn-outline-primary btn-sm fw-medium d-flex align-items-center gap-1.5"
             onClick={handlePingHealthcheck}
             disabled={isPinging}
           >
-            <Activity size={14} className={isPinging ? 'fa-spin text-primary' : ''} />
+            <Activity size={13} className={isPinging ? 'fa-spin text-primary' : ''} />
             {isPinging ? 'Đang kiểm tra...' : 'Kiểm Tra Kết Nối (Ping)'}
           </button>
         </div>
-        <p className="text-muted small mb-3">
-          Điền URL triển khai Web App từ Google Apps Script. Nếu để trống, hệ thống sử dụng cơ chế dữ liệu nội bộ.
-        </p>
 
         <form onSubmit={handleSaveUrl} className="row g-2 align-items-center">
           <div className="col-12 col-md-9">
@@ -181,7 +187,7 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
             />
           </div>
           <div className="col-12 col-md-3">
-            <button type="submit" className="btn btn-primary btn-sm fw-bold w-100 d-flex align-items-center justify-content-center gap-1.5">
+            <button type="submit" className="btn btn-primary btn-sm fw-medium w-100 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm">
               <Save size={14} /> Lưu URL Máy Chủ
             </button>
           </div>
@@ -207,17 +213,22 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
 
       {/* 2. Google Drive Storage & Auto Compression Settings */}
       <div className="card-modern p-4">
-        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-          <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-            <FolderOpen size={18} className="text-success" /> Cấu Hình Lưu Trữ Tệp & Hình Ảnh (Google Drive)
-          </h5>
-          <span className="badge bg-success-subtle text-success small fw-semibold">
-            Tự động nén Canvas & Chuẩn hóa định danh
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="fw-semibold text-slate-900 m-0 d-flex align-items-center gap-1.5 small">
+              <FolderOpen size={16} className="text-success" /> Thư Mục Lưu Trữ Hồ Sơ (Google Drive)
+            </span>
+            <span
+              className="text-muted cursor-pointer d-inline-flex align-items-center"
+              title="Thiết lập ID thư mục Google Drive để tự động phân loại tệp và quy định chuẩn nén hình ảnh"
+            >
+              <HelpCircle size={14} />
+            </span>
+          </div>
+          <span className="badge bg-success-subtle text-success small fw-medium">
+            Tự động nén Canvas & Tối ưu dung lượng
           </span>
         </div>
-        <p className="text-muted small mb-3">
-          Thiết lập ID thư mục Google Drive để tự động phân loại tệp tải lên và quy định chuẩn nén hình ảnh thực địa.
-        </p>
 
         <form onSubmit={handleSaveDriveConfig}>
           <div className="row g-3">

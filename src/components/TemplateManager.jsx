@@ -835,9 +835,9 @@ export default function TemplateManager() {
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-2">
-            <h5 className="fw-semibold text-slate-900 m-0 font-heading d-flex align-items-center gap-2">
-              <Layers size={18} className="text-primary" /> Quản Lý Biểu Mẫu & Trộn Dữ Liệu
-            </h5>
+            <span className="fw-semibold text-slate-900 m-0 d-flex align-items-center gap-1.5 small">
+              <Layers size={16} className="text-primary" /> Danh Sách Biểu Mẫu
+            </span>
             <span
               className="text-muted cursor-pointer d-inline-flex align-items-center"
               title="Tự động nhận diện thẻ biến và điền dữ liệu khách hàng vào tài liệu Word/PDF"
@@ -845,7 +845,7 @@ export default function TemplateManager() {
               <HelpCircle size={14} />
             </span>
           </div>
-          <span className="badge bg-light text-muted border">
+          <span className="badge bg-light text-muted border small">
             {filteredTemplates.length} biểu mẫu
           </span>
         </div>

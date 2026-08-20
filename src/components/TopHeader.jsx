@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 export default function TopHeader({
+  activeTabTitle,
   syncStatus,
   isSyncing,
   onTriggerSync,
@@ -32,8 +33,8 @@ export default function TopHeader({
         height: '56px'
       }}
     >
-      {/* Left: Mobile & Desktop Menu Toggle */}
-      <div className="d-flex align-items-center gap-2">
+      {/* Left: Mobile & Desktop Menu Toggle + Standard Title */}
+      <div className="d-flex align-items-center gap-2.5">
         <button
           type="button"
           className="btn btn-sm btn-light p-2 rounded-2 border d-flex align-items-center justify-content-center"
@@ -43,6 +44,10 @@ export default function TopHeader({
         >
           <Menu size={17} />
         </button>
+
+        <h1 className="fs-6 fw-semibold m-0 text-slate-900 font-heading text-truncate">
+          {activeTabTitle}
+        </h1>
       </div>
 
       {/* Right: Minimal Essential Controls */}

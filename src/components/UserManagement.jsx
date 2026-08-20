@@ -268,51 +268,48 @@ export default function UserManagement() {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Header & Sub-tab navigation */}
+      {/* Sub-tab navigation toolbar */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-3">
-          <div
-            className="p-2 rounded-3 text-dark d-flex align-items-center justify-content-center"
-            style={{ background: 'linear-gradient(135deg, #9acd32 0%, #047857 100%)', width: 42, height: 42 }}
+        <div className="btn-group p-1 bg-light rounded-3 border">
+          <button
+            type="button"
+            className={`btn btn-sm ${activeSubTab === 'roles' ? 'btn-brand fw-medium shadow-sm' : 'btn-light text-muted'}`}
+            onClick={() => setActiveSubTab('roles')}
           >
-            <ShieldCheck size={24} className="text-white" />
-          </div>
-          <div>
-            <h5 className="fw-bold m-0 text-slate-800 font-heading">
-              Quản Trị Phân Quyền & Người Dùng
-            </h5>
-            <span className="text-muted small">
-              Quản lý phân quyền truy cập theo 4 nhóm nghiệp vụ và danh sách cán bộ
-            </span>
-          </div>
+            <Layers size={14} className="me-1" /> Phân Quyền Theo Nhóm
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${activeSubTab === 'users' ? 'btn-brand fw-medium shadow-sm' : 'btn-light text-muted'}`}
+            onClick={() => setActiveSubTab('users')}
+          >
+            <Users size={14} className="me-1" /> Danh Sách Tài Khoản ({users.length})
+          </button>
         </div>
 
-        {/* Tab Switcher */}
         <div className="d-flex align-items-center gap-2">
-          <div className="btn-group p-1 bg-light rounded-3 border">
+          {activeSubTab === 'users' && (
             <button
               type="button"
-              className={`btn btn-sm ${activeSubTab === 'roles' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
-              onClick={() => setActiveSubTab('roles')}
+              className="btn btn-sm btn-brand fw-medium d-flex align-items-center gap-1.5 text-white shadow-sm"
+              onClick={() => {
+                setUserFormData({ username: '', fullName: '', role: 'CBTD', status: 'ACTIVE', password: '' });
+                setShowUserModal(true);
+              }}
             >
-              <Layers size={14} className="me-1" /> Phân Quyền Theo Nhóm
+              <Plus size={14} /> Thêm Tài Khoản Mới
             </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${activeSubTab === 'users' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
-              onClick={() => setActiveSubTab('users')}
-            >
-              <Users size={14} className="me-1" /> Danh Sách Tài Khoản
-            </button>
-          </div>
+          )}
 
           <button
+            type="button"
             className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
             onClick={fetchData}
             disabled={loading}
             title="Tải lại dữ liệu"
           >
-            <RefreshCw size={14} className={loading ? 'fa-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'fa-spin' : ''} />
+            <span className="d-none d-sm-inline">Làm mới</span>
           </button>
         </div>
       </div>

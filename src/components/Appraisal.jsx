@@ -258,9 +258,9 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
       {/* Appraisal List Table */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h6 className="fw-bold text-slate-800 m-0 font-heading">
-            Sổ Hồ Sơ Thẩm Định Tín Dụng & TSĐB ({filtered.length} hồ sơ)
-          </h6>
+          <span className="fw-semibold text-slate-900 m-0 small">
+            Danh Sách Hồ Sơ Thẩm Định ({filtered.length})
+          </span>
         </div>
 
         <div className="table-responsive">

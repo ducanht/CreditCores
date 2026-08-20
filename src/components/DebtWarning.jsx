@@ -50,17 +50,19 @@ export default function DebtWarning({ onOpenCustomerQuickView }) {
   return (
     <div className="d-flex flex-column gap-4">
       {/* Alert Header Banner */}
-      <div className="card-modern p-4 bg-danger-subtle border-danger border-2">
+      <div className="card-modern p-3 bg-danger-subtle border-danger">
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <div className="d-flex align-items-center gap-3">
-            <div className="p-3 bg-danger text-white rounded-circle">
-              <ShieldAlert size={28} />
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="p-2 bg-danger text-white rounded-2">
+              <ShieldAlert size={18} />
             </div>
             <div>
-              <h5 className="fw-bold text-danger m-0 font-heading">Sổ Theo Dõi Nợ Tồn Đọng & Cảnh Báo Thu Nợ</h5>
-              <p className="text-danger-emphasis small m-0">
-                Tổng số tiền nợ tồn chưa thu được: <strong className="num-tabular">{formatCurrencyVN(totalOverdue)}</strong> ({warnings.length} món nợ)
-              </p>
+              <span className="small fw-semibold text-danger d-block">
+                Tổng Nợ Tồn Đọng Cần Đôn Đốc: <strong className="num-tabular fs-6">{formatCurrencyVN(totalOverdue)}</strong>
+              </span>
+              <span className="text-danger-emphasis small" style={{ fontSize: '0.75rem' }}>
+                Gồm {warnings.length} món nợ chưa trích thu thành công
+              </span>
             </div>
           </div>
 

@@ -19,7 +19,8 @@ import {
   Bell,
   ChevronRight,
   ClipboardList,
-  AlertTriangle
+  AlertTriangle,
+  HelpCircle
 } from 'lucide-react';
 import { formatCurrencyVN, formatCurrency, getTodayVN } from '../utils/dateUtils';
 
@@ -54,28 +55,18 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
       {/* ========================================================================= */}
       {/* 🌟 1. EXECUTIVE HEADER: CHÀO MỪNG, TRẠNG THÁI & BỘ LỌC CHU KỲ           */}
       {/* ========================================================================= */}
-      <div className="card-modern p-3 p-md-4">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-              <h4 className="fw-semibold text-slate-900 font-heading m-0 fs-5">
-                Tổng Quan Hoạt Động Tín Dụng & Trích Nợ
-              </h4>
-              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill small fw-medium">
-                Hệ Thống Trực Tuyến
-              </span>
-            </div>
-            <div className="d-flex align-items-center gap-3 text-muted small flex-wrap">
-              <span>Xin chào, <strong className="text-dark">{currentUser?.fullName || 'Cán bộ Quản trị'}</strong> ({currentUser?.role || 'ADMIN'})</span>
-              <span>•</span>
-              <span className="d-flex align-items-center gap-1">
-                <Calendar size={13} /> {getTodayVN()}
-              </span>
-              <span>•</span>
-              <span className="d-flex align-items-center gap-1 text-success fw-medium">
-                <span className="p-1 rounded-circle bg-success d-inline-block"></span> Core SQL: {syncStatus?.status === 'SUCCESS' ? 'Đã đồng bộ' : 'Online'}
-              </span>
-            </div>
+      <div className="card-modern p-3">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+          <div className="d-flex align-items-center gap-3 text-muted small flex-wrap">
+            <span>Xin chào, <strong className="text-dark">{currentUser?.fullName || 'Cán bộ Quản trị'}</strong> ({currentUser?.role || 'ADMIN'})</span>
+            <span>•</span>
+            <span className="d-flex align-items-center gap-1">
+              <Calendar size={13} /> {getTodayVN()}
+            </span>
+            <span>•</span>
+            <span className="d-flex align-items-center gap-1 text-success fw-medium">
+              <span className="p-1 rounded-circle bg-success d-inline-block"></span> Core SQL: {syncStatus?.status === 'SUCCESS' ? 'Đã đồng bộ' : 'Online'}
+            </span>
           </div>
 
           <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">

@@ -128,21 +128,15 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
       {/* 1. Header & File Upload Dropzone */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <div>
-            <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-              <ArrowLeftRight size={18} className="text-primary" />
-              Đối Soát Kết Quả Trích Nợ Từ CoreBanking
-            </h5>
-            <div className="text-muted small mt-0.5">
-              So khớp tự động giữa số tiền trích dự kiến và file nhật ký hạch toán từ CoreBanking
-            </div>
-          </div>
+          <span className="small fw-semibold text-slate-900 d-flex align-items-center gap-1.5">
+            <ArrowLeftRight size={16} className="text-primary" /> So Khớp Tự Động Kết Quả Hạch Toán
+          </span>
           <button
             type="button"
             className="btn btn-outline-success btn-sm fw-medium d-flex align-items-center gap-1.5"
             onClick={handleExportCSV}
           >
-            <Download size={14} /> Xuất Báo Cáo Đối Soát
+            <Download size={14} /> Xuất Báo Cáo Đối Soát (.csv)
           </button>
         </div>
 

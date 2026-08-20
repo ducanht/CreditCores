@@ -154,9 +154,9 @@ export default function LoanInspection({ prefilledContract, onOpenCustomerQuickV
       {/* Inspection List Table */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h6 className="fw-bold text-slate-800 m-0 font-heading">
-            Sổ Theo Dõi Kiểm Tra Sử Dụng Vốn Sau Giải Ngân ({filtered.length} biên bản)
-          </h6>
+          <span className="fw-semibold text-slate-900 m-0 small">
+            Danh Sách Biên Bản Kiểm Tra ({filtered.length})
+          </span>
         </div>
 
         <div className="table-responsive">
