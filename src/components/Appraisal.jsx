@@ -202,61 +202,57 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
       </div>
 
       {/* Header Controls & Filters */}
-      <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="d-flex align-items-center flex-wrap gap-2">
-          <select
-            className="form-select form-select-sm"
-            style={{ width: 185 }}
-            value={filterKetLuan}
-            onChange={(e) => {
-              setFilterKetLuan(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="ALL">Tất cả Kết Luận</option>
-            <option value="Đồng ý cấp tín dụng">Đồng ý cấp tín dụng</option>
-            <option value="Có điều kiện bổ sung">Có điều kiện bổ sung</option>
-            <option value="Từ chối cấp tín dụng">Từ chối cấp tín dụng</option>
-          </select>
+      <div className="card-modern p-3">
+        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
+          <div className="d-flex flex-column flex-sm-row align-items-sm-center flex-wrap gap-2">
+            <select
+              className="form-select form-select-sm"
+              value={filterKetLuan}
+              onChange={(e) => { setFilterKetLuan(e.target.value); setPage(1); }}
+              aria-label="Lọc theo kết luận"
+            >
+              <option value="ALL">Tất cả kết luận</option>
+              <option value="Đồng ý cấp tín dụng">Đồng ý cấp tín dụng</option>
+              <option value="Có điều kiện bổ sung">Có điều kiện bổ sung</option>
+              <option value="Từ chối cấp tín dụng">Từ chối cấp tín dụng</option>
+            </select>
 
-          <select
-            className="form-select form-select-sm"
-            style={{ width: 155 }}
-            value={filterRuiRo}
-            onChange={(e) => {
-              setFilterRuiRo(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="ALL">Tất cả Mức Rủi Ro</option>
-            <option value="Thấp">Rủi ro: Thấp</option>
-            <option value="Trung bình">Rủi ro: Trung bình</option>
-            <option value="Cao">Rủi ro: Cao</option>
-          </select>
+            <select
+              className="form-select form-select-sm"
+              value={filterRuiRo}
+              onChange={(e) => { setFilterRuiRo(e.target.value); setPage(1); }}
+              aria-label="Lọc theo mức rủi ro"
+            >
+              <option value="ALL">Tất cả mức rủi ro</option>
+              <option value="Thấp">Rủi ro: Thấp</option>
+              <option value="Trung bình">Rủi ro: Trung bình</option>
+              <option value="Cao">Rủi ro: Cao</option>
+            </select>
 
-          <div className="input-group input-group-sm" style={{ width: 240 }}>
-            <span className="input-group-text bg-white border-end-0 text-muted">
-              <Search size={14} />
-            </span>
-            <input
-              type="text"
-              className="form-control border-start-0"
-              placeholder="Tìm Mã BCTD, Tên khách..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(1);
-              }}
-            />
+            <div className="input-group input-group-sm">
+              <span className="input-group-text bg-white border-end-0 text-muted">
+                <Search size={14} />
+              </span>
+              <input
+                type="text"
+                className="form-control border-start-0"
+                placeholder="Tìm mã BCTD, tên khách..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+                aria-label="Tìm kiếm hồ sơ thẩm định"
+              />
+            </div>
           </div>
-        </div>
 
-        <button
-          className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
-          onClick={() => setShowFormModal(true)}
-        >
-          <Plus size={15} /> Lập Báo Cáo Thẩm Định Mới
-        </button>
+          <button
+            className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm flex-shrink-0"
+            onClick={() => setShowFormModal(true)}
+          >
+            <Plus size={15} />
+            <span className="d-none d-sm-inline">Lập Báo Cáo Thẩm Định Mới</span>
+            <span className="d-inline d-sm-none">Lập BC Mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Appraisal List Table */}
@@ -294,16 +290,40 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
 
                   return (
                     <tr key={item.maBCTD}>
-                      <td className="fw-bold font-monospace text-primary">{item.maBCTD}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 fw-bold font-monospace text-primary text-decoration-none"
+                          onClick={() => setSelectedAppraisalForDetail(item)}
+                          title="Xem chi tiết Báo Cáo Thẩm Định 5 phần"
+                        >
+                          {item.maBCTD}
+                        </button>
+                      </td>
                       <td>
                         <div
-                          className="customer-click-link"
-                          onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen })}
-                          title="Xem chi tiết khách hàng"
+                          className="customer-click-link fw-bold text-slate-900"
+                          onClick={() => setSelectedAppraisalForDetail(item)}
+                          title="Xem chi tiết Báo Cáo Thẩm Định của khách hàng này"
                         >
                           {item.hoTen || item.maKH}
                         </div>
-                        <span className="small text-muted font-monospace">{item.maKH}</span>
+                        <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                          <span className="small text-muted font-monospace">{item.maKH}</span>
+                          <button
+                            type="button"
+                            className="badge bg-light text-primary border border-primary-subtle py-0.5 px-1.5 small text-decoration-none"
+                            style={{ fontSize: '0.68rem', cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const cust = allCustomers.find(c => c.maKH === item.maKH) || { maKH: item.maKH, hoTen: item.hoTen, diaChi: item.diaChi, cccd: item.soCCCD, dienThoaiDD: item.dienThoai };
+                              if (onOpenCustomerQuickView) onOpenCustomerQuickView(cust);
+                            }}
+                            title="Tra cứu nhanh hồ sơ thành viên 360°"
+                          >
+                            Hội viên 360°
+                          </button>
+                        </div>
                       </td>
                       <td className="text-end fw-bold text-danger num-tabular">{formatCurrencyVN(item.duyetVay)}</td>
                       <td className="text-center">{item.thoiHanThang} tháng</td>

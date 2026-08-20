@@ -177,17 +177,49 @@ export default function LoanInspection({ prefilledContract, onOpenCustomerQuickV
               {paginated.length > 0 ? (
                 paginated.map((item) => (
                   <tr key={item.maBBKT}>
-                    <td className="fw-bold font-monospace text-primary">{item.maBBKT}</td>
-                    <td className="font-monospace fw-semibold text-dark">{item.soHDTD}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 fw-bold font-monospace text-primary text-decoration-none"
+                        onClick={() => setSelectedInspection(item)}
+                        title="Xem chi tiết biên bản kiểm tra sử dụng vốn"
+                      >
+                        {item.maBBKT}
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 font-monospace fw-semibold text-dark text-decoration-none"
+                        onClick={() => setSelectedInspection(item)}
+                        title="Xem chi tiết biên bản theo hợp đồng này"
+                      >
+                        {item.soHDTD}
+                      </button>
+                    </td>
                     <td>
                       <div
-                        className="customer-click-link"
-                        onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen })}
-                        title="Xem chi tiết khách hàng"
+                        className="customer-click-link fw-bold text-slate-900"
+                        onClick={() => setSelectedInspection(item)}
+                        title="Xem chi tiết biên bản kiểm tra của khách hàng này"
                       >
                         {item.hoTen || item.maKH}
                       </div>
-                      <span className="small text-muted font-monospace">{item.maKH}</span>
+                      <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                        <span className="small text-muted font-monospace">{item.maKH}</span>
+                        <button
+                          type="button"
+                          className="badge bg-light text-primary border border-primary-subtle py-0.5 px-1.5 small text-decoration-none"
+                          style={{ fontSize: '0.68rem', cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onOpenCustomerQuickView) onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen, diaChi: item.diaDiemKT });
+                          }}
+                          title="Tra cứu nhanh hồ sơ thành viên 360°"
+                        >
+                          Hội viên 360°
+                        </button>
+                      </div>
                     </td>
                     <td>
                       <span className="badge bg-primary-subtle text-primary me-1">{item.loaiDoanKT || 'CBTD'}</span>

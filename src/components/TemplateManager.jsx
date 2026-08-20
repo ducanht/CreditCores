@@ -15,7 +15,8 @@ import {
   Eye,
   RefreshCw,
   Layers,
-  Code
+  Code,
+  Download
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatCurrencyVN, getTodayISO } from '../utils/dateUtils';
@@ -185,7 +186,7 @@ export default function TemplateManager() {
     HoTen: 'NGUYỄN VĂN AN',
     MaKH: 'KH008892',
     SoCCCD: '038088001234',
-    DiaChi: 'Thôn 3, Xã Yên Thọ, Huyện Yên Định, Tỉnh Thanh Hóa',
+    DiaChi: 'Thôn Tân Lộc, xã Quý Lộc, huyện Yên Định, tỉnh Thanh Hoá',
     SoHDTD: 'HD-2025-081',
     TienVay: '300.000.000 đ',
     DuNo: '285.000.000 đ',
@@ -193,7 +194,7 @@ export default function TemplateManager() {
     SoTKCASA: '3500205123456',
     NgayKiemTra: '19/08/2026',
     ThanhPhanDoan: 'Lê Văn Tín (CBTD) & Ban Kiểm Soát',
-    DiaDiemKT: 'Trang trại chăn nuôi bò sữa xã Yên Thọ',
+    DiaDiemKT: 'Trang trại chăn nuôi xã Quý Lộc',
     MucDichVay: 'Đầu tư mở rộng chuồng trại chăn nuôi',
     KetLuanKT: 'Sử dụng vốn đúng mục đích 100%, kinh doanh hiệu quả',
     NgayKTNext: '19/11/2026'
@@ -296,6 +297,102 @@ export default function TemplateManager() {
   const handleCopyTag = (tag) => {
     navigator.clipboard.writeText(tag);
     alert(`Đã sao chép thẻ biến: ${tag}`);
+  };
+
+  const handleExportMergedDocx = () => {
+    if (!selectedTemplate) return;
+
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>${selectedTemplate.tenBM} - ${sampleData.HoTen}</title>
+        <style>
+          @page WordSection1 {
+            size: 595.3pt 841.9pt;
+            margin: 42.5pt 42.5pt 42.5pt 42.5pt;
+          }
+          div.WordSection1 { page: WordSection1; font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.35; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 8px; font-family: 'Times New Roman', serif; font-size: 12pt; }
+          th, td { border: 1px solid #333; padding: 6px 8px; vertical-align: top; }
+          .header-table { border: none; margin-bottom: 15px; }
+          .header-table td { border: none; padding: 2px; }
+          .text-center { text-align: center; }
+          .bold { font-weight: bold; }
+          .title { font-size: 16pt; font-weight: bold; text-align: center; margin-top: 10px; margin-bottom: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="WordSection1">
+          <table class="header-table">
+            <tr>
+              <td style="width: 45%; text-align: center;">
+                <span class="bold">QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ</span><br/>
+                <span>Thôn Tân Lộc, xã Quý Lộc, tỉnh Thanh Hoá</span><br/>
+                <span>Mã BM: ${selectedTemplate.maBM}</span>
+              </td>
+              <td style="width: 55%; text-align: center;">
+                <span class="bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</span><br/>
+                <span class="bold">Độc lập - Tự do - Hạnh phúc</span><br/>
+                <span>-------------------</span><br/>
+                <i>Quý Lộc, ngày ${sampleData.NgayKiemTra || new Date().toLocaleDateString('vi-VN')}</i>
+              </td>
+            </tr>
+          </table>
+
+          <div class="title">${selectedTemplate.tenBM.toUpperCase()}</div>
+          <div class="text-center" style="margin-bottom: 15px; font-style: italic;">(${selectedTemplate.moTa || 'Văn bản trộn dữ liệu tự động từ hệ thống CreditCores'})</div>
+
+          <table>
+            <thead>
+              <tr style="background-color: #f1f5f9;">
+                <th style="width: 40%;">Trường Dữ Liệu</th>
+                <th style="width: 60%;">Nội Dung Trộn Áp Dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(selectedTemplate.truongTron || []).map(tag => {
+                const cleanKey = tag.replace(/[{}]/g, '');
+                const val = sampleData[cleanKey] || `[${cleanKey} của khách hàng]`;
+                return `
+                  <tr>
+                    <td class="bold">${cleanKey} (${tag})</td>
+                    <td>${val}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+
+          <table class="header-table" style="margin-top: 40px;">
+            <tr>
+              <td style="width: 50%; text-align: center;">
+                <span class="bold">KHÁCH HÀNG / THÀNH VIÊN</span><br/>
+                <i>(Ký, ghi rõ họ tên)</i><br/><br/><br/><br/>
+                <span class="bold">${sampleData.HoTen}</span>
+              </td>
+              <td style="width: 50%; text-align: center;">
+                <span class="bold">ĐẠI DIỆN QTDND YÊN THỌ</span><br/>
+                <i>(Ký, đóng dấu)</i><br/><br/><br/><br/>
+                <span class="bold">${sampleData.ThanhPhanDoan ? sampleData.ThanhPhanDoan.split('(')[0].trim() : 'Giám Đốc Quỹ'}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff', htmlContent], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = `${selectedTemplate.maBM}_${sampleData.HoTen.replace(/\s+/g, '_')}.doc`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
   };
 
   // Lọc và phân trang
@@ -435,8 +532,7 @@ export default function TemplateManager() {
                     <td>
                       <a
                         href={tpl.linkNguon}
-                        target="_blank"
-                        rel="noreferrer"
+                        target="_blank" rel="noopener noreferrer"
                         className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 py-1 px-2 text-truncate"
                         style={{ maxWidth: 180, fontSize: '0.75rem' }}
                         title={tpl.linkNguon}
@@ -749,25 +845,33 @@ export default function TemplateManager() {
                 </div>
               </div>
 
-              <div className="modal-footer border-0 pt-0 d-flex justify-content-between">
+              <div className="modal-footer border-0 pt-0 d-flex justify-content-between flex-wrap gap-2">
                 <a
                   href={selectedTemplate.linkNguon}
-                  target="_blank"
-                  rel="noreferrer"
+                  target="_blank" rel="noopener noreferrer"
                   className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
                 >
                   <ExternalLink size={14} /> Mở Tệp Google Docs Mẫu
                 </a>
                 <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-light btn-sm" onClick={() => setShowMergeModal(false)}>
-                    Đóng
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1"
+                    onClick={handleExportMergedDocx}
+                    title="Tải về file Microsoft Word (.doc) sau khi trộn"
+                  >
+                    <Download size={14} /> Xuất File Word (.doc)
                   </button>
                   <button
                     type="button"
-                    className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1"
+                    className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 text-white"
                     onClick={() => window.print()}
+                    title="In trực tiếp hoặc Lưu dưới dạng PDF"
                   >
-                    <Printer size={14} /> Xuất In / Lưu PDF
+                    <Printer size={14} /> In / Lưu PDF
+                  </button>
+                  <button type="button" className="btn btn-light btn-sm" onClick={() => setShowMergeModal(false)}>
+                    Đóng
                   </button>
                 </div>
               </div>

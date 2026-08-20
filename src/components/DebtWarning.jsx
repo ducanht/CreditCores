@@ -128,16 +128,17 @@ export default function DebtWarning({ onOpenCustomerQuickView }) {
                   <tr key={idx}>
                     <td>
                       <div
-                        className="customer-click-link"
+                        className="customer-click-link fw-bold text-dark"
                         onClick={() => {
                           if (onOpenCustomerQuickView) {
-                            onOpenCustomerQuickView({ maKH: w.maKH, hoTen: w.maKH });
+                            onOpenCustomerQuickView({ maKH: w.maKH, hoTen: w.hoTen });
                           }
                         }}
-                        title="Xem chi tiết khách hàng"
+                        title="Xem chi tiết hồ sơ hội viên 360°"
                       >
-                        {w.maKH}
+                        {w.hoTen || w.maKH}
                       </div>
+                      <span className="small text-muted font-monospace">{w.maKH}</span>
                     </td>
                     <td className="fw-semibold text-dark font-monospace">{w.soHDTD}</td>
                     <td className="text-end num-tabular">{formatCurrencyVN(w.gocTon)}</td>

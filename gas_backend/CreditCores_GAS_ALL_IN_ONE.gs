@@ -641,13 +641,20 @@ var RoleController = {
     return { status: "success", data: users };
   },
 
+  sanitizeFormula: function(val) {
+    if (typeof val === 'string' && /^[=+\-@]/.test(val)) {
+      return "'" + val;
+    }
+    return val;
+  },
+
   handleSaveUser: function(ss, data) {
     var username = (data.username || "").toLowerCase().trim();
-    var fullName = data.fullName || "";
-    var role = data.role || "CBTD";
-    var customPermissions = JSON.stringify(data.customPermissions || []);
-    var status = data.status || "ACTIVE";
-    var passwordHash = data.passwordHash || "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
+    var fullName = RoleController.sanitizeFormula(data.fullName || "");
+    var role = RoleController.sanitizeFormula(data.role || "CBTD");
+    var customPermissions = RoleController.sanitizeFormula(JSON.stringify(data.customPermissions || []));
+    var status = RoleController.sanitizeFormula(data.status || "ACTIVE");
+    var passwordHash = RoleController.sanitizeFormula(data.passwordHash || "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92");
 
     var sheet = ss.getSheetByName("USERS");
     if (!sheet) {
@@ -670,7 +677,7 @@ var RoleController = {
       sheet.getRange(foundIndex, 5).setValue(customPermissions);
       sheet.getRange(foundIndex, 6).setValue(status);
       if (data.passwordHash) {
-        sheet.getRange(foundIndex, 2).setValue(data.passwordHash);
+        sheet.getRange(foundIndex, 2).setValue(RoleController.sanitizeFormula(data.passwordHash));
       }
       CacheHelper.invalidateModuleCache('auth');
       return { status: "success", message: "Đã cập nhật thông tin người dùng " + username + " thành công!" };

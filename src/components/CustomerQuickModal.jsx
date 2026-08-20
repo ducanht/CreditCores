@@ -62,8 +62,8 @@ export default function CustomerQuickModal({
                 </div>
                 <div className="text-muted small mt-1 d-flex align-items-center gap-3 flex-wrap">
                   <span><Phone size={13} className="me-1" />{customer.dienThoaiDD || customer.dienThoai || '---'}</span>
-                  <span><CreditCard size={13} className="me-1" />CCCD: {customer.cccd || '---'}</span>
-                  <span><MapPin size={13} className="me-1" />{customer.diaChi || customer.khuVuc || '---'}</span>
+                  <span><CreditCard size={13} className="me-1" />CCCD: {customer.cccd || customer.gttt || customer.soCCCD || '---'}</span>
+                  <span><MapPin size={13} className="me-1" />{customer.diaChi || customer.khuVuc || customer.diaChiTSBD || '---'}</span>
                 </div>
               </div>
             </div>

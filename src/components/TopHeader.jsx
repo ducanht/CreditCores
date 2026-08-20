@@ -58,7 +58,7 @@ export default function TopHeader({
             {activeTabTitle}
           </h2>
           <span className="small d-none d-sm-inline" style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 600 }}>
-            Quỹ Tín Dụng Nhân Dân Yên Thọ (Thành lập 01/12/2003)
+            Thôn Tân Lộc, xã Quý Lộc, tỉnh Thanh Hoá &mdash; SL: 01/12/2003
           </span>
         </div>
       </div>

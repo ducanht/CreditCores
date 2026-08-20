@@ -85,47 +85,43 @@ export default function AppraisalOpinionModal({ appraisal, onClose, onSubmit, cu
         <div className="modal-content card-modern p-3 p-md-4">
           {/* Header */}
           <div className="modal-header border-0 pb-1 d-flex justify-content-between align-items-center">
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-1">
+            <div className="flex-grow-1 me-2">
+              <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
                 <span className="badge bg-primary-subtle text-primary font-monospace">
                   {appraisal.maBCTD}
                 </span>
-                <span className="badge bg-light text-muted border small">
-                  KH: <strong>{appraisal.hoTen}</strong> ({appraisal.maKH})
+                <span className="badge bg-light text-muted border small d-none d-sm-inline">
+                  KH: <strong>{appraisal.hoTen}</strong>
                 </span>
                 <span className={`badge ${isHDQT ? 'bg-danger text-white' : isBKS ? 'bg-warning text-dark' : 'bg-info text-white'}`}>
-                  {isHDQT ? 'Phê Duyệt HĐQT' : isBKS ? 'Thẩm Tra BKS' : 'Ý Kiến Trưởng Phòng'}
+                  {isHDQT ? 'Phê duyệt HĐQT' : isBKS ? 'Thẩm tra BKS' : 'Ý kiến Trưởng Phòng'}
                 </span>
               </div>
               <h5 className="modal-title fw-bold text-slate-900 font-heading m-0">
-                {isHDQT
-                  ? 'Phê Duyệt Tín Dụng & Chỉ Đạo Của HĐQT / Ban Giám Đốc'
-                  : isBKS
-                  ? 'Ý Kiến Thẩm Tra & Đánh Giá Rủi Ro Của Ban Kiểm Soát'
-                  : 'Ghi Nhận Ý Kiến Đánh Giá Hồ Sơ Thẩm Định'}
+                {isHDQT ? 'Phê Duyệt Tín Dụng — HĐQT' : isBKS ? 'Ý Kiến Thẩm Tra — BKS' : 'Ghi Nhận Ý Kiến Phê Duyệt'}
               </h5>
             </div>
             <button type="button" className="btn-close" onClick={onClose} />
           </div>
 
           {/* Loan Summary Badge */}
-          <div className="p-2.5 bg-slate-50 rounded-3 border my-2">
+          <div className="p-2 bg-slate-50 rounded-3 border my-2">
             <div className="row g-2 text-center small">
-              <div className="col-3">
-                <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Đề xuất duyệt vay:</span>
+              <div className="col-6 col-md-3">
+                <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Duyệt vay:</span>
                 <strong className="text-danger num-tabular">{formatCurrencyVN(duyetVay)}</strong>
               </div>
-              <div className="col-3">
-                <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Thời hạn & Lãi suất:</span>
-                <strong>{thoiHan} tháng • {laiSuat}%</strong>
+              <div className="col-6 col-md-3">
+                <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Thời hạn / Lãi suất:</span>
+                <strong>{thoiHan} th&aacute;ng &bull; {laiSuat}%</strong>
               </div>
-              <div className="col-3">
-                <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Tỷ lệ LTV / DTI:</span>
-                <strong className="text-primary">{tyLeLTV}% • {tyLeDSR}%</strong>
+              <div className="col-6 col-md-3">
+                <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>LTV / DTI:</span>
+                <strong className="text-primary">{tyLeLTV}% &bull; {tyLeDSR}%</strong>
               </div>
-              <div className="col-3">
+              <div className="col-6 col-md-3">
                 <span className="text-muted d-block" style={{ fontSize: '0.7rem' }}>Thu nhập ròng:</span>
-                <strong className="text-success num-tabular">{formatCurrencyVN(thuNhapRong)}/tháng</strong>
+                <strong className="text-success num-tabular">{formatCurrencyVN(thuNhapRong)}/th&aacute;ng</strong>
               </div>
             </div>
           </div>

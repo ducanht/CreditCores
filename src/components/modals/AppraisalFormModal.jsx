@@ -349,93 +349,58 @@ export default function AppraisalFormModal({
         <div className="modal-content card-modern p-3 p-md-4">
           {/* Header */}
           <div className="modal-header border-0 pb-2">
-            <div>
+            <div className="flex-grow-1 me-2">
               <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                <span className="badge bg-primary-subtle text-primary font-monospace fs-6 px-2.5 py-1 rounded-pill">
+                <span className="badge bg-primary-subtle text-primary font-monospace px-2 py-1 rounded-pill">
                   {formData.maBCTD || 'MỚI'}
                 </span>
-                <span className="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill small fw-semibold">
-                  Đồng Bộ Dữ Liệu Pháp Lý Từ KH_CORE
+                <span className="badge bg-success-subtle text-success px-2 py-1 rounded-pill small fw-semibold d-none d-sm-inline">
+                  Đồng bộ từ KH_CORE
                 </span>
                 <span className="badge bg-light text-muted border small">
-                  Người lập: <strong>{currentUser?.fullName || formData.canBoThamDinh}</strong>
+                  CB: <strong>{currentUser?.fullName || formData.canBoThamDinh}</strong>
                 </span>
               </div>
-              <h4 className="fw-extrabold text-slate-900 font-heading m-0">
-                Lập Báo Cáo Thẩm Định & Đề Xuất Cấp Tín Dụng
-              </h4>
+              <h5 className="fw-extrabold text-slate-900 font-heading m-0">
+                Lập Báo Cáo Thẩm Định Tín Dụng
+              </h5>
             </div>
             <button type="button" className="btn-close" onClick={onClose} />
           </div>
 
           {/* 5 Tabs Navigation */}
           <div className="border-bottom mt-2 mb-3">
-            <ul className="nav nav-tabs nav-fill border-0 gap-1 flex-nowrap overflow-auto" role="tablist">
-              <li className="nav-item">
+            <div
+              className="d-flex gap-1 overflow-x-auto pb-1"
+              style={{ scrollbarWidth: 'thin' }}
+              role="tablist"
+              aria-label="Các bước thẩm định"
+            >
+              {[
+                { id: 1, label: 'Pháp lý & Thu nhập', labelShort: '① Pháp lý' },
+                { id: 2, label: 'Tài sản bảo đảm',   labelShort: '② TSBĐ'   },
+                { id: 3, label: 'Thực địa & CIC',     labelShort: '③ Thực địa'},
+                { id: 4, label: 'Đề xuất & Phương án',labelShort: '④ Đề xuất' },
+                { id: 5, label: 'Kết luận & Trình duyệt', labelShort: '⑤ Kết luận'}
+              ].map(({ id, label, labelShort }) => (
                 <button
-                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
-                    activeTab === 1 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
-                  }`}
-                  onClick={() => handleTabChange(1)}
+                  key={id}
                   type="button"
-                >
-                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">1</span>
-                  Pháp Lý (Từ Core) & Thu Nhập
-                </button>
-              </li>
-
-              <li className="nav-item">
-                <button
-                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
-                    activeTab === 2 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
+                  role="tab"
+                  aria-selected={activeTab === id}
+                  className={`btn btn-sm fw-bold flex-shrink-0 rounded-top-3 border-0 ${
+                    activeTab === id
+                      ? 'btn-primary shadow-sm'
+                      : 'btn-light text-slate-600'
                   }`}
-                  onClick={() => handleTabChange(2)}
-                  type="button"
+                  style={{ whiteSpace: 'nowrap', paddingBlock: '0.45rem' }}
+                  onClick={() => handleTabChange(id)}
                 >
-                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">2</span>
-                  Tài Sản Bảo Đảm
+                  <span className="d-none d-md-inline">{label}</span>
+                  <span className="d-inline d-md-none">{labelShort}</span>
                 </button>
-              </li>
-
-              <li className="nav-item">
-                <button
-                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
-                    activeTab === 3 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
-                  }`}
-                  onClick={() => handleTabChange(3)}
-                  type="button"
-                >
-                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">3</span>
-                  Thực Địa & CIC
-                </button>
-              </li>
-
-              <li className="nav-item">
-                <button
-                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
-                    activeTab === 4 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
-                  }`}
-                  onClick={() => handleTabChange(4)}
-                  type="button"
-                >
-                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">4</span>
-                  Đề Xuất & Phương Án
-                </button>
-              </li>
-
-              <li className="nav-item">
-                <button
-                  className={`nav-link text-start py-2.5 px-3 rounded-top-3 fw-bold small ${
-                    activeTab === 5 ? 'active bg-primary text-white shadow-sm' : 'text-slate-600 hover-bg-light'
-                  }`}
-                  onClick={() => handleTabChange(5)}
-                  type="button"
-                >
-                  <span className="badge bg-white text-dark me-1.5 rounded-circle px-1.5 py-0.5">5</span>
-                  Kết Luận & Trình Duyệt
-                </button>
-              </li>
-            </ul>
+              ))}
+            </div>
           </div>
 
           {formError && (
@@ -456,7 +421,7 @@ export default function AppraisalFormModal({
                 <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle shadow-2xs">
                   <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                     <label className="form-label small fw-extrabold text-primary m-0 d-flex align-items-center gap-1.5">
-                      <Search size={16} /> BẮT BUỘC CHỌN THÀNH VIÊN TỪ CƠ SỞ DỮ LIỆU KH_CORE (*)
+                      <Search size={15} /> Chọn thành viên từ KH_CORE (bắt buộc *)
                     </label>
                     <span className="badge bg-white text-primary border border-primary-subtle small fw-bold">
                       {formData.maKH ? `Đã liên kết: ${formData.maKH} - ${formData.hoTen}` : 'Chưa chọn khách hàng'}
@@ -1053,7 +1018,7 @@ export default function AppraisalFormModal({
                           className="form-control"
                           value={formData.diaChiTSBD}
                           onChange={(e) => setFormData({ ...formData, diaChiTSBD: e.target.value })}
-                          placeholder="Thôn Yên Lãng, Xã Yên Thọ, Huyện Ý Yên, Nam Định"
+                          placeholder="Thôn Tân Lộc, xã Quý Lộc, huyện Yên Định, tỉnh Thanh Hoá"
                         />
                       </div>
 

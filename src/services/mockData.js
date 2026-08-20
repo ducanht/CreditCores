@@ -542,14 +542,14 @@ export const initialMockData = {
   ],
 
   debitRegistrations: [
-    { maKH: 'KH008892', hoTen: 'NGUYỄN VĂN AN', gttt: '038086012345', diaChi: 'Thôn 3, Yên Thọ', soTK: '3500205123456', kyTrich: 1, trangThai: 'Hieu luc', ghiChu: 'Ủy quyền trích nợ tự động' },
+    { maKH: 'KH008892', hoTen: 'NGUYỄN VĂN AN', gttt: '038086012345', diaChi: 'Thôn Tân Lộc, Quý Lộc', soTK: '3500205123456', kyTrich: 1, trangThai: 'Hieu luc', ghiChu: 'Ủy quyền trích nợ tự động' },
     { maKH: 'KH009102', hoTen: 'LÊ THỊ MAI', gttt: '038190098765', diaChi: 'Thôn 1, Yên Trường', soTK: '3500205987654', kyTrich: 2, trangThai: 'Hieu luc', ghiChu: 'Ủy quyền trích nợ tự động' },
     { maKH: 'KH007415', hoTen: 'TRẦN VĂN QUÂN', gttt: '038079001122', diaChi: 'Thôn 5, Yên Bái', soTK: '3500205556677', kyTrich: 3, trangThai: 'Hieu luc', ghiChu: 'Ủy quyền trích nợ tự động' }
   ],
 
   debtWarnings: [
-    { maKH: 'KH008892', soHDTD: 'KU-2025-0982', gocTon: 0, laiTon: 6500000, tongNoTon: 6500000, kyPhatSinh: 'DOT-202608-K1', trangThai: 'CHUA_THU', ngayCapNhat: '06/08/2026 09:00:00' },
-    { maKH: 'KH009102', soHDTD: 'KU-2026-0312', gocTon: 0, laiTon: 6000000, tongNoTon: 6000000, kyPhatSinh: 'DOT-202608-K2', trangThai: 'CHUA_THU', ngayCapNhat: '16/08/2026 09:00:00' }
+    { maKH: 'KH008892', hoTen: 'NGUYỄN VĂN AN', soHDTD: 'KU-2025-0982', gocTon: 0, laiTon: 6500000, tongNoTon: 6500000, kyPhatSinh: 'DOT-202608-K1', trangThai: 'CHUA_THU', ngayCapNhat: '06/08/2026 09:00:00' },
+    { maKH: 'KH009102', hoTen: 'LÊ THỊ MAI', soHDTD: 'KU-2026-0312', gocTon: 0, laiTon: 6000000, tongNoTon: 6000000, kyPhatSinh: 'DOT-202608-K2', trangThai: 'CHUA_THU', ngayCapNhat: '16/08/2026 09:00:00' }
   ],
 
   reportsData: {

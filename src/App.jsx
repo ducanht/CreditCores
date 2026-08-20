@@ -156,8 +156,24 @@ export default function App() {
     setActiveTab('debit_register');
   };
 
-  const handleOpenCustomerQuickView = (customer) => {
+  const handleOpenCustomerQuickView = async (customer) => {
+    if (!customer) return;
     setQuickViewCustomer(customer);
+
+    // Tự động truy vấn CSDL KH_CORE để lấy đầy đủ CCCD, SĐT, Địa chỉ, Danh sách hợp đồng vay nếu dữ liệu chưa đầy đủ
+    if (customer.maKH && (!customer.contracts || !customer.cccd || !customer.dienThoaiDD)) {
+      try {
+        const res = await api.searchCustomer360(customer.maKH);
+        if (res.status === 'success' && Array.isArray(res.data)) {
+          const fullCust = res.data.find(c => c.maKH === customer.maKH) || res.data[0];
+          if (fullCust) {
+            setQuickViewCustomer(prev => ({ ...prev, ...fullCust }));
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi nạp chi tiết khách hàng 360:', err);
+      }
+    }
   };
 
   // IF NOT AUTHENTICATED -> SHOW LOGIN SCREEN

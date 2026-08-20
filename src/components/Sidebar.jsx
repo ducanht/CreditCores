@@ -98,8 +98,8 @@ export default function Sidebar({
                 <h1 className="m-0 fs-6 fw-extrabold text-white lh-1 font-heading text-truncate">
                   QTDND YÊN THỌ
                 </h1>
-                <span style={{ fontSize: '0.65rem', color: '#a3e635', fontWeight: 600 }}>
-                  CreditCores
+                <span style={{ fontSize: '0.62rem', color: '#a3e635', fontWeight: 600 }} className="d-block text-truncate">
+                  Thôn Tân Lộc, xã Quý Lộc, Thanh Hoá
                 </span>
               </div>
             )}

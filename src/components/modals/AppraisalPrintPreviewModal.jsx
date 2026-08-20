@@ -84,14 +84,14 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
             <tr>
               <td style="width: 45%; text-align: center;">
                 <span class="bold">QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ</span><br/>
-                <span>Huyện Ý Yên, Tỉnh Nam Định</span><br/>
+                <span>Thôn Tân Lộc, xã Quý Lộc, tỉnh Thanh Hoá</span><br/>
                 <span>Số: ${appraisal.maBCTD}/BCTD</span>
               </td>
               <td style="width: 55%; text-align: center;">
                 <span class="bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</span><br/>
                 <span class="bold">Độc lập - Tự do - Hạnh phúc</span><br/>
                 <span>-------------------</span><br/>
-                <i>Yên Thọ, ngày ${formatDateVN(appraisal.ngayLap || new Date())}</i>
+                <i>Quý Lộc, ngày ${formatDateVN(appraisal.ngayLap || new Date())}</i>
               </td>
             </tr>
           </table>
@@ -366,7 +366,7 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
                   <div className="fw-bold text-uppercase" style={{ fontSize: '13px' }}>
                     QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ
                   </div>
-                  <div style={{ fontSize: '12px' }}>Huyện Ý Yên, Tỉnh Nam Định</div>
+                  <div style={{ fontSize: '12px' }}>Thôn Tân Lộc, xã Quý Lộc, tỉnh Thanh Hoá</div>
                   <div className="fw-bold mt-1 text-primary font-monospace" style={{ fontSize: '12px' }}>
                     Số: {appraisal.maBCTD}/BCTD
                   </div>
@@ -383,7 +383,7 @@ export default function AppraisalPrintPreviewModal({ appraisal, onClose }) {
                     -------------------
                   </div>
                   <div className="fst-italic mt-1" style={{ fontSize: '12px' }}>
-                    Yên Thọ, ngày {formatDateVN(appraisal.ngayLap || new Date())}
+                    Quý Lộc, ngày {formatDateVN(appraisal.ngayLap || new Date())}
                   </div>
                 </div>
               </div>

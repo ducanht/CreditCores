@@ -70,9 +70,9 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
         <div className="modal-content card-modern p-3 p-md-4">
           {/* Header */}
           <div className="modal-header border-0 pb-2">
-            <div>
+            <div className="flex-grow-1 me-2">
               <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                <span className="badge bg-primary-subtle text-primary font-monospace fs-6 px-2.5 py-1 rounded-pill">
+                <span className="badge bg-primary-subtle text-primary font-monospace px-2 py-1 rounded-pill">
                   {appraisal.maBCTD}
                 </span>
                 <span
@@ -86,19 +86,14 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
                 >
                   {appraisal.ketLuan}
                 </span>
-                <span className="badge bg-light text-muted border small">
-                  Ngày lập: {formatDateVN(appraisal.ngayLap || new Date())}
-                </span>
-                <span className="badge bg-secondary-subtle text-secondary small">
-                  Rủi ro: {appraisal.mucDoRuiRo || 'Thấp'}
-                </span>
-                <span className="badge bg-info-subtle text-info small">
-                  CBTD Lập: <strong>{appraisal.canBoThamDinh || 'Lê Văn Tín (CBTD)'}</strong>
+                <span className="badge bg-secondary-subtle text-secondary small">Rủi ro: {appraisal.mucDoRuiRo || 'Thấp'}</span>
+                <span className="badge bg-info-subtle text-info small d-none d-sm-inline">
+                  CBTD: <strong>{appraisal.canBoThamDinh || 'Lê Văn Tín'}</strong>
                 </span>
               </div>
-              <h4 className="fw-extrabold text-slate-900 font-heading m-0">
-                Chi Tiết Báo Cáo Thẩm Định Tín Dụng & Theo Dõi Phê Duyệt Đa Cấp
-              </h4>
+              <h5 className="fw-extrabold text-slate-900 font-heading m-0">
+                Chi Tiết Báo Cáo Thẩm Định Tín Dụng
+              </h5>
             </div>
             <button type="button" className="btn-close" onClick={onClose} />
           </div>
@@ -110,7 +105,7 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
             <div className="p-3 bg-light rounded-3 border mb-3">
               <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <h6 className="fw-bold text-slate-800 m-0 d-flex align-items-center gap-1.5">
-                  <Award size={18} className="text-primary" /> Tiến Trình Thẩm Định & Phê Duyệt Đa Cấp (CBTD → Trưởng Phòng → BKS → HĐQT)
+                  <Award size={17} className="text-primary" /> Tiến Trình Phê Duyệt Đa Cấp
                 </h6>
                 <span className="badge bg-white text-muted border small">
                   Tổng số ý kiến ghi nhận: <strong>{opinions.length}</strong>
