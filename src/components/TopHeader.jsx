@@ -1,33 +1,22 @@
 import React from 'react';
 import {
   RefreshCw,
-  Database,
-  Shield,
   Menu,
   Sun,
-  Moon
+  Moon,
+  CheckCircle2
 } from 'lucide-react';
-import { getGasApiUrl } from '../services/api';
-import { ROLE_LABELS } from '../services/auth';
 
 export default function TopHeader({
-  activeTabTitle,
   syncStatus,
   isSyncing,
   onTriggerSync,
-  currentUser,
   onToggleSidebar,
   isDarkMode,
   onToggleTheme
 }) {
-  const isLiveMode = Boolean(getGasApiUrl());
-  const roleInfo = ROLE_LABELS[currentUser?.role] || {
-    label: currentUser?.role || 'Cán Bộ',
-    badgeClass: 'badge-brand-soft'
-  };
-
   const isDaemonSuccess = syncStatus?.status === 'SUCCESS';
-  const isDaemonProcessing = syncStatus?.status === 'PROCESSING' || syncStatus?.status === 'PENDING';
+  const isDaemonProcessing = syncStatus?.status === 'PROCESSING' || syncStatus?.status === 'PENDING' || isSyncing;
 
   return (
     <header
@@ -39,79 +28,67 @@ export default function TopHeader({
         padding: '0 20px',
         position: 'sticky',
         top: 0,
-        zIndex: 1020
+        zIndex: 1020,
+        height: '56px'
       }}
     >
-      <div className="d-flex align-items-center gap-3">
-        {/* Menu Toggle Button */}
+      {/* Left: Mobile & Desktop Menu Toggle */}
+      <div className="d-flex align-items-center gap-2">
         <button
-          className="btn btn-sm btn-light p-2 rounded-3 border d-flex align-items-center justify-content-center"
+          type="button"
+          className="btn btn-sm btn-light p-2 rounded-2 border d-flex align-items-center justify-content-center"
           onClick={onToggleSidebar}
           aria-label="Toggle Menu"
           title="Đóng / Mở Menu Điều Hướng"
         >
-          <Menu size={18} />
+          <Menu size={17} />
         </button>
-
-        <div>
-          <h2 className="fs-6 fw-semibold m-0 text-slate-900 font-heading text-truncate">
-            {activeTabTitle}
-          </h2>
-        </div>
       </div>
 
-      <div className="d-flex align-items-center gap-2 gap-md-3">
+      {/* Right: Minimal Essential Controls */}
+      <div className="d-flex align-items-center gap-2">
         {/* Dark / Light Mode Switcher */}
         <button
-          className="btn btn-sm p-2 rounded-3 d-flex align-items-center justify-content-center"
+          type="button"
+          className="btn btn-sm p-2 rounded-2 d-flex align-items-center justify-content-center"
           style={{
             background: isDarkMode ? '#1e293b' : '#f4fce8',
-            border: '1.5px solid var(--border-subtle)',
+            border: '1px solid var(--border-subtle)',
             color: isDarkMode ? '#fde047' : '#3b6600',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            height: '34px',
+            width: '34px'
           }}
           onClick={onToggleTheme}
           title={isDarkMode ? 'Chuyển sang Chế độ Sáng' : 'Chuyển sang Chế độ Tối'}
         >
-          {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
+          {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
-        {/* User Role Tag */}
-        <div className={`badge-status ${roleInfo.badgeClass} d-none d-md-inline-flex`} title="Vai trò người dùng hiện tại">
-          <Shield size={13} />
-          <span>{currentUser?.fullName || currentUser?.username} ({roleInfo.label})</span>
-        </div>
-
-        {/* Mode Indicator */}
-        <div
-          className={`badge-status ${isLiveMode ? 'badge-success-soft' : 'badge-brand-soft'} d-none d-sm-inline-flex`}
-          title={isLiveMode ? 'Kết nối Live GAS API' : 'Chế độ Demo Fallback'}
-        >
-          <Database size={13} />
-          <span>{isLiveMode ? 'Live GAS' : 'Demo Mode'}</span>
-        </div>
-
-        {/* Daemon Status Badge */}
-        <div
-          className={`badge-status ${
-            isDaemonSuccess ? 'badge-success-soft' : isDaemonProcessing ? 'badge-warning-soft' : 'badge-danger-soft'
-          }`}
-          title={`Trạng thái Daemon: ${syncStatus?.status || 'IDLE'}`}
-        >
-          <div className="pulse-online" />
-          <span className="d-none d-sm-inline">Core:</span>
-          <span>{syncStatus?.status || 'IDLE'}</span>
-        </div>
-
-        {/* Quick Sync Trigger */}
+        {/* Smart Integrated Sync Button (Icon quay khi đồng bộ, dừng khi xong) */}
         <button
-          className="btn btn-sm btn-brand d-flex align-items-center gap-1 fw-bold px-3 shadow-sm"
+          type="button"
+          className={`btn btn-sm ${
+            isDaemonProcessing
+              ? 'btn-warning text-dark'
+              : isDaemonSuccess
+              ? 'btn-brand text-white'
+              : 'btn-brand text-white'
+          } d-flex align-items-center gap-1.5 fw-medium px-3 shadow-sm`}
+          style={{ height: '34px', borderRadius: '8px', fontSize: '0.80rem' }}
           onClick={onTriggerSync}
-          disabled={isSyncing}
-          title="Đồng bộ dữ liệu SQL Server Core"
+          disabled={isDaemonProcessing}
+          title={
+            isDaemonProcessing
+              ? 'Đang thực hiện đồng bộ dữ liệu SQL Server Core...'
+              : `Đồng bộ dữ liệu CoreBanking (Trạng thái: ${syncStatus?.status || 'Sẵn sàng'})`
+          }
         >
-          <RefreshCw size={13} className={isSyncing ? 'fa-spin' : ''} />
-          <span className="d-none d-sm-inline">{isSyncing ? 'Đang gửi...' : 'Đồng bộ'}</span>
+          <RefreshCw
+            size={13}
+            className={isDaemonProcessing ? 'fa-spin' : ''}
+          />
+          <span>{isDaemonProcessing ? 'Đang đồng bộ...' : 'Đồng bộ'}</span>
         </button>
       </div>
     </header>
