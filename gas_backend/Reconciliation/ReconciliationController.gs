@@ -1,5 +1,13 @@
 /**
- * CONTROLLER ĐỐI SOÁT KẾT QUẢ TRÍCH NỢ VÀ PHÂN LOẠI NỢ TỒN
+ * ========================================================================================
+ * CREDITCORES - RECONCILIATIONCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module ReconciliationController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var ReconciliationController = {

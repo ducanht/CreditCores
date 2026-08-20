@@ -1,5 +1,13 @@
 /**
- * CONTROLLER TRA CỨU KHÁCH HÀNG & HỢP ĐỒNG 360° & QUẢN LÝ DANH MỤC CBTD
+ * ========================================================================================
+ * CREDITCORES - CUSTOMER360CONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module Customer360Controller xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var Customer360Controller = {

@@ -1,5 +1,13 @@
 /**
- * CONTROLLER XÁC THỰC NGƯỜI DÙNG & QUẢN LÝ MẬT KHẨU
+ * ========================================================================================
+ * CREDITCORES - AUTHCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module AuthController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var AuthController = {

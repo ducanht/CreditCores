@@ -1,10 +1,12 @@
 /**
  * ========================================================================================
- * HỆ THỐNG QUẢN TRỊ CƠ SỞ DỮ LIỆU CHUẨN 12 BẢNG GOOGLE SHEETS (SCHEMA GOVERNANCE)
- * CreditCores - Quỹ Tín Dụng Nhân Dân Yên Thọ
- * - Tự động kiểm tra, khởi tạo và nâng cấp cột (Auto-Migration)
- * - Bảo toàn 100% dữ liệu cũ (Zero-data-loss header migration)
- * - Tự động định dạng kiểu dữ liệu: Tiền tệ #,##0, Ngày dd/MM/yyyy, Chuỗi Text @ cho CCCD/SoTK
+ * CREDITCORES - SCHEMASETUP
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module SchemaSetup xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
  * ========================================================================================
  */
 

@@ -1,5 +1,13 @@
 /**
- * CONTROLLER THẨM ĐỊNH TÍN DỤNG, THÔNG TIN CIC & Ý KIẾN PHÊ DUYỆT ĐA CẤP (5 NHÓM NGHIỆP VỤ)
+ * ========================================================================================
+ * CREDITCORES - APPRAISALCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module AppraisalController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var AppraisalController = {

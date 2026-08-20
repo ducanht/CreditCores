@@ -1,7 +1,12 @@
 /**
  * ========================================================================================
- * HỆ THỐNG QUẢN LÝ TÍN DỤNG & TRÍCH NỢ AUTOMATION (CREDITCORES)
- * SCRIPT TỰ ĐỘNG KHỞI TẠO & ĐỒNG BỘ 12 BẢNG CSDL GOOGLE SHEETS
+ * CREDITCORES - AUTOGENERATGOOGLESHEETS
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module AutoGeneratGoogleSheets xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
  * ========================================================================================
  */
 

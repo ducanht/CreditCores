@@ -1,10 +1,12 @@
 /**
  * ========================================================================================
- * MODULE QUẢN LÝ HỢP ĐỒNG & TÀI LIỆU LƯU TRỮ (MAIL MERGE ENGINE)
- * CreditCores - Quỹ Tín Dụng Nhân Dân Yên Thọ
- * - Tự động sao chép Google Doc từ Template
- * - Trộn dữ liệu (Mail Merge) bằng DocumentApp
- * - Lưu URL xem trước (Iframe) & PDF tải xuống
+ * CREDITCORES - DOCUMENTCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module DocumentController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
  * ========================================================================================
  */
 

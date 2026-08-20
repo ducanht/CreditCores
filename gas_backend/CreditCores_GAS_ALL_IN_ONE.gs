@@ -1,9 +1,14 @@
 /**
- * CREDITCORES - GOOGLE APPS SCRIPT COMPLETE BACKEND BUNDLE
- * Script ID: 1-S-5ukEamyQeA3c6x5UrZLnWySPgqLhg4nawy21-AHZ5vjYdz8n3Ky2W
- * Generated on: 2026-08-19T07:29:27.978Z
+ * ========================================================================================
+ * CREDITCORES - CREDITCORES_GAS_ALL_IN_ONE
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module CreditCores_GAS_ALL_IN_ONE xử lý nghiệp vụ liên quan
+ * @created     19/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
-
 
 // ==========================================
 // FILE: Utils/DateUtils.gs

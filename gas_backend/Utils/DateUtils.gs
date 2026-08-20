@@ -1,6 +1,13 @@
 /**
- * UTILITY XỬ LÝ NGÀY THÁNG VÀ TÍNH LÃI THEO NGÀY THỰC TẾ GOOGLE APPS SCRIPT
- * Chuẩn Thông tư 14/2017/TT-NHNN: "Tính ngày đầu, bỏ ngày cuối"
+ * ========================================================================================
+ * CREDITCORES - DATEUTILS
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module DateUtils xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 function formatGasDate(val) {

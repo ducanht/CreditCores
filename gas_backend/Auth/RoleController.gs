@@ -1,5 +1,13 @@
 /**
- * CONTROLLER PHÂN QUYỀN NHÓM & QUẢN TRỊ NGƯỜI DÙNG 360°
+ * ========================================================================================
+ * CREDITCORES - ROLECONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module RoleController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var RoleController = {

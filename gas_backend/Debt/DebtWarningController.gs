@@ -1,5 +1,13 @@
 /**
- * CONTROLLER SỔ THEO DÕI NỢ TỒN ĐỌNG & CẢNH BÁO THU NỢ
+ * ========================================================================================
+ * CREDITCORES - DEBTWARNINGCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module DebtWarningController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var DebtWarningController = {

@@ -1,6 +1,13 @@
 /**
- * CONTROLLER DASHBOARD QUẢN TRỊ TỔNG QUAN TÍN DỤNG & ĐIỀU HÀNH 360°
- * CreditCores - Quỹ Tín Dụng Nhân Dân Yên Thọ
+ * ========================================================================================
+ * CREDITCORES - DASHBOARDCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module DashboardController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var DashboardController = {

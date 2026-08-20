@@ -1,6 +1,13 @@
 /**
- * CONTROLLER QUẢN LÝ TÀI SẢN BẢO ĐẢM (TSBD_CORE) & TẠO BỘ HỢP ĐỒNG TÍN DỤNG
- * Quỹ Tín Dụng Nhân Dân Yên Thọ
+ * ========================================================================================
+ * CREDITCORES - COLLATERALCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module CollateralController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var CollateralController = {

@@ -1,5 +1,13 @@
 /**
- * CONTROLLER BÁO CÁO THỐNG KÊ & PHÂN TÍCH TÍN DỤNG ĐỘNG
+ * ========================================================================================
+ * CREDITCORES - REPORTCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module ReportController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var ReportController = {

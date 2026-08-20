@@ -1,5 +1,13 @@
 /**
- * CONTROLLER ĐỒNG BỘ DỮ LIỆU SQL SERVER CORE & GIÁM SÁT HÀNG ĐỢI
+ * ========================================================================================
+ * CREDITCORES - SYNCCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module SyncController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var SyncController = {

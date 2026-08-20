@@ -1,6 +1,13 @@
 /**
- * CONTROLLER BIÊN BẢN KIỂM TRA SỬ DỤNG VỐN SAU GIẢI NGÂN
- * Hỗ trợ phân loại đoàn kiểm tra (CBTD, BKS, HĐQT), ngày kiểm tra tiếp theo và link tải biên bản
+ * ========================================================================================
+ * CREDITCORES - INSPECTIONCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module InspectionController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var InspectionController = {

@@ -1,5 +1,13 @@
 /**
- * CONTROLLER QUẢN LÝ ĐĂNG KÝ TRÍCH NỢ & KHỞI TẠO ĐỢT TRÍCH NỢ
+ * ========================================================================================
+ * CREDITCORES - DEBITCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module DebitController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
  */
 
 var DebitController = {
