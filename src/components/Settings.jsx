@@ -39,6 +39,7 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
     appraisalFolderId: '1-Appraisal_TSBD_YenTho',
     inspectionFolderId: '1-Inspection_KTV_YenTho',
     documentsFolderId: '1-Docs_Customer_YenTho',
+    contractFolderId: '',
     autoCompress: true,
     maxImageDimension: 1280,
     compressionQuality: 0.75
@@ -277,6 +278,18 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
                 onChange={(e) => setDriveConfig({ ...driveConfig, documentsFolderId: e.target.value })}
                 placeholder="ID thư mục hồ sơ thành viên..."
                 title="Lưu ảnh chân dung, CCCD, đơn đề nghị vay"
+              />
+            </div>
+
+            <div className="col-12 col-md-6">
+              <label className="form-label small fw-medium text-dark">Thư Mục Lưu Hợp Đồng (Contract Folder ID)</label>
+              <input
+                type="text"
+                className="form-control form-control-sm font-monospace"
+                value={driveConfig.contractFolderId}
+                onChange={(e) => setDriveConfig({ ...driveConfig, contractFolderId: e.target.value })}
+                placeholder="ID thư mục lưu hợp đồng tín dụng..."
+                title="Nơi lưu trữ các tệp Google Docs và PDF trộn mailmerge"
               />
             </div>
 

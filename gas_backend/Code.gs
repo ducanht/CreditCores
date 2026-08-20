@@ -44,6 +44,19 @@ function doGet(e) {
       case "getReportsData":
         result = ReportController.handleGetReportsData(ss);
         break;
+      case "generateContract":
+        result = DocumentController.handleGenerateContract(ss, {
+          maKH: e.parameter.maKH,
+          hoTen: e.parameter.hoTen,
+          templateId: e.parameter.templateId,
+          tenBieuMau: e.parameter.tenBieuMau,
+          truongTronData: e.parameter.truongTronData ? JSON.parse(e.parameter.truongTronData) : {},
+          username: e.parameter.username
+        });
+        break;
+      case "getContracts":
+        result = DocumentController.handleGetContracts(ss, { maKH: e.parameter.maKH });
+        break;
       case "getSyncStatus":
         result = SyncController.handleGetSyncStatus(ss);
         break;
@@ -61,6 +74,12 @@ function doGet(e) {
         break;
       case "initDatabase":
         result = SchemaSetup.setupAllSheets(ss);
+        break;
+      case "getTemplates":
+        result = ConfigController.getTemplates();
+        break;
+      case "getDriveSettings":
+        result = ConfigController.getDriveSettings();
         break;
       default:
         result = { status: "error", message: "Hành động không hợp lệ: " + action };
@@ -154,6 +173,18 @@ function doPost(e) {
         break;
       case "initDatabase":
         result = SchemaSetup.setupAllSheets(ss);
+        break;
+      case "generateContract":
+        result = DocumentController.handleGenerateContract(ss, data);
+        break;
+      case "saveTemplate":
+        result = ConfigController.saveTemplate(data);
+        break;
+      case "deleteTemplate":
+        result = ConfigController.deleteTemplate(data);
+        break;
+      case "saveDriveSettings":
+        result = ConfigController.saveDriveSettings(data);
         break;
       default:
         result = { status: "error", message: "Hành động POST không hợp lệ: " + action };

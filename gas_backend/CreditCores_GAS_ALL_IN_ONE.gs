@@ -514,6 +514,17 @@ var AuthController = {
   },
 
   handleResetPassword: function(ss, data) {
+    // Security Phase 6 Remediation: Enforce Admin Role
+    if (!data.requesterUsername || !data.requesterPasswordHash) {
+      return { status: "error", message: "Yêu cầu thông tin xác thực quản trị viên." };
+    }
+    
+    // Verify requester is valid and is an ADMIN
+    var authResult = this.handleLogin(ss, { username: data.requesterUsername, passwordHash: data.requesterPasswordHash });
+    if (authResult.status !== "success" || authResult.user.role !== 'ADMIN') {
+      return { status: "error", message: "Quyền truy cập bị từ chối. Yêu cầu quyền Quản trị viên!" };
+    }
+
     var username = (data.username || "").toLowerCase().trim();
     var newHash = data.newPasswordHash;
 

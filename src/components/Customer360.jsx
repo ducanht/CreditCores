@@ -379,15 +379,15 @@ export default function Customer360({
                       <span className="badge bg-secondary small">{c.maKH}</span>
                     </div>
                     <div className="text-muted small mb-1">
-                      <i className="fa-regular fa-id-card me-1"></i> CCCD: {c.cccd}
+                      <CreditCard size={14} className="me-1 text-secondary" /> CCCD: {c.cccd}
                     </div>
                     <div className="text-muted small mb-2 text-truncate">
-                      <i className="fa-solid fa-location-dot me-1"></i> {c.diaChi}
+                      <MapPin size={14} className="me-1 text-secondary" /> {c.diaChi}
                     </div>
 
                     <div className="d-flex justify-content-between align-items-center pt-2 border-top border-slate-100 small">
                       <span className="text-primary fw-semibold" style={{ fontSize: '0.75rem' }}>
-                        <i className="fa-solid fa-user-tie me-1"></i> {c.tenCBTD || 'Lê Văn Tín (CBTD)'}
+                        <UserCheck size={14} className="me-1" /> {c.tenCBTD || 'Lê Văn Tín (CBTD)'}
                       </span>
                       <div className="d-flex gap-1">
                         {activeContractCount > 0 && (
@@ -432,7 +432,7 @@ export default function Customer360({
                         Mã KH: <strong>{selectedCustomer.maKH}</strong> | Khu vực: {selectedCustomer.khuVuc}
                       </span>
                       <span className="badge bg-info-soft text-dark small">
-                        <i className="fa-solid fa-user-tie me-1 text-primary"></i> CBTD: {selectedCustomer.tenCBTD || 'Lê Văn Tín (CBTD)'}
+                        <UserCheck size={14} className="me-1 text-primary" /> CBTD: {selectedCustomer.tenCBTD || 'Lê Văn Tín (CBTD)'}
                       </span>
                     </div>
                   </div>

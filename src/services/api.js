@@ -208,6 +208,24 @@ function handleMockFallback(action, data) {
     case 'getUserList':
       return { status: 'success', data: mockDb.users };
 
+    case 'generateContract':
+      return {
+        status: 'success',
+        message: 'MOCK: Đã khởi tạo hợp đồng giả lập.',
+        data: {
+          docId: 'MOCK_DOC_ID',
+          docUrl: 'https://docs.google.com/document/d/MOCK_DOC_ID/edit',
+          pdfUrl: 'https://docs.google.com/document/d/MOCK_DOC_ID/export?format=pdf',
+          fileName: (data?.maKH || 'KH00') + '_' + (data?.tenBieuMau || 'HopDong')
+        }
+      };
+
+    case 'getContracts':
+      return {
+        status: 'success',
+        data: []
+      };
+
     case 'getRolesAndPermissions':
       return { status: 'success', data: mockDb.roles };
 
@@ -665,6 +683,20 @@ export const api = {
   },
   resetPassword: (username, newPasswordHash) => {
     const payload = typeof username === 'object' ? username : { username, newPasswordHash };
+    // Security Phase 6 Remediation: Append requester credentials to authorize admin action
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const userStr = window.localStorage.getItem('cc_currentUser');
+        const user = userStr ? JSON.parse(userStr) : null;
+        if (user) {
+          payload.requesterUsername = user.username;
+          payload.requesterPasswordHash = user.passwordHash;
+          payload.requesterRole = user.role;
+        }
+      } catch (e) {
+        console.warn('Could not read currentUser for auth payload', e);
+      }
+    }
     return sendRequest('resetPassword', payload, 'POST');
   },
   getUserList: (forceFresh = false) => sendRequest('getUserList', null, 'GET', !forceFresh),
@@ -672,5 +704,7 @@ export const api = {
   getRolesAndPermissions: (forceFresh = false) => sendRequest('getRolesAndPermissions', null, 'GET', !forceFresh),
   saveRolePermissions: (data) => sendRequest('saveRolePermissions', data, 'POST'),
   getModuleRegistry: () => sendRequest('getModuleRegistry', null, 'GET', true),
+  generateContract: (data) => sendRequest('generateContract', data, 'POST'),
+  getContracts: (maKH = '') => sendRequest('getContracts', { maKH }, 'GET'),
   clearCache: clearApiCache
 };

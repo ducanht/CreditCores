@@ -43,19 +43,32 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resApp, resCust] = await Promise.all([
-        api.getAppraisals(),
-        api.searchCustomer360('')
-      ]);
+      let completedCount = 0;
+      const checkDone = () => {
+        completedCount++;
+        if (completedCount >= 2) setLoading(false);
+      };
 
-      if (resApp.status === 'success' && resApp.data) setAppraisals(resApp.data);
-      if (resCust.status === 'success' && resCust.data) {
-        const custList = Array.isArray(resCust.data) ? resCust.data : (resCust.data.customers || []);
-        setAllCustomers(custList);
-      }
+      api.getAppraisals().then(resApp => {
+        if (resApp.status === 'success' && resApp.data) setAppraisals(resApp.data);
+        checkDone();
+      }).catch(e => {
+        console.error('Lỗi nạp dữ liệu thẩm định:', e);
+        checkDone();
+      });
+
+      api.searchCustomer360('').then(resCust => {
+        if (resCust.status === 'success' && resCust.data) {
+          const custList = Array.isArray(resCust.data) ? resCust.data : (resCust.data.customers || []);
+          setAllCustomers(custList);
+        }
+        checkDone();
+      }).catch(e => {
+        console.error('Lỗi nạp KH:', e);
+        checkDone();
+      });
     } catch (e) {
-      console.error('Lỗi nạp dữ liệu thẩm định:', e);
-    } finally {
+      console.error('Lỗi khởi tạo thẩm định:', e);
       setLoading(false);
     }
   };

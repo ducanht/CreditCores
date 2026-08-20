@@ -164,6 +164,9 @@ export default function AppraisalFormModal({
         diaChiTSBD: cust.diaChi || prev.diaChiTSBD,
         chuSoHuuTSBD: cust.hoTen || prev.chuSoHuuTSBD,
         soTV: cust.soTV || cust.maThanhVien || '',
+        nganhNghe: cust.nganhNghe || prev.nganhNghe,
+        tinhTrangHonNhan: cust.tinhTrangHonNhan || prev.tinhTrangHonNhan,
+        nguoiDongVay: cust.nguoiDongVay || prev.nguoiDongVay,
         canBoThamDinh: currentUser?.fullName || prev.canBoThamDinh,
         canBoLapUsername: currentUser?.username || prev.canBoLapUsername
       }));

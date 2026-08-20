@@ -147,6 +147,12 @@ var SchemaSetup = {
         [5, "BM_HDTC_01", "Hợp Đồng Thế Chấp Quyền Sử Dụng Đất (Công Chứng)", "Thế Chấp", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-hdtc", "Hợp đồng thế chấp quyền sử dụng đất 3 bên phục vụ công chứng & ĐKGDBD", JSON.stringify(["{{ChuSoHuu}}", "{{CCCD_ChuTS}}", "{{SoGCN}}", "{{ThuaDatSo}}", "{{ToBanDoSo}}", "{{DiaChiThuaDat}}", "{{DienTich}}", "{{GiaTriDinhGiaQTD}}", "{{SoTienDamBaoToiDa}}"]), "Hoạt động", new Date()],
         [6, "BM_BBDG_01", "Biên Bản Định Giá Tài Sản Bảo Đảm", "Thế Chấp", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-bbdg", "Biên bản định giá QSDĐ của Hội đồng định giá QTDND", JSON.stringify(["{{ChuSoHuu}}", "{{SoGCN}}", "{{ThuaDatSo}}", "{{ToBanDoSo}}", "{{DienTich}}", "{{GiaTriDinhGiaQTD}}", "{{GiaTriThiTruong}}", "{{TyLeChoVayToiDa}}"]), "Hoạt động", new Date()]
       ]
+    },
+    DOCUMENT_STORAGE: {
+      headers: ["ID_HOP_DONG", "MA_KH", "TEN_KHACH_HANG", "LOAI_BIEU_MAU", "NGUOI_LAP", "NGAY_LAP", "LINK_GOOGLE_DOC", "LINK_PDF", "TRANG_THAI"],
+      color: "#27AE60",
+      formats: { "F:F": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 180, 2: 120, 3: 200, 4: 200, 5: 150, 6: 150, 7: 350, 8: 350, 9: 150 }
     }
   },
 

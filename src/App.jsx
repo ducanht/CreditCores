@@ -89,20 +89,37 @@ export default function App() {
 
   const fetchInitialData = async () => {
     try {
-      const [resStats, resSync] = await Promise.all([
-        api.getDashboardStats(),
-        api.getSyncStatus()
-      ]);
-      if (resStats.status === 'success') setStats(resStats.data);
-      if (resSync.status === 'success') setSyncStatus(resSync.data);
+      // Optimize: Tách luồng để component nào xong trước render trước
+      api.getDashboardStats().then(res => {
+        if (res.status === 'success') setStats(res.data);
+      }).catch(e => console.error('Lỗi nạp stats:', e));
+
+      api.getSyncStatus().then(res => {
+        if (res.status === 'success') setSyncStatus(res.data);
+      }).catch(e => console.error('Lỗi nạp sync status:', e));
     } catch (e) {
-      console.error('Lỗi nạp dữ liệu ban đầu:', e);
+      console.error('Lỗi khởi tạo dữ liệu ban đầu:', e);
     }
   };
 
   useEffect(() => {
     if (currentUser) {
       fetchInitialData();
+      
+      // Auto-trigger background SQL sync when idle
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => {
+          api.triggerSqlSync().then(res => {
+            if (res.status === 'success') {
+              console.log('Background SQL Sync success:', res.message);
+              // Silently refresh sync status
+              api.getSyncStatus().then(sRes => {
+                if (sRes.status === 'success') setSyncStatus(sRes.data);
+              }).catch(() => {});
+            }
+          }).catch(err => console.error('Background SQL Sync error:', err));
+        }, { timeout: 10000 });
+      }
     }
   }, [currentUser]);
 

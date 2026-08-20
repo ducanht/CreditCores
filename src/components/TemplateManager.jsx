@@ -91,7 +91,11 @@ const DEFAULT_TAG_DICTIONARY = [
       { tag: '{{DiaChiThuaDat}}', label: 'Địa chỉ thửa đất thế chấp', defaultVal: 'Thôn Tân Lộc, xã Quý Lộc, Yên Định, Thanh Hoá' },
       { tag: '{{DienTichDat}}', label: 'Diện tích đất (m²)', defaultVal: '240.5 m²' },
       { tag: '{{HinhThucSuDung}}', label: 'Hình thức sử dụng đất', defaultVal: 'Sử dụng riêng' },
-      { tag: '{{ChuSoHuuTS}}', label: 'Chủ sở hữu / Sử dụng tài sản', defaultVal: 'Nguyễn Văn An và vợ Trần Thị Bình' }
+      { tag: '{{ChuSoHuuTS}}', label: 'Chủ sở hữu / Sử dụng tài sản', defaultVal: 'Nguyễn Văn An và vợ Trần Thị Bình' },
+      { tag: '{{TSBD_LOAI}}', label: 'Loại tài sản bảo đảm (chung)', defaultVal: 'Quyền sử dụng đất và tài sản gắn liền với đất' },
+      { tag: '{{TSBD_DIEN_TICH}}', label: 'Tổng diện tích TSBĐ', defaultVal: '240.5 m²' },
+      { tag: '{{TSBD_GIA_TRI}}', label: 'Tổng giá trị TSBĐ định giá', defaultVal: '850.000.000 đ' },
+      { tag: '{{TSBD_DIA_CHI}}', label: 'Địa chỉ TSBĐ (chung)', defaultVal: 'Thôn Tân Lộc, xã Quý Lộc, Yên Định, Thanh Hoá' }
     ]
   },
   {
@@ -133,6 +137,48 @@ const DEFAULT_TAG_DICTIONARY = [
 
 // DANH MỤC BIỂU MẪU MẶC ĐỊNH MỞ RỘNG (KÈM NỘI DUNG VĂN BẢN TRỘN ĐẦY ĐỦ)
 const INITIAL_TEMPLATES = [
+  {
+    id: 'BM_HOP_DONG_THE_CHAP',
+    maBM: 'BM_HD_TC_01',
+    tenBM: 'Hợp Đồng Thế Chấp Quyền Sử Dụng Đất',
+    phanHe: 'Hợp Đồng Tín Dụng',
+    loaiNguon: 'GOOGLE_DOCS',
+    linkNguon: 'https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit',
+    moTa: 'Mẫu hợp đồng thế chấp Quyền sử dụng đất bảo đảm cho HĐTD, có công chứng.',
+    noiDungMau: `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+
+HỢP ĐỒNG THẾ CHẤP QUYỀN SỬ DỤNG ĐẤT
+
+Hôm nay, ngày {{NgayHienTai}}, tại {{DiaChiQuyTDND}}.
+Chúng tôi gồm:
+Bên Nhận Thế Chấp (Bên A): {{TenQuyTDND}}
+Địa chỉ: {{DiaChiQuyTDND}}
+Điện thoại: {{DienThoaiQuy}}
+
+Bên Thế Chấp (Bên B): Ông/Bà {{HoTen}}
+CCCD số: {{SoCCCD}} cấp ngày {{NgayCapCCCD}} tại {{NoiCapCCCD}}
+Và vợ/chồng là: {{TenVoChong}}
+CCCD số: {{CCCDVoChong}}
+Địa chỉ thường trú: {{DiaChi}}
+
+Hai bên đồng ý ký kết Hợp đồng thế chấp với nội dung:
+1. Tài sản thế chấp: {{TSBD_LOAI}}
+2. Giấy chứng nhận QSDĐ số: {{SoSoDo}}
+3. Thửa đất số: {{ThuaDatSo}}, Tờ bản đồ số: {{ToBanDoSo}}
+4. Diện tích: {{TSBD_DIEN_TICH}}
+5. Địa chỉ tài sản: {{TSBD_DIA_CHI}}
+6. Giá trị định giá: {{TSBD_GIA_TRI}}
+
+Tài sản này được dùng để bảo đảm cho Hợp đồng tín dụng số {{SoHDTD}} với số tiền vay là {{TienVay}}.`,
+    truongTron: [
+      '{{HoTen}}', '{{SoCCCD}}', '{{NgayCapCCCD}}', '{{NoiCapCCCD}}', '{{DiaChi}}',
+      '{{TenVoChong}}', '{{CCCDVoChong}}', '{{SoSoDo}}', '{{ThuaDatSo}}', '{{ToBanDoSo}}',
+      '{{TSBD_LOAI}}', '{{TSBD_DIEN_TICH}}', '{{TSBD_GIA_TRI}}', '{{TSBD_DIA_CHI}}',
+      '{{TenQuyTDND}}', '{{DiaChiQuyTDND}}', '{{DienThoaiQuy}}', '{{NgayHienTai}}',
+      '{{SoHDTD}}', '{{TienVay}}'
+    ]
+  },
   {
     id: 'BM_KIEM_TRA_VON',
     maBM: 'BM_KT_01',
@@ -314,10 +360,7 @@ Mọi thắc mắc xin liên hệ số điện thoại: {{DienThoaiQuy}} để �
 ];
 
 export default function TemplateManager() {
-  const [templates, setTemplates] = useState(() => {
-    const saved = localStorage.getItem('creditcore_templates_v2');
-    return saved ? JSON.parse(saved) : INITIAL_TEMPLATES;
-  });
+  const [templates, setTemplates] = useState([]);
 
   const [tagDictionary, setTagDictionary] = useState(() => {
     const saved = localStorage.getItem('creditcore_tag_dict');
@@ -342,6 +385,10 @@ export default function TemplateManager() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [copiedTag, setCopiedTag] = useState('');
   const [exportMode, setExportMode] = useState('FULL_TEXT'); // 'FULL_TEXT' hoặc 'ROSTER_TABLE'
+  
+  // Trộn văn bản lên Google Drive (Mail Merge Backend)
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedDoc, setGeneratedDoc] = useState(null);
 
   // Dynamic Custom Values Override Map (Lưu trữ giá trị biến tùy biến tại runtime)
   const [dynamicOverrides, setDynamicOverrides] = useState({});
@@ -373,7 +420,8 @@ export default function TemplateManager() {
 
         if (resTpl.status === 'success' && Array.isArray(resTpl.data) && resTpl.data.length > 0) {
           setTemplates(resTpl.data);
-          localStorage.setItem('creditcore_templates_v2', JSON.stringify(resTpl.data));
+        } else if (resTpl.status === 'success' && resTpl.data.length === 0) {
+          setTemplates([]); // Let it be empty if backend is empty
         }
 
         if (resCust.status === 'success' && resCust.data) {
@@ -381,7 +429,7 @@ export default function TemplateManager() {
           setCustomersList(list);
         }
       } catch (e) {
-        console.warn('Dùng offline templates cache:', e);
+        console.warn('Lỗi tải danh sách template từ server:', e);
       }
     };
     loadInitialData();
@@ -427,18 +475,26 @@ export default function TemplateManager() {
     return [...new Set(matches)];
   };
 
-  const saveToStorage = async (updated, itemToSave = null, deleteId = null) => {
-    setTemplates(updated);
-    localStorage.setItem('creditcore_templates_v2', JSON.stringify(updated));
-
+  const saveToBackend = async (updated, itemToSave = null, deleteId = null) => {
     try {
       if (itemToSave) {
-        await api.saveTemplate(itemToSave);
+        const res = await api.saveTemplate(itemToSave);
+        if (res.status === 'success') {
+          setTemplates(updated);
+        } else {
+          alert('Lỗi lưu biểu mẫu: ' + res.message);
+        }
       } else if (deleteId) {
-        await api.deleteTemplate(deleteId);
+        const res = await api.deleteTemplate(deleteId);
+        if (res.status === 'success') {
+          setTemplates(updated);
+        } else {
+          alert('Lỗi xóa biểu mẫu: ' + res.message);
+        }
       }
     } catch (e) {
-      console.warn('Lỗi đồng bộ template lên backend:', e);
+      console.error('Lỗi đồng bộ template lên backend:', e);
+      alert('Lỗi kết nối máy chủ khi đồng bộ biểu mẫu.');
     }
   };
 
@@ -529,7 +585,7 @@ export default function TemplateManager() {
       updated = [itemToSave, ...templates];
     }
 
-    await saveToStorage(updated, itemToSave);
+    await saveToBackend(updated, itemToSave);
     setShowEditModal(false);
     alert('Đã lưu cấu hình biểu mẫu và cập nhật các trường trộn dữ liệu thành công!');
   };
@@ -537,7 +593,7 @@ export default function TemplateManager() {
   const handleDeleteTemplate = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa biểu mẫu này khỏi danh mục?')) {
       const updated = templates.filter((t) => t.id !== id);
-      await saveToStorage(updated, null, id);
+      await saveToBackend(updated, null, id);
     }
   };
 
@@ -545,6 +601,50 @@ export default function TemplateManager() {
     navigator.clipboard.writeText(tag);
     setCopiedTag(tag);
     setTimeout(() => setCopiedTag(''), 2000);
+  };
+
+  const handleGenerateContract = async () => {
+    if (!selectedCustomerId) {
+      alert('Vui lòng chọn khách hàng để trộn dữ liệu!');
+      return;
+    }
+    
+    // Convert to plain object mapping { "{{tag}}": "value" }
+    const truongTronData = {};
+    (selectedTemplate.truongTron || []).forEach(tag => {
+      const cleanKey = tag.replace(/[{}]/g, '');
+      truongTronData[tag] = dynamicMergedValues[cleanKey] || '';
+    });
+
+    const payload = {
+      maKH: selectedCustomerId,
+      hoTen: dynamicMergedValues['HoTen'] || 'Khách Hàng',
+      templateId: selectedTemplate.linkNguon.match(/[-\w]{25,}/)?.[0] || '', // Trích xuất ID từ linkNguon
+      tenBieuMau: selectedTemplate.tenBM,
+      truongTronData: JSON.stringify(truongTronData),
+      username: 'Thệ Thống (CBTD)'
+    };
+
+    if (!payload.templateId) {
+      alert('Nguồn mẫu không hợp lệ hoặc không phải Google Docs hợp lệ.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGeneratedDoc(null);
+    try {
+      const res = await api.generateContract(payload);
+      if (res.status === 'success' && res.data) {
+        setGeneratedDoc(res.data);
+      } else {
+        alert(res.message || 'Có lỗi xảy ra khi trộn văn bản.');
+      }
+    } catch (e) {
+      console.error('Lỗi generateContract:', e);
+      alert('Lỗi trộn văn bản: ' + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Xử lý thay đổi giá trị biến động trực tiếp trên bảng xem trước
@@ -1371,6 +1471,32 @@ export default function TemplateManager() {
                     </div>
                   </div>
                 )}
+
+                {/* 4.5. Kết Quả Trộn Hợp Đồng (Iframe Preview) */}
+                {generatedDoc && (
+                  <div className="mt-4 border rounded-3 overflow-hidden shadow-sm">
+                    <div className="bg-success-subtle p-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                      <strong className="text-success small d-flex align-items-center gap-1.5">
+                        <CheckCircle2 size={15} /> Khởi tạo Hợp đồng thành công!
+                      </strong>
+                      <div className="d-flex gap-2">
+                         <a href={generatedDoc.docUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-light py-1 text-primary fw-medium text-decoration-none small">
+                           <ExternalLink size={12} className="me-1" /> Mở Google Docs
+                         </a>
+                         <a href={generatedDoc.pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-danger py-1 fw-medium text-decoration-none small text-white">
+                           <Download size={12} className="me-1" /> Tải PDF
+                         </a>
+                      </div>
+                    </div>
+                    <iframe 
+                      src={generatedDoc.docUrl.replace('/edit', '/preview')} 
+                      width="100%" 
+                      height="500" 
+                      title="Preview Document"
+                      style={{ border: 'none', backgroundColor: '#f8f9fa' }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="modal-footer border-0 pt-0 d-flex justify-content-between flex-wrap gap-2">
@@ -1385,19 +1511,24 @@ export default function TemplateManager() {
                 <div className="d-flex gap-2">
                   <button
                     type="button"
-                    className="btn btn-outline-primary btn-sm fw-medium d-flex align-items-center gap-1"
-                    onClick={handleExportMergedDocx}
-                    title="Tải về file Microsoft Word (.doc) sau khi trộn"
+                    className="btn btn-outline-success btn-sm fw-medium d-flex align-items-center gap-1 shadow-sm"
+                    onClick={handleGenerateContract}
+                    disabled={isGenerating}
+                    title="Khởi tạo hợp đồng tự động, lưu vào Google Drive và CSDL"
                   >
-                    <Download size={13} /> Xuất File Word (.doc)
+                    {isGenerating ? (
+                      <><RefreshCw size={13} className="spin-animation" /> Đang khởi tạo...</>
+                    ) : (
+                      <><Sparkles size={13} /> Khởi Tạo Hợp Đồng (Lưu Drive)</>
+                    )}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-brand btn-sm fw-medium d-flex align-items-center gap-1 text-white shadow-sm"
-                    onClick={() => window.print()}
-                    title="In trực tiếp hoặc Lưu dưới dạng PDF"
+                    className="btn btn-outline-secondary btn-sm fw-medium d-flex align-items-center gap-1"
+                    onClick={handleExportMergedDocx}
+                    title="Tải về file Microsoft Word (.doc) sau khi trộn"
                   >
-                    <Printer size={13} /> In / Lưu PDF
+                    <Download size={13} /> Xuất Word Nhanh
                   </button>
                   <button type="button" className="btn btn-light btn-sm" onClick={() => setShowMergeModal(false)}>
                     Đóng
