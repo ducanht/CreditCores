@@ -236,39 +236,41 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
       {/* ========================================================================= */}
       {/* 🔔 3. TRUNG TÂM CẢNH BÁO SỚM & VIỆC CẦN XỬ LÝ (EARLY WARNING ACTION HUB)  */}
       {/* ========================================================================= */}
-      <div className="card-modern p-3 p-md-4 border-start border-warning border-4 bg-light-subtle">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+      <div className="card-modern p-3 p-md-4 bg-light-subtle">
+        <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="d-flex align-items-center gap-2">
-            <div className="p-1.5 rounded bg-warning text-dark">
-              <Bell size={18} />
+            <div className="p-1.5 rounded bg-warning-subtle text-warning">
+              <Bell size={16} />
             </div>
-            <h6 className="fw-bold m-0 text-slate-900 font-heading">
-              Trung Tâm Cảnh Báo Sớm Tín Dụng & Việc Cần Xử Lý Ngay
+            <h6 className="fw-semibold m-0 text-slate-900 font-heading">
+              Cảnh Báo & Tác Vụ Cần Xử Lý
             </h6>
           </div>
-          <span className="text-muted small">Hệ thống giám sát tự động 24/7</span>
+          <span
+            className="text-muted cursor-pointer d-inline-flex align-items-center"
+            title="Hệ thống tự động theo dõi lịch trích nợ, hồ sơ thẩm định và hạn kiểm tra vốn"
+          >
+            <HelpCircle size={14} />
+          </span>
         </div>
 
         <div className="row g-2.5">
           {/* Cảnh báo 1: Đợt trích nợ kế tiếp */}
           <div className="col-12 col-md-4">
             <div
-              className="p-3 bg-white rounded-3 border shadow-sm h-100 d-flex flex-column justify-content-between cursor-pointer hover-lift"
+              className="p-3 bg-white rounded-3 border h-100 d-flex flex-column justify-content-between cursor-pointer hover-lift"
               onClick={() => onNavigate('debit_batch')}
             >
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-1">
-                  <span className="badge bg-primary-subtle text-primary fw-bold small">Kỳ Trích Kế Tiếp</span>
-                  <Clock size={15} className="text-primary" />
+                  <span className="badge bg-primary-subtle text-primary fw-medium small">Kỳ Trích Kế Tiếp</span>
+                  <Clock size={14} className="text-primary" />
                 </div>
-                <div className="fw-bold text-dark small mb-1">Kỳ 2 (Ngày 15/08/2026)</div>
-                <p className="text-muted small m-0" style={{ fontSize: '0.78rem' }}>
-                  Dự kiến thu nợ tự động cho các hợp đồng đến hạn kỳ 2.
-                </p>
+                <div className="fw-semibold text-dark small mb-1">Kỳ 2 (Ngày 15 hàng tháng)</div>
               </div>
-              <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between text-primary small fw-semibold">
+              <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between text-primary small fw-medium">
                 <span>Khởi tạo đợt trích</span>
-                <ChevronRight size={14} />
+                <ChevronRight size={13} />
               </div>
             </div>
           </div>
@@ -276,22 +278,19 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           {/* Cảnh báo 2: Thẩm định hồ sơ */}
           <div className="col-12 col-md-4">
             <div
-              className="p-3 bg-white rounded-3 border shadow-sm h-100 d-flex flex-column justify-content-between cursor-pointer hover-lift"
+              className="p-3 bg-white rounded-3 border h-100 d-flex flex-column justify-content-between cursor-pointer hover-lift"
               onClick={() => onNavigate('appraisal')}
             >
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-1">
-                  <span className="badge bg-info-subtle text-info-emphasis fw-bold small">Thẩm Định & LTV</span>
-                  <FileCheck2 size={15} className="text-info" />
+                  <span className="badge bg-info-subtle text-info fw-medium small">Thẩm Định & LTV</span>
+                  <FileCheck2 size={14} className="text-info" />
                 </div>
-                <div className="fw-bold text-dark small mb-1">{pendingAppraisals || 3} Hồ Sơ Chờ Phê Duyệt</div>
-                <p className="text-muted small m-0" style={{ fontSize: '0.78rem' }}>
-                  Cần kiểm tra định giá TSĐB, chấm điểm CIC và duyệt hạn mức vay.
-                </p>
+                <div className="fw-semibold text-dark small mb-1">{pendingAppraisals || 3} Hồ Sơ Chờ Duyệt</div>
               </div>
-              <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between text-info small fw-semibold">
+              <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between text-info small fw-medium">
                 <span>Xem hồ sơ thẩm định</span>
-                <ChevronRight size={14} />
+                <ChevronRight size={13} />
               </div>
             </div>
           </div>
@@ -299,22 +298,19 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           {/* Cảnh báo 3: Kiểm tra vốn sau vay */}
           <div className="col-12 col-md-4">
             <div
-              className="p-3 bg-white rounded-3 border shadow-sm h-100 d-flex flex-column justify-content-between cursor-pointer hover-lift"
+              className="p-3 bg-white rounded-3 border h-100 d-flex flex-column justify-content-between cursor-pointer hover-lift"
               onClick={() => onNavigate('inspection')}
             >
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-1">
-                  <span className="badge bg-warning-subtle text-warning-emphasis fw-bold small">Kiểm Tra Sau Vay</span>
-                  <AlertTriangle size={15} className="text-warning-emphasis" />
+                  <span className="badge bg-warning-subtle text-warning fw-medium small">Kiểm Tra Sau Vay</span>
+                  <AlertTriangle size={14} className="text-warning" />
                 </div>
-                <div className="fw-bold text-dark small mb-1">{pendingInspections || 2} Khoản Vay Cần Thực Địa</div>
-                <p className="text-muted small m-0" style={{ fontSize: '0.78rem' }}>
-                  Hợp đồng mới giải ngân cần lập biên bản kiểm tra trong 30 ngày.
-                </p>
+                <div className="fw-semibold text-dark small mb-1">{pendingInspections || 2} Món Cần Thực Địa</div>
               </div>
-              <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between text-warning-emphasis small fw-semibold">
+              <div className="mt-2 pt-2 border-top d-flex align-items-center justify-content-between text-warning small fw-medium">
                 <span>Lập biên bản kiểm tra</span>
-                <ChevronRight size={14} />
+                <ChevronRight size={13} />
               </div>
             </div>
           </div>

@@ -246,51 +246,51 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
             </div>
 
             <div className="col-12 col-md-6">
-              <label className="form-label small fw-bold text-dark">Thư Mục Kiểm Tra Sử Dụng Vốn (Inspection Folder ID)</label>
+              <label className="form-label small fw-medium text-dark">Thư Mục Kiểm Tra Vốn (ID)</label>
               <input
                 type="text"
                 className="form-control form-control-sm font-monospace"
                 value={driveConfig.inspectionFolderId}
                 onChange={(e) => setDriveConfig({ ...driveConfig, inspectionFolderId: e.target.value })}
                 placeholder="ID thư mục kiểm tra vốn..."
+                title="Lưu ảnh thực địa, chuồng trại, máy móc, hóa đơn mua sắm"
               />
-              <span className="text-muted" style={{ fontSize: '0.72rem' }}>Lưu ảnh thực địa, chuồng trại, máy móc, hóa đơn mua sắm</span>
             </div>
 
             <div className="col-12 col-md-6">
-              <label className="form-label small fw-bold text-dark">Thư Mục Hồ Sơ Thành Viên (Customer Docs ID)</label>
+              <label className="form-label small fw-medium text-dark">Thư Mục Hồ Sơ Thành Viên (ID)</label>
               <input
                 type="text"
                 className="form-control form-control-sm font-monospace"
                 value={driveConfig.documentsFolderId}
                 onChange={(e) => setDriveConfig({ ...driveConfig, documentsFolderId: e.target.value })}
                 placeholder="ID thư mục hồ sơ thành viên..."
+                title="Lưu ảnh chân dung, CCCD, đơn đề nghị vay"
               />
-              <span className="text-muted" style={{ fontSize: '0.72rem' }}>Lưu ảnh chân dung, CCCD, đơn đề nghị vay</span>
             </div>
 
             <div className="col-12 col-md-4">
-              <label className="form-label small fw-bold text-dark">Kích Thước Ảnh Tối Đa (Max Dimension)</label>
+              <label className="form-label small fw-medium text-dark">Kích Thước Ảnh Tối Đa</label>
               <select
                 className="form-select form-select-sm"
                 value={driveConfig.maxImageDimension}
                 onChange={(e) => setDriveConfig({ ...driveConfig, maxImageDimension: Number(e.target.value) })}
               >
-                <option value={1024}>1024 px (Tối ưu tốc độ, ~100 KB)</option>
-                <option value={1280}>1280 px (Khuyên dùng - Chuẩn tài liệu, ~180 KB)</option>
-                <option value={1920}>1920 px (Full HD sắc nét, ~350 KB)</option>
+                <option value={1024}>1024 px (~100 KB)</option>
+                <option value={1280}>1280 px (Chuẩn ~180 KB)</option>
+                <option value={1920}>1920 px (Full HD ~350 KB)</option>
               </select>
             </div>
 
             <div className="col-12 col-md-4">
-              <label className="form-label small fw-bold text-dark">Mức Nén JPEG (Compression Quality)</label>
+              <label className="form-label small fw-medium text-dark">Mức Nén JPEG</label>
               <select
                 className="form-select form-select-sm"
                 value={driveConfig.compressionQuality}
                 onChange={(e) => setDriveConfig({ ...driveConfig, compressionQuality: Number(e.target.value) })}
               >
-                <option value={0.65}>65% (Tiết kiệm dung lượng tối đa)</option>
-                <option value={0.75}>75% (Chuẩn cân bằng dung lượng & độ nét)</option>
+                <option value={0.65}>65% (Tiết kiệm dung lượng)</option>
+                <option value={0.75}>75% (Chuẩn cân bằng)</option>
                 <option value={0.85}>85% (Chất lượng cao)</option>
               </select>
             </div>
@@ -298,7 +298,7 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
             <div className="col-12 col-md-4 d-flex align-items-end">
               <button
                 type="submit"
-                className="btn btn-brand btn-sm fw-bold w-100 d-flex align-items-center justify-content-center gap-1.5 text-white"
+                className="btn btn-brand btn-sm fw-medium w-100 d-flex align-items-center justify-content-center gap-1.5 text-white shadow-sm"
                 disabled={loadingDrive}
               >
                 <Save size={14} /> {loadingDrive ? 'Đang lưu...' : 'Lưu Cấu Hình Drive'}
@@ -312,37 +312,47 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
 
       {/* 3. Local Cache & Performance Management */}
       <div className="card-modern p-4">
-        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-          <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-            <HardDrive size={18} className="text-info" /> Quản Lý Bộ Nhớ Đệm & Hiệu Năng Trình Duyệt
-          </h5>
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <h5 className="fw-semibold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
+              <HardDrive size={18} className="text-info" /> Bộ Nhớ Đệm Trình Duyệt
+            </h5>
+            <span
+              className="text-muted cursor-pointer d-inline-flex align-items-center"
+              title="Lưu đệm danh mục biểu mẫu và cấu hình phiên làm việc để tối ưu tốc độ phản hồi"
+            >
+              <HelpCircle size={14} />
+            </span>
+          </div>
           <span className="badge bg-light text-muted border small">
             Dung lượng đệm: <strong>{cacheSize}</strong>
           </span>
         </div>
-        <p className="text-muted small mb-3">
-          Hệ thống lưu đệm danh mục biểu mẫu, cấu hình giao diện và thông tin phiên để tối ưu tốc độ phản hồi.
-        </p>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-outline-danger btn-sm fw-semibold d-flex align-items-center gap-1.5"
+            className="btn btn-outline-danger btn-sm fw-medium d-flex align-items-center gap-1.5"
             onClick={handleClearCache}
           >
             <Trash2 size={14} /> Dọn Sạch Bộ Nhớ Đệm (Clear Cache)
           </button>
-          <span className="text-muted small" style={{ fontSize: '0.78rem' }}>
-            Không làm mất dữ liệu trên máy chủ Google Sheets hay Google Drive.
-          </span>
         </div>
       </div>
 
       {/* 4. Quy Chuẩn Đặt Tên Tệp Lưu Trữ */}
       <div className="card-modern p-4">
-        <h5 className="fw-bold mb-2 text-slate-900 font-heading d-flex align-items-center gap-2">
-          <FileCheck2 size={18} className="text-primary" /> Quy Chuẩn Đặt Tên Tệp Lưu Trữ Tự Động
-        </h5>
+        <div className="d-flex align-items-center gap-2 mb-3">
+          <h5 className="fw-semibold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
+            <FileCheck2 size={18} className="text-primary" /> Quy Chuẩn Đặt Tên Tệp Lưu Trữ
+          </h5>
+          <span
+            className="text-muted cursor-pointer d-inline-flex align-items-center"
+            title="Định dạng tên tệp tự động khi tải lên Google Drive"
+          >
+            <HelpCircle size={14} />
+          </span>
+        </div>
         <div className="table-responsive">
           <table className="table table-sm table-custom align-middle m-0 small">
             <thead>

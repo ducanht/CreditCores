@@ -834,13 +834,16 @@ export default function TemplateManager() {
       {/* 2. Bảng Danh Sách Biểu Mẫu */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <div>
+          <div className="d-flex align-items-center gap-2">
             <h5 className="fw-semibold text-slate-900 m-0 font-heading d-flex align-items-center gap-2">
-              <Layers size={18} className="text-primary" /> Trung Tâm Cấu Hình Biểu Mẫu & Trộn Dữ Liệu Động (Dynamic Mail Merge Hub)
+              <Layers size={18} className="text-primary" /> Quản Lý Biểu Mẫu & Trộn Dữ Liệu
             </h5>
-            <div className="text-muted small mt-0.5">
-              Hệ thống tự động nhận diện thẻ biến <code>{'{{...}}'}</code>, cho phép tự do thêm bớt trường và trộn dữ liệu khách hàng vào Word/PDF không cần viết lại code
-            </div>
+            <span
+              className="text-muted cursor-pointer d-inline-flex align-items-center"
+              title="Tự động nhận diện thẻ biến và điền dữ liệu khách hàng vào tài liệu Word/PDF"
+            >
+              <HelpCircle size={14} />
+            </span>
           </div>
           <span className="badge bg-light text-muted border">
             {filteredTemplates.length} biểu mẫu
@@ -989,12 +992,15 @@ export default function TemplateManager() {
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div className="modal-content card-modern p-4">
               <div className="modal-header border-0 pb-0">
-                <div>
+                <div className="d-flex align-items-center gap-2">
                   <h5 className="modal-title fw-semibold text-dark font-heading d-flex align-items-center gap-2">
-                    <FileCode size={18} className="text-primary" /> Thiết Kế & Cấu Hình Biểu Mẫu Động (Template Designer)
+                    <FileCode size={18} className="text-primary" /> Thiết Kế & Cấu Hình Biểu Mẫu
                   </h5>
-                  <span className="text-muted small">
-                    Hệ thống sẽ tự động quét thẻ biến <code>{'{{...}}'}</code> trong nội dung văn bản để tạo danh sách trường trộn dữ liệu.
+                  <span
+                    className="text-muted cursor-pointer d-inline-flex align-items-center"
+                    title="Tự động quét thẻ biến {{...}} trong văn bản để tạo danh sách trường trộn dữ liệu"
+                  >
+                    <HelpCircle size={14} />
                   </span>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setShowEditModal(false)} />

@@ -127,75 +127,75 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
       {/* Top Metric Cards */}
       <div className="row g-3">
         <div className="col-12 col-sm-6 col-lg-3">
-          <div className="card-modern p-3">
-            <div className="d-flex align-items-center justify-content-between">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+            <div className="d-flex align-items-start justify-content-between">
               <div>
-                <span className="text-muted small">Tổng số hồ sơ thẩm định</span>
-                <h4 className="fw-extrabold text-slate-800 m-0 font-heading">{filtered.length}</h4>
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Hồ Sơ Thẩm Định</span>
+                <h4 className="fw-semibold text-slate-900 m-0 mt-1 font-heading fs-4">{filtered.length}</h4>
               </div>
-              <div className="p-2.5 rounded-3 bg-primary-subtle text-primary">
-                <Layers size={22} />
+              <div className="p-2 rounded-2 bg-primary-subtle text-primary">
+                <Layers size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2">
-              Bao gồm 5 nhóm nghiệp vụ thẩm định
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>Toàn bộ 5 nhóm nghiệp vụ</span>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-lg-3">
-          <div className="card-modern p-3">
-            <div className="d-flex align-items-center justify-content-between">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+            <div className="d-flex align-items-start justify-content-between">
               <div>
-                <span className="text-muted small">Tổng dư nợ đề xuất duyệt</span>
-                <h4 className="fw-extrabold text-danger m-0 font-heading num-tabular">
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Dư Nợ Đề Xuất Duyệt</span>
+                <h4 className="fw-semibold text-danger m-0 mt-1 font-heading num-tabular fs-4">
                   {formatCurrencyVN(totalApprovedMoney)}
                 </h4>
               </div>
-              <div className="p-2.5 rounded-3 bg-danger-subtle text-danger">
-                <DollarSign size={22} />
+              <div className="p-2 rounded-2 bg-danger-subtle text-danger">
+                <DollarSign size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2">
-              Hạn mức cấp tín dụng đề nghị
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>Hạn mức cho vay</span>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-lg-3">
-          <div className="card-modern p-3">
-            <div className="d-flex align-items-center justify-content-between">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+            <div className="d-flex align-items-start justify-content-between">
               <div>
-                <span className="text-muted small">Tỷ lệ LTV bình quân</span>
-                <h4 className={`fw-extrabold m-0 font-heading ${Number(avgLtv) > 70 ? 'text-warning' : 'text-success'}`}>
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Tỷ Lệ LTV Bình Quân</span>
+                <h4 className={`fw-semibold m-0 mt-1 font-heading fs-4 ${Number(avgLtv) > 70 ? 'text-warning' : 'text-success'}`}>
                   {avgLtv}%
                 </h4>
               </div>
-              <div className="p-2.5 rounded-3 bg-success-subtle text-success">
-                <ShieldCheck size={22} />
+              <div className="p-2 rounded-2 bg-success-subtle text-success">
+                <ShieldCheck size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2">
-              {Number(avgLtv) <= 70 ? 'Trong ngưỡng an toàn (≤70%)' : 'Cần kiểm soát trần TSĐB'}
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>{Number(avgLtv) <= 70 ? 'Ngưỡng an toàn (≤70%)' : 'Kiểm soát trần TSĐB'}</span>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-lg-3">
-          <div className="card-modern p-3">
-            <div className="d-flex align-items-center justify-content-between">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+            <div className="d-flex align-items-start justify-content-between">
               <div>
-                <span className="text-muted small">Hồ sơ cần theo dõi đặc biệt</span>
-                <h4 className={`fw-extrabold m-0 font-heading ${highRiskCount > 0 ? 'text-danger' : 'text-success'}`}>
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Theo Dõi Đặc Biệt</span>
+                <h4 className={`fw-semibold m-0 mt-1 font-heading fs-4 ${highRiskCount > 0 ? 'text-danger' : 'text-success'}`}>
                   {highRiskCount}
                 </h4>
               </div>
-              <div className="p-2.5 rounded-3 bg-warning-subtle text-warning">
-                <ShieldAlert size={22} />
+              <div className="p-2 rounded-2 bg-warning-subtle text-warning">
+                <ShieldAlert size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2">
-              {highRiskCount > 0 ? 'LTV > 75% hoặc rủi ro cao' : 'Không có hồ sơ cảnh báo'}
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>{highRiskCount > 0 ? 'LTV > 75% hoặc rủi ro' : 'Hồ sơ an toàn'}</span>
             </div>
           </div>
         </div>
