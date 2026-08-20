@@ -58,15 +58,15 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
           <div>
             <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-              <h4 className="fw-extrabold text-slate-900 font-heading m-0">
-                Tổng Quan Tín Dụng & Trích Nợ
+              <h4 className="fw-semibold text-slate-900 font-heading m-0 fs-5">
+                Tổng Quan Hoạt Động Tín Dụng & Trích Nợ
               </h4>
-              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill small fw-semibold">
+              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill small fw-medium">
                 Hệ Thống Trực Tuyến
               </span>
             </div>
             <div className="d-flex align-items-center gap-3 text-muted small flex-wrap">
-              <span>Xin chào, <strong>{currentUser?.fullName || 'Cán bộ Quản trị'}</strong> ({currentUser?.role || 'ADMIN'})</span>
+              <span>Xin chào, <strong className="text-dark">{currentUser?.fullName || 'Cán bộ Quản trị'}</strong> ({currentUser?.role || 'ADMIN'})</span>
               <span>•</span>
               <span className="d-flex align-items-center gap-1">
                 <Calendar size={13} /> {getTodayVN()}
@@ -80,24 +80,24 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
 
           <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
             {/* Bộ chọn chu kỳ */}
-            <div className="btn-group btn-group-sm" role="group">
+            <div className="btn-group btn-group-sm p-0.5 bg-light rounded-2 border" role="group">
               <button
                 type="button"
-                className={`btn ${selectedPeriod === 'month' ? 'btn-brand fw-bold text-white' : 'btn-outline-secondary'}`}
+                className={`btn btn-sm ${selectedPeriod === 'month' ? 'btn-brand fw-semibold text-white' : 'btn-light text-muted'}`}
                 onClick={() => setSelectedPeriod('month')}
               >
                 Tháng Này
               </button>
               <button
                 type="button"
-                className={`btn ${selectedPeriod === 'quarter' ? 'btn-brand fw-bold text-white' : 'btn-outline-secondary'}`}
+                className={`btn btn-sm ${selectedPeriod === 'quarter' ? 'btn-brand fw-semibold text-white' : 'btn-light text-muted'}`}
                 onClick={() => setSelectedPeriod('quarter')}
               >
                 Quý Này
               </button>
               <button
                 type="button"
-                className={`btn ${selectedPeriod === 'year' ? 'btn-brand fw-bold text-white' : 'btn-outline-secondary'}`}
+                className={`btn btn-sm ${selectedPeriod === 'year' ? 'btn-brand fw-semibold text-white' : 'btn-light text-muted'}`}
                 onClick={() => setSelectedPeriod('year')}
               >
                 Năm 2026
@@ -110,42 +110,41 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
               onClick={handleManualRefresh}
               title="Làm mới số liệu từ máy chủ"
             >
-              <RefreshCw size={14} className={isRefreshing ? 'spin-animation text-primary' : ''} />
-              <span className="d-none d-sm-inline">{isRefreshing ? 'Đang tải...' : 'Làm mới'}</span>
+              <RefreshCw size={13} className={isRefreshing ? 'spin-animation text-primary' : ''} />
+              <span className="d-none d-sm-inline small">{isRefreshing ? 'Đang tải...' : 'Làm mới'}</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 📊 2. HỆ THỐNG 5 THẺ BENTO KPI METRICS CAO CẤP                             */}
+      {/* 📊 2. HỆ THỐNG 4 THẺ BENTO KPI METRICS CAO CẤP                             */}
       {/* ========================================================================= */}
       <div className="row g-3">
         {/* KPI 1: Tổng Dư Nợ Tín Dụng */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div
             className="kpi-bento-card h-100 cursor-pointer"
-            style={{ '--card-accent-color': '#9acd32', borderLeft: '4px solid #9acd32' }}
             onClick={() => onNavigate('customer360')}
             title="Bấm để xem danh sách khách hàng & hợp đồng"
           >
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.75rem' }}>
                 Tổng Dư Nợ Tín Dụng
               </span>
               <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(154, 205, 50, 0.15)', '--icon-color': '#4d7c0f' }}>
-                <Landmark size={20} />
+                <Landmark size={18} />
               </div>
             </div>
             <div>
-              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular">
+              <h3 className="fw-semibold text-dark mb-1 fs-4 num-tabular">
                 {formatCurrencyVN(totalDuNo)}
               </h3>
-              <div className="d-flex align-items-center justify-content-between text-muted small">
-                <span className="d-flex align-items-center gap-1 text-success fw-semibold">
+              <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
+                <span className="d-flex align-items-center gap-1 text-success fw-medium">
                   <TrendingUp size={13} /> {totalHopDong} khế ước
                 </span>
-                <span className="text-primary font-monospace" style={{ fontSize: '0.75rem' }}>Tra cứu HĐTD →</span>
+                <span className="text-primary font-monospace" style={{ fontSize: '0.72rem' }}>Tra cứu HĐTD →</span>
               </div>
             </div>
           </div>
@@ -155,25 +154,24 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         <div className="col-12 col-sm-6 col-xl-3">
           <div
             className="kpi-bento-card h-100 cursor-pointer"
-            style={{ '--card-accent-color': '#047857', borderLeft: '4px solid #047857' }}
             onClick={() => onNavigate('debit_batch')}
             title="Bấm để xem hoặc khởi tạo đợt trích nợ"
           >
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.75rem' }}>
                 Dự Thu Lãi Kỳ Này
               </span>
               <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(4, 120, 87, 0.15)', '--icon-color': '#047857' }}>
-                <TrendingUp size={20} />
+                <TrendingUp size={18} />
               </div>
             </div>
             <div>
-              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular text-gradient-emerald">
+              <h3 className="fw-semibold text-dark mb-1 fs-4 num-tabular text-success">
                 {formatCurrencyVN(totalDuThuLai)}
               </h3>
-              <div className="d-flex align-items-center justify-content-between text-muted small">
+              <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
                 <span>Tính ngày thực tế TT14</span>
-                <span className="text-success font-monospace" style={{ fontSize: '0.75rem' }}>3 Kỳ (05,15,25) →</span>
+                <span className="text-success font-monospace" style={{ fontSize: '0.72rem' }}>3 Kỳ (05,15,25) →</span>
               </div>
             </div>
           </div>
@@ -183,26 +181,25 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         <div className="col-12 col-sm-6 col-xl-3">
           <div
             className="kpi-bento-card h-100 cursor-pointer"
-            style={{ '--card-accent-color': '#0284c7', borderLeft: '4px solid #0284c7' }}
             onClick={() => onNavigate('debit_register')}
             title="Bấm để quản lý danh sách đăng ký trích nợ"
           >
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.75rem' }}>
                 Ủy Quyền Trích Nợ CASA
               </span>
               <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(2, 132, 199, 0.15)', '--icon-color': '#0284c7' }}>
-                <Users size={20} />
+                <Users size={18} />
               </div>
             </div>
             <div>
-              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular">
+              <h3 className="fw-semibold text-dark mb-1 fs-4 num-tabular">
                 {totalKhachHangTrichNo}{' '}
-                <span className="fs-6 fw-normal text-muted">khách hàng</span>
+                <span className="fs-6 fw-normal text-muted">thành viên</span>
               </h3>
-              <div className="d-flex align-items-center justify-content-between text-muted small">
-                <span>Bao phủ: <strong>{autoDebitCoverageRate}%</strong> khách vay</span>
-                <span className="text-info font-monospace" style={{ fontSize: '0.75rem' }}>Quản lý →</span>
+              <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
+                <span>Bao phủ: <strong className="text-dark">{autoDebitCoverageRate}%</strong> khách vay</span>
+                <span className="text-info font-monospace" style={{ fontSize: '0.72rem' }}>Quản lý →</span>
               </div>
             </div>
           </div>
@@ -212,25 +209,24 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         <div className="col-12 col-sm-6 col-xl-3">
           <div
             className="kpi-bento-card h-100 cursor-pointer"
-            style={{ '--card-accent-color': '#e11d48', borderLeft: '4px solid #e11d48' }}
             onClick={() => onNavigate('debt_warning')}
             title="Bấm để xem sổ theo dõi nợ tồn đọng"
           >
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.75rem' }}>
                 Nợ Tồn Đọng Chờ Thu
               </span>
               <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(225, 29, 72, 0.15)', '--icon-color': '#e11d48' }}>
-                <AlertCircle size={20} />
+                <AlertCircle size={18} />
               </div>
             </div>
             <div>
-              <h3 className="fw-bold text-danger mb-1 fs-4 num-tabular">
+              <h3 className="fw-semibold text-danger mb-1 fs-4 num-tabular">
                 {formatCurrencyVN(totalNoTon)}
               </h3>
-              <div className="d-flex align-items-center justify-content-between text-muted small">
-                <span className="text-danger fw-semibold">{countNoTon || 2} món cần đôn đốc</span>
-                <span className="text-danger font-monospace" style={{ fontSize: '0.75rem' }}>Sổ nợ tồn →</span>
+              <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
+                <span className="text-danger fw-medium">{countNoTon || 2} món cần đôn đốc</span>
+                <span className="text-danger font-monospace" style={{ fontSize: '0.72rem' }}>Sổ nợ tồn →</span>
               </div>
             </div>
           </div>

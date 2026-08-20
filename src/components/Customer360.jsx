@@ -171,19 +171,19 @@ export default function Customer360({
       <div className="row g-3">
         {/* Tổng Hợp Đồng */}
         <div className="col-12 col-sm-6 col-xl">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between border-start border-4 border-primary">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
-                <span className="text-muted small fw-bold text-uppercase">Tổng Hợp Đồng</span>
-                <h3 className="fw-extrabold text-primary m-0 mt-1 num-tabular font-heading">
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Tổng Hợp Đồng</span>
+                <h3 className="fw-semibold text-primary m-0 mt-1 num-tabular font-heading fs-4">
                   {stats?.totalContracts ?? (loading ? '...' : 0)}
                 </h3>
               </div>
-              <div className="p-2 rounded-3 bg-primary-subtle text-primary">
-                <Briefcase size={22} />
+              <div className="p-2 rounded-2 bg-primary-subtle text-primary">
+                <Briefcase size={18} />
               </div>
             </div>
-            <div className="d-flex gap-2 mt-2 pt-2 border-top small text-muted">
+            <div className="d-flex gap-2 mt-2 pt-2 border-top small text-muted" style={{ fontSize: '0.75rem' }}>
               <span>Đang vay: <strong className="text-success">{stats?.activeContracts ?? 0}</strong></span>
               <span>•</span>
               <span>Tất toán: <strong className="text-secondary">{stats?.settledContracts ?? 0}</strong></span>
@@ -193,79 +193,79 @@ export default function Customer360({
 
         {/* Dư Nợ Đang Quản Lý */}
         <div className="col-12 col-sm-6 col-xl">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between border-start border-4 border-success">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
-                <span className="text-muted small fw-bold text-uppercase">Dư Nợ Đang Quản Lý</span>
-                <h3 className="fw-extrabold text-success m-0 mt-1 num-tabular font-heading">
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Dư Nợ Quản Lý</span>
+                <h3 className="fw-semibold text-success m-0 mt-1 num-tabular font-heading fs-4">
                   {formatCurrencyVN(stats?.totalActivePrincipal ?? 0)}
                 </h3>
               </div>
-              <div className="p-2 rounded-3 bg-success-subtle text-success">
-                <Landmark size={22} />
+              <div className="p-2 rounded-2 bg-success-subtle text-success">
+                <Landmark size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2 pt-2 border-top">
-              <span>Tổng doanh số vay: {formatCurrencyVN(stats?.totalOriginalLoan ?? 0)}</span>
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>Doanh số vay: {formatCurrencyVN(stats?.totalOriginalLoan ?? 0)}</span>
             </div>
           </div>
         </div>
 
         {/* Khách Hàng Phụ Trách */}
         <div className="col-12 col-sm-6 col-xl">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between border-start border-4 border-info">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
-                <span className="text-muted small fw-bold text-uppercase">Khách Hàng Quản Lý</span>
-                <h3 className="fw-extrabold text-info m-0 mt-1 num-tabular font-heading">
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Thành Viên Quản Lý</span>
+                <h3 className="fw-semibold text-info m-0 mt-1 num-tabular font-heading fs-4">
                   {stats?.totalCustomers ?? (loading ? '...' : 0)}
                 </h3>
               </div>
-              <div className="p-2 rounded-3 bg-info-subtle text-info">
-                <UserCheck size={22} />
+              <div className="p-2 rounded-2 bg-info-subtle text-info">
+                <UserCheck size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2 pt-2 border-top">
-              <span>Thành viên QTDND hoạt động</span>
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>Thành viên hoạt động</span>
             </div>
           </div>
         </div>
 
         {/* HĐ Đã Tất Toán */}
         <div className="col-12 col-sm-6 col-xl">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between border-start border-4 border-secondary">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
-                <span className="text-muted small fw-bold text-uppercase">Đã Tất Toán</span>
-                <h3 className="fw-extrabold text-secondary m-0 mt-1 num-tabular font-heading">
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Đã Tất Toán</span>
+                <h3 className="fw-semibold text-secondary m-0 mt-1 num-tabular font-heading fs-4">
                   {stats?.settledContracts ?? (loading ? '...' : 0)}
                 </h3>
               </div>
-              <div className="p-2 rounded-3 bg-secondary-subtle text-secondary">
-                <CheckCircle2 size={22} />
+              <div className="p-2 rounded-2 bg-secondary-subtle text-secondary">
+                <CheckCircle2 size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2 pt-2 border-top">
-              <span>Đối soát sạch dư nợ Core</span>
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
+              <span>Sạch dư nợ Core</span>
             </div>
           </div>
         </div>
 
         {/* HĐ Sắp Đến Hạn */}
         <div className="col-12 col-sm-6 col-xl">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between border-start border-4 border-warning">
+          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
-                <span className="text-muted small fw-bold text-uppercase">Đến Hạn (30 Ngày)</span>
-                <h3 className="fw-extrabold text-warning m-0 mt-1 num-tabular font-heading">
+                <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>Đến Hạn (30 Ngày)</span>
+                <h3 className="fw-semibold text-warning m-0 mt-1 num-tabular font-heading fs-4">
                   {stats?.dueIn30Days ?? 0}
                 </h3>
               </div>
-              <div className="p-2 rounded-3 bg-warning-subtle text-warning">
-                <Clock size={22} />
+              <div className="p-2 rounded-2 bg-warning-subtle text-warning">
+                <Clock size={18} />
               </div>
             </div>
-            <div className="small text-muted mt-2 pt-2 border-top">
+            <div className="small text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
               <span>Quá hạn: <strong className="text-danger">{stats?.pastDueContracts ?? 0} HĐ</strong></span>
             </div>
           </div>
