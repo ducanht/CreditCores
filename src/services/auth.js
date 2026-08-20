@@ -28,6 +28,12 @@ export const MODULE_REGISTRY = [
     description: 'Hồ sơ 360 độ khách hàng, khế ước tín dụng, tài khoản CASA và vốn góp'
   },
   {
+    id: 'collateral',
+    label: 'Tài sản thế chấp & Hợp đồng',
+    category: 'Tín dụng',
+    description: 'Quản lý kho Sổ đỏ (TSBD_CORE) và lập trọn bộ 6 hợp đồng tín dụng chuẩn'
+  },
+  {
     id: 'appraisal',
     label: 'Thẩm định Tín dụng & TSĐB',
     category: 'Tín dụng',

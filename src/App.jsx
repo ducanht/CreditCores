@@ -15,12 +15,14 @@ import TemplateManager from './components/TemplateManager';
 import LoginModal from './components/LoginModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import CustomerQuickModal from './components/CustomerQuickModal';
+import CollateralManager from './components/CollateralManager';
 import { api } from './services/api';
 import { AuthService } from './services/auth';
 
 const TAB_TITLES = {
   dashboard: 'Tổng Quan',
   customer360: 'Tra Cứu Khách Hàng & Hợp Đồng',
+  collateral: 'Tài Sản Thế Chấp & Hợp Đồng (TSBD_CORE)',
   appraisal: 'Thẩm Định Tín Dụng & TSĐB',
   inspection: 'Kiểm Tra Sử Dụng Vốn',
   debit_register: 'Đăng Ký Dịch Vụ Trích Nợ',
@@ -226,6 +228,12 @@ export default function App() {
               onNavigateToAppraisal={handleNavigateToAppraisal}
               onNavigateToInspection={handleNavigateToInspection}
               onNavigateToDebit={handleNavigateToDebit}
+              onOpenCustomerQuickView={handleOpenCustomerQuickView}
+            />
+          )}
+
+          {activeTab === 'collateral' && (
+            <CollateralManager
               onOpenCustomerQuickView={handleOpenCustomerQuickView}
             />
           )}

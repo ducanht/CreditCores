@@ -17,7 +17,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Layers
+  Layers,
+  ShieldCheck
 } from 'lucide-react';
 import { AuthService, ROLE_LABELS } from '../services/auth';
 
@@ -35,6 +36,7 @@ export default function Sidebar({
   const allMenuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard, category: 'TỔNG QUAN' },
     { id: 'customer360', label: 'Tra cứu Khách hàng & HĐ', icon: Users, category: 'KHÁCH HÀNG' },
+    { id: 'collateral', label: 'Tài sản thế chấp & Hợp đồng', icon: ShieldCheck, category: 'TÍN DỤNG' },
     { id: 'appraisal', label: 'Thẩm định Tín dụng & TSĐB', icon: FileCheck2, category: 'TÍN DỤNG' },
     { id: 'inspection', label: 'Kiểm tra Sử dụng Vốn', icon: ClipboardList, category: 'TÍN DỤNG' },
     { id: 'debit_register', label: 'Đăng ký Trích nợ', icon: UserCheck, category: 'TRÍCH NỢ' },

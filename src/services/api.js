@@ -595,6 +595,30 @@ function handleMockFallback(action, data) {
       return { status: 'success', message: 'Đã lưu cấu hình thư mục Google Drive thành công!' };
     }
 
+    case 'getCollaterals': {
+      return { status: 'success', data: mockDb.collaterals || [] };
+    }
+
+    case 'saveCollateral': {
+      if (!mockDb.collaterals) mockDb.collaterals = [];
+      const col = data;
+      const idx = mockDb.collaterals.findIndex(c => c.soGCN === col.soGCN || (col.maTSBD && c.maTSBD === col.maTSBD));
+      if (idx >= 0) {
+        mockDb.collaterals[idx] = { ...mockDb.collaterals[idx], ...col, ngayCapNhat: getTodayVN() + ' ' + new Date().toLocaleTimeString('vi-VN') };
+      } else {
+        const newMa = col.maTSBD || ('TSBD-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000)));
+        mockDb.collaterals.unshift({ ...col, maTSBD: newMa, ngayCapNhat: getTodayVN() + ' ' + new Date().toLocaleTimeString('vi-VN') });
+      }
+      return { status: 'success', message: 'Lưu thông tin Tài sản bảo đảm (Sổ đỏ: ' + col.soGCN + ') thành công!' };
+    }
+
+    case 'deleteCollateral': {
+      if (mockDb.collaterals) {
+        mockDb.collaterals = mockDb.collaterals.filter(c => c.soGCN !== data?.soGCN && c.maTSBD !== data?.maTSBD);
+      }
+      return { status: 'success', message: 'Xóa tài sản thế chấp thành công!' };
+    }
+
     default:
       return { status: 'error', message: 'Hành động không xác định: ' + action };
   }
@@ -625,6 +649,9 @@ export const api = {
   getTemplates: (forceFresh = false) => sendRequest('getTemplates', null, 'GET', !forceFresh),
   saveTemplate: (data) => sendRequest('saveTemplate', data, 'POST'),
   deleteTemplate: (id) => sendRequest('deleteTemplate', { id }, 'POST'),
+  getCollaterals: (forceFresh = false) => sendRequest('getCollaterals', null, 'GET', !forceFresh),
+  saveCollateral: (data) => sendRequest('saveCollateral', data, 'POST'),
+  deleteCollateral: (params) => sendRequest('deleteCollateral', params, 'POST'),
   uploadDriveFile: (data) => sendRequest('uploadDriveFile', data, 'POST'),
   getDriveSettings: (forceFresh = false) => sendRequest('getDriveSettings', null, 'GET', !forceFresh),
   saveDriveSettings: (data) => sendRequest('saveDriveSettings', data, 'POST'),

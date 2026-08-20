@@ -121,6 +121,19 @@ var SchemaSetup = {
       formats: { "G:G": "dd/MM/yyyy", "I:I": "dd/MM/yyyy", "T:T": "dd/MM/yyyy HH:mm:ss" },
       colWidths: { 1: 120, 2: 120, 3: 100, 4: 180, 5: 110, 6: 180, 7: 110, 8: 90, 9: 110, 10: 110, 11: 180, 12: 130, 13: 140, 14: 110, 15: 220, 16: 200, 17: 200, 18: 200, 19: 120, 20: 160 }
     },
+    TSBD_CORE: {
+      aliases: ["TAI_SAN_BAO_DAM", "DS_TSBD"],
+      headers: [
+        "MaTSBD", "SoGCN", "SoVaoSoCapGCN", "NgayCapGCN", "NoiCapGCN", "MaKH", "ChuSoHuu", "CCCD_ChuTS",
+        "QuanHeChuTS", "NguoiDongSoHuu", "ThuaDatSo", "ToBanDoSo", "DiaChiThuaDat", "DienTich", "HinhThucSuDung",
+        "ChiTietPhanLoaiDat", "NguonGocSuDung", "GiaTriDinhGiaQTD", "GiaTriThiTruong", "TyLeChoVayToiDa",
+        "SoTienDamBaoToiDa", "TrangThaiTheChap", "SoHDTD_LienKet", "SoCongChung", "NgayCongChung",
+        "VanPhongCongChung", "SoDangKyGDBD", "NgayDangKyGDBD", "HinhAnhGCN", "HinhAnhThucDia", "NgayCapNhat"
+      ],
+      color: "#00695C",
+      formats: { "B:C": "@", "D:D": "dd/MM/yyyy", "F:F": "@", "H:H": "@", "K:L": "@", "N:N": "#,##0.0", "R:S": "#,##0", "T:T": "0.00", "U:U": "#,##0", "W:X": "@", "Y:Y": "dd/MM/yyyy", "AA:AA": "@", "AB:AB": "dd/MM/yyyy", "AE:AE": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 140, 3: 130, 4: 110, 5: 180, 6: 100, 7: 180, 8: 130, 9: 130, 10: 160, 11: 100, 12: 100, 13: 240, 14: 110, 15: 130, 16: 220, 17: 180, 18: 140, 19: 140, 20: 110, 21: 140, 22: 130, 23: 130, 24: 130, 25: 110, 26: 200, 27: 140, 28: 110, 29: 160, 30: 160, 31: 160 }
+    },
     CAU_HINH_BIEU_MAU: {
       headers: ["Id", "MaBM", "TenBM", "PhanHe", "LoaiNguon", "LinkNguon", "MoTa", "TruongTron", "TrangThai", "NgayCapNhat"],
       color: "#4338CA",
@@ -129,7 +142,10 @@ var SchemaSetup = {
       defaultData: [
         [1, "BM_KT_01", "Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân", "Kiểm Tra Vốn", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-kt", "Mẫu chuẩn CBTD lập sau khi kiểm tra thực địa", JSON.stringify(["{{HoTen}}", "{{MaKH}}", "{{SoHDTD}}", "{{TienVay}}", "{{NgayKiemTra}}", "{{ThanhPhanDoan}}"]), "Hoạt động", new Date()],
         [2, "BM_TD_01", "Báo Cáo Thẩm Định & Định Giá Tài Sản Thế Chấp", "Thẩm Định", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-td", "Mẫu trình Ban Lãnh đạo phê duyệt hồ sơ vay", JSON.stringify(["{{HoTen}}", "{{MaKH}}", "{{DeXuatVay}}", "{{DuyetVay}}", "{{LaiSuat}}", "{{LoaiTSBD}}", "{{GiaTriTSBD}}", "{{TyLeLTV}}"]), "Hoạt động", new Date()],
-        [3, "BM_TN_01", "Thỏa Thuận Ủy Quyền Trích Nợ Tự Động CASA", "Trích Nợ Tự Động", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-tn", "Văn bản thỏa thuận trích nợ định kỳ ký giữa KH và Quỹ", JSON.stringify(["{{HoTen}}", "{{SoCCCD}}", "{{SoTKCASA}}", "{{KyTrichNo}}"]), "Hoạt động", new Date()]
+        [3, "BM_TN_01", "Thỏa Thuận Ủy Quyền Trích Nợ Tự Động CASA", "Trích Nợ Tự Động", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-tn", "Văn bản thỏa thuận trích nợ định kỳ ký giữa KH và Quỹ", JSON.stringify(["{{HoTen}}", "{{SoCCCD}}", "{{SoTKCASA}}", "{{KyTrichNo}}"]), "Hoạt động", new Date()],
+        [4, "BM_HDTD_01", "Hợp Đồng Tín Dụng Kiêm Khế Ước Nhận Nợ", "Hợp Đồng", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-hdtd", "Hợp đồng tín dụng cho vay thành viên chuẩn NHNN", JSON.stringify(["{{HoTen}}", "{{MaKH}}", "{{SoCCCD}}", "{{SoHDTD}}", "{{TienVay}}", "{{LaiSuat}}", "{{ThoiHanVay}}", "{{PhuongThucTraGoc}}", "{{MucDichVay}}"]), "Hoạt động", new Date()],
+        [5, "BM_HDTC_01", "Hợp Đồng Thế Chấp Quyền Sử Dụng Đất (Công Chứng)", "Thế Chấp", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-hdtc", "Hợp đồng thế chấp quyền sử dụng đất 3 bên phục vụ công chứng & ĐKGDBD", JSON.stringify(["{{ChuSoHuu}}", "{{CCCD_ChuTS}}", "{{SoGCN}}", "{{ThuaDatSo}}", "{{ToBanDoSo}}", "{{DiaChiThuaDat}}", "{{DienTich}}", "{{GiaTriDinhGiaQTD}}", "{{SoTienDamBaoToiDa}}"]), "Hoạt động", new Date()],
+        [6, "BM_BBDG_01", "Biên Bản Định Giá Tài Sản Bảo Đảm", "Thế Chấp", "GOOGLE_DOCS", "https://docs.google.com/document/d/sample-bbdg", "Biên bản định giá QSDĐ của Hội đồng định giá QTDND", JSON.stringify(["{{ChuSoHuu}}", "{{SoGCN}}", "{{ThuaDatSo}}", "{{ToBanDoSo}}", "{{DienTich}}", "{{GiaTriDinhGiaQTD}}", "{{GiaTriThiTruong}}", "{{TyLeChoVayToiDa}}"]), "Hoạt động", new Date()]
       ]
     }
   },
