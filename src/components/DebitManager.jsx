@@ -15,6 +15,7 @@ import { formatDateVN, formatDateTimeVN, formatCurrencyVN } from '../utils/dateU
 import Pagination from './Pagination';
 import DebitBatchCreateModal from './modals/DebitBatchCreateModal';
 import DebitRegisterModal from './modals/DebitRegisterModal';
+import DebitBatchDetailModal from './modals/DebitBatchDetailModal';
 
 export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickView }) {
   const [activeSubTab, setActiveSubTab] = useState('register'); // 'register' | 'batch'
@@ -26,6 +27,7 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
 
   const [showRegModal, setShowRegModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [selectedBatchDetail, setSelectedBatchDetail] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Filters & Search for Registrations
@@ -306,8 +308,19 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
               <tbody>
                 {paginatedBatches.length > 0 ? (
                   paginatedBatches.map((b, idx) => (
-                    <tr key={idx}>
-                      <td className="fw-bold font-monospace text-primary">{b.maDot}</td>
+                    <tr key={idx} style={{ cursor: 'pointer' }} onClick={() => setSelectedBatchDetail(b)}>
+                      <td className="fw-bold font-monospace">
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 fw-bold font-monospace text-decoration-none text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedBatchDetail(b);
+                          }}
+                        >
+                          {b.maDot}
+                        </button>
+                      </td>
                       <td>{b.thangNam}</td>
                       <td className="text-center">
                         <span className="badge bg-secondary-subtle text-secondary">Kỳ {b.kyTrich}</span>
@@ -359,6 +372,13 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
         registrations={registrations}
         contracts={allContracts}
         debtWarnings={debtWarnings}
+      />
+
+      <DebitBatchDetailModal
+        show={!!selectedBatchDetail}
+        onClose={() => setSelectedBatchDetail(null)}
+        batch={selectedBatchDetail}
+        onOpenCustomerQuickView={onOpenCustomerQuickView}
       />
     </div>
   );
