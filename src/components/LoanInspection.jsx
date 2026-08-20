@@ -39,7 +39,23 @@ export default function LoanInspection({ prefilledContract, onOpenCustomerQuickV
 
       if (resIns.status === 'success' && resIns.data) setInspections(resIns.data);
       if (resCust.status === 'success' && resCust.data) {
-        setAllContracts(resCust.data.contracts || []);
+        const custList = Array.isArray(resCust.data) ? resCust.data : (resCust.data.customers || []);
+        const contractsList = [];
+        custList.forEach(c => {
+          (c.contracts || []).forEach(ct => {
+            contractsList.push({
+              ...ct,
+              maKH: c.maKH,
+              hoTen: c.hoTen,
+              cccd: c.cccd,
+              dienThoai: c.dienThoaiDD || c.dienThoai,
+              diaChi: c.diaChi,
+              soTV: c.soTV
+            });
+          });
+        });
+        setAllContracts(contractsList);
+        setAllCustomers(custList);
       }
     } catch (e) {
       console.error('Lỗi nạp dữ liệu kiểm tra vốn:', e);

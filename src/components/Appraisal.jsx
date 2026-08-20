@@ -50,7 +50,8 @@ export default function Appraisal({ prefilledCustomer, onOpenCustomerQuickView, 
 
       if (resApp.status === 'success' && resApp.data) setAppraisals(resApp.data);
       if (resCust.status === 'success' && resCust.data) {
-        setAllCustomers(resCust.data.customers || []);
+        const custList = Array.isArray(resCust.data) ? resCust.data : (resCust.data.customers || []);
+        setAllCustomers(custList);
       }
     } catch (e) {
       console.error('Lỗi nạp dữ liệu thẩm định:', e);

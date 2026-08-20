@@ -54,8 +54,23 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
       if (resReg.status === 'success' && resReg.data) setRegistrations(resReg.data);
       if (resBatch.status === 'success' && resBatch.data) setBatches(resBatch.data);
       if (resCust.status === 'success' && resCust.data) {
-        setAllCustomers(resCust.data.customers || []);
-        setAllContracts(resCust.data.contracts || []);
+        const custList = Array.isArray(resCust.data) ? resCust.data : (resCust.data.customers || []);
+        const contractsList = [];
+        custList.forEach(c => {
+          (c.contracts || []).forEach(ct => {
+            contractsList.push({
+              ...ct,
+              maKH: c.maKH,
+              hoTen: c.hoTen,
+              cccd: c.cccd,
+              dienThoai: c.dienThoaiDD || c.dienThoai,
+              soTK: c.soTK,
+              diaChi: c.diaChi
+            });
+          });
+        });
+        setAllCustomers(custList);
+        setAllContracts(contractsList);
       }
       if (resWarn.status === 'success' && resWarn.data) setDebtWarnings(resWarn.data);
     } catch (e) {
