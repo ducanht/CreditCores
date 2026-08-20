@@ -177,75 +177,155 @@ html.dark .small {
   color: #cbd5e1 !important; /* Chữ màu bạc sáng cực kỳ rõ nét */
 }
 
-/* Table High Contrast in Dark Mode */
-html.dark .table,
-html.dark .table-custom,
-html.dark .table-responsive {
-  --bs-table-bg: transparent !important;
-  --bs-table-color: #f8fafc !important;
-  background-color: transparent !important;
-  color: #f8fafc !important;
+/* ========================================================================================
+   UNIFIED SYSTEM-WIDE TABLE & LIST DESIGN SYSTEM (ĐỒNG NHẤT 100% TOÀN WEBAPP)
+   ======================================================================================== */
+
+.table,
+.table-custom,
+.table-responsive table {
+  --bs-table-bg: transparent;
+  width: 100%;
+  margin-bottom: 0;
+  vertical-align: middle;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-body) !important;
+  font-size: 0.84rem !important;
 }
 
-html.dark .table-custom thead th {
-  background-color: #0f172a !important;
+/* 1. Table Headers (th) */
+.table thead th,
+.table-custom thead th,
+.table-responsive table thead th {
+  font-family: var(--font-body) !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px !important;
+  text-transform: uppercase !important;
+  color: #475569 !important;
+  background-color: #f8fafc !important;
+  border-top: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 0.65rem 0.85rem !important;
+  white-space: nowrap;
+  vertical-align: middle !important;
+}
+
+html.dark .table thead th,
+html.dark .table-custom thead th,
+html.dark .table-responsive table thead th {
+  background-color: #0b1324 !important;
   color: #bef264 !important;
-  border-bottom: 2px solid #334155 !important;
-  font-weight: 800 !important;
-  font-size: 0.78rem;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
+  border-bottom: 1px solid #24324d !important;
 }
 
-html.dark .table-custom td {
+/* 2. Table Data Cells (td) */
+.table tbody td,
+.table-custom tbody td,
+.table-responsive table tbody td {
+  font-family: var(--font-body) !important;
+  font-size: 0.84rem !important;
+  font-weight: 400;
+  color: #1e293b;
+  padding: 0.65rem 0.85rem !important;
+  border-top: none !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  vertical-align: middle !important;
+}
+
+html.dark .table tbody td,
+html.dark .table-custom tbody td,
+html.dark .table-responsive table tbody td {
   color: #f1f5f9 !important;
   border-bottom: 1px solid #1e293b !important;
-  background-color: transparent !important;
 }
 
-html.dark .table-custom tbody tr:hover td {
-  background-color: rgba(163, 230, 53, 0.08) !important;
+/* 3. Table Rows Hover State */
+.table tbody tr,
+.table-custom tbody tr,
+.table-responsive table tbody tr {
+  transition: background-color 0.15s ease;
 }
 
-html.dark .table-custom td .text-dark {
-  color: #f8fafc !important;
+.table tbody tr:hover td,
+.table-custom tbody tr:hover td,
+.table-responsive table tbody tr:hover td {
+  background-color: rgba(154, 205, 50, 0.04) !important;
 }
 
-html.dark .table-custom td .text-muted,
-html.dark .table-custom td .small {
-  color: #cbd5e1 !important;
+html.dark .table tbody tr:hover td,
+html.dark .table-custom tbody tr:hover td,
+html.dark .table-responsive table tbody tr:hover td {
+  background-color: rgba(163, 230, 53, 0.06) !important;
 }
 
-html.dark .table-custom td .text-primary {
-  color: #93c5fd !important;
+/* 4. Table Action Buttons & Links */
+.table td .btn,
+.table-custom td .btn {
+  font-size: 0.78rem !important;
+  padding: 0.25rem 0.5rem !important;
+  font-weight: 500 !important;
+  font-family: var(--font-body) !important;
 }
 
-html.dark .table-custom td .text-danger {
-  color: #fca5a5 !important;
+.table td .btn-link,
+.table-custom td .btn-link {
+  font-size: 0.84rem !important;
+  font-weight: 500 !important;
+  font-family: var(--font-body) !important;
 }
 
-html.dark .table-custom td .text-success {
-  color: #86efac !important;
+/* 5. Numeric & Monospace inside tables */
+.table .num-tabular,
+.table-custom .num-tabular {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  font-size: 0.84rem;
 }
 
-html.dark .table-custom td .text-warning {
-  color: #fde047 !important;
+.table .font-monospace,
+.table-custom .font-monospace {
+  font-family: var(--font-mono) !important;
+  font-size: 0.82rem;
+  letter-spacing: 0;
 }
 
 /* Card Modern System */
 .card-modern {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 6px 16px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-modern:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 html.dark .card-modern,
 html.dark .bento-card {
   background: #0f172a !important;
-  border: 1.5px solid #24324d !important;
+  border: 1px solid #24324d !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* List Groups & Item Consistency */
+.list-group-item,
+.list-item-custom {
+  font-family: var(--font-body) !important;
+  font-size: 0.84rem !important;
+  padding: 0.65rem 0.85rem !important;
+  border-color: #e2e8f0;
+  transition: all 0.15s ease;
+}
+
+html.dark .list-group-item,
+html.dark .list-item-custom {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
 }
 
 /* Background Utility Classes */
@@ -472,10 +552,11 @@ html.dark .badge.bg-warning-subtle {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
+  padding: 0.28rem 0.65rem;
   border-radius: var(--radius-full);
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 500;
+  font-family: var(--font-body) !important;
 }
 
 .badge-brand-soft {
