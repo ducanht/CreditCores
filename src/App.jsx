@@ -104,9 +104,9 @@ export default function App() {
       const interval = setInterval(async () => {
         try {
           const resSync = await api.getSyncStatus();
-          if (resSync.status === 'success') setSyncStatus(resSync.data);
+          if (resSync && resSync.status === 'success') setSyncStatus(resSync.data);
         } catch (e) {}
-      }, 10000);
+      }, 45000);
       return () => clearInterval(interval);
     }
   }, [currentUser]);

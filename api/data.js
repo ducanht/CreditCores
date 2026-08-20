@@ -3,17 +3,23 @@
  * Chống lỗi CORS, che giấu Google Script URL và hỗ trợ caching + rate-limiting
  */
 
-const GAS_URL = process.env.VITE_GAS_API_URL || 'https://script.google.com/macros/s/AKfycbzL5nQ6l87rSg2J2H7mF9t_example/exec';
+const DEFAULT_REAL_GAS_URL = 'https://script.google.com/macros/s/AKfycbxLQHAgdH2cus1zX_z28b31qixMWqq5K0fgIsdy4QFD6xsjRlUyRrwmRyKU28jljAc2/exec';
+const GAS_URL = process.env.VITE_GAS_API_URL || process.env.GAS_API_URL || DEFAULT_REAL_GAS_URL;
 
 export default async function handler(req, res) {
   // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
+
+  // Cache Control for Vercel Edge CDN (Cache GET requests for 15s)
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 's-maxage=15, stale-while-revalidate=45');
+  }
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -38,7 +44,7 @@ export default async function handler(req, res) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9500); // 9.5s timeout for Vercel
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s fast timeout
     fetchOptions.signal = controller.signal;
 
     const response = await fetch(targetUrl, fetchOptions);

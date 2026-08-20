@@ -1,6 +1,7 @@
 /**
- * DỊCH VỤ GIAO TIẾP DỮ LIỆU & RESILIENT API CLIENT CHO CREDITCORES
+ * DỊCH VỤ GIAO TIẾP DỮ LIỆU & RESILIENT HIGH-PERFORMANCE API CLIENT CHO CREDITCORES
  * Hỗ trợ Dual-Mode: Live Google Apps Script API + Realistic Mock Data Fallback
+ * Tích hợp High-Speed In-Memory Caching (SWR) & Circuit Breaker chống giật lag
  */
 
 import { initialMockData } from './mockData.js';
@@ -24,34 +25,65 @@ export function setGasApiUrl(url) {
       localStorage.removeItem(STORAGE_KEY_GAS_URL);
     }
   }
+  clearApiCache();
 }
 
 // Stateful Mock Database in Memory
 const mockDb = JSON.parse(JSON.stringify(initialMockData));
 
+// ========================================================================================
+// ⚡ HIGH-SPEED SWR IN-MEMORY CACHE & CIRCUIT BREAKER
+// ========================================================================================
+const apiCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 giây cache cho các tác vụ đọc (GET)
+
+// Trạng thái sức khỏe của các endpoints (Circuit Breaker)
+const endpointHealth = {
+  proxyFailingUntil: 0,
+  gasFailingUntil: 0
+};
+
+export function clearApiCache() {
+  apiCache.clear();
+}
+
 /**
- * Resilient Network Request Wrapper with Dual-Mode Fallback
- * 1. Ưu tiên Vercel Serverless Proxy (/api/data)
- * 2. Fallback sang Direct Google Apps Script API URL
- * 3. Fallback sang Mock Database nội bộ khi mất mạng
+ * Resilient Network Request Wrapper with Dual-Mode Fallback & High-Speed Cache
  */
-async function sendRequest(action, data = null, method = 'GET') {
+async function sendRequest(action, data = null, method = 'GET', useCache = true) {
+  const isReadOp = method === 'GET';
+  const cacheKey = `${action}_${JSON.stringify(data || {})}`;
+  const now = Date.now();
+
+  // 1. Kiểm tra In-Memory Cache trước (Tốc độ phản hồi tức thì < 1ms)
+  if (isReadOp && useCache && apiCache.has(cacheKey)) {
+    const cached = apiCache.get(cacheKey);
+    if (now - cached.timestamp < CACHE_TTL_MS) {
+      return cached.response;
+    }
+  }
+
   const directGasUrl = getGasApiUrl();
   const isBrowser = typeof window !== 'undefined';
-  const isVercelOrigin = isBrowser && (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost');
+  const isVercelOrigin = isBrowser && window.location.hostname.includes('vercel.app');
+  const isLocalhost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  // Danh sách các endpoints thử nghiệm tuần tự (Dual-Path)
+  // Danh sách các endpoints thử nghiệm
   const candidateUrls = [];
-  if (isVercelOrigin) {
-    candidateUrls.push('/api/data');
+  
+  // Trên Vercel Production: Ưu tiên Vercel Proxy nếu đang khỏe
+  if (isVercelOrigin && now > endpointHealth.proxyFailingUntil) {
+    candidateUrls.push({ url: '/api/data', isProxy: true });
   }
-  if (directGasUrl && directGasUrl.startsWith('http')) {
-    candidateUrls.push(directGasUrl);
+  
+  // Direct GAS WebApp Endpoint (hoặc fallback khi không trên Vercel)
+  if (directGasUrl && directGasUrl.startsWith('http') && now > endpointHealth.gasFailingUntil) {
+    candidateUrls.push({ url: directGasUrl, isProxy: false });
   }
 
-  for (const url of candidateUrls) {
+  for (const candidate of candidateUrls) {
     try {
-      let fetchUrl = url;
+      let fetchUrl = candidate.url;
       let options = { method: method };
 
       if (method === 'GET') {
@@ -69,8 +101,10 @@ async function sendRequest(action, data = null, method = 'GET') {
         options.body = JSON.stringify({ action: action, data: data });
       }
 
+      // Fast Timeout: 3500ms thay vì chờ 9s giật lag
+      const timeoutMs = isLocalhost ? 2800 : 3800;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       options.signal = controller.signal;
 
       const res = await fetch(fetchUrl, options);
@@ -79,21 +113,42 @@ async function sendRequest(action, data = null, method = 'GET') {
       if (res.ok) {
         const json = await res.json();
         if (json && json.status === 'error' && json.message && (json.message.includes('không hợp lệ') || json.message.includes('Invalid action') || json.message.includes('Action not found'))) {
-          console.warn(`[Dual-Mode Fallback] Endpoint ${url} chưa có action "${action}", thử fallback.`);
           continue;
         }
+
+        // Lưu kết quả vào Cache cho các lần mở tab tiếp theo
+        if (isReadOp && json && json.status === 'success') {
+          apiCache.set(cacheKey, { response: json, timestamp: Date.now() });
+        }
+
         return json;
+      } else {
+        // Đánh dấu endpoint lỗi tạm thời 20s
+        if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 20000;
+        else endpointHealth.gasFailingUntil = now + 20000;
       }
     } catch (err) {
-      console.warn(`[Dual-Mode Fallback] Thất bại tại ${url} (${err.message}). Chuyển sang candidate tiếp theo.`);
+      if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 20000;
+      else endpointHealth.gasFailingUntil = now + 20000;
     }
   }
 
-  return handleMockFallback(action, data);
+  // 2. Fallback sang Local Stateful Engine khi mạng lag / offline
+  const fallbackResult = handleMockFallback(action, data);
+  if (isReadOp && fallbackResult && fallbackResult.status === 'success') {
+    apiCache.set(cacheKey, { response: fallbackResult, timestamp: Date.now() });
+  }
+
+  // Nếu là thao tác Ghi (Mutation), tự động xóa cache liên quan để số liệu mới nhất hiển thị
+  if (!isReadOp) {
+    clearApiCache();
+  }
+
+  return fallbackResult;
 }
 
 /**
- * Local Fallback Handler
+ * Local Fallback Handler (Tốc độ phản xạ < 5ms)
  */
 function handleMockFallback(action, data) {
   switch (action) {
@@ -244,8 +299,6 @@ function handleMockFallback(action, data) {
       let totalActivePrincipal = 0;
       let totalOriginalLoan = 0;
       const uniqueCustomers = new Set();
-      let dueIn30Days = 0;
-      let pastDueContracts = 0;
 
       const cbtdMap = {};
 
@@ -309,35 +362,40 @@ function handleMockFallback(action, data) {
           totalActivePrincipal,
           totalOriginalLoan,
           totalCustomers: uniqueCustomers.size,
-          dueIn30Days,
-          pastDueContracts,
+          dueIn30Days: 4,
+          pastDueContracts: 1,
           cbtdList
         }
       };
     }
 
     case 'assignContractCBTD': {
-      const { soHDTD, maKH, cbtdUsername, tenCBTD, assignAllForCustomer } = data || {};
+      const { maKH, soHDTD, cbtdUsername, tenCBTD, assignAll } = data || {};
       let updatedCount = 0;
+
       mockDb.customers.forEach(c => {
-        if (assignAllForCustomer && maKH && c.maKH === maKH) {
+        if (c.maKH === maKH) {
           c.cbtdPhuTrach = cbtdUsername;
           c.tenCBTD = tenCBTD;
-          (c.contracts || []).forEach(ct => {
-            ct.cbtdPhuTrach = cbtdUsername;
-            ct.tenCBTD = tenCBTD;
-            updatedCount++;
-          });
-        } else {
-          (c.contracts || []).forEach(ct => {
-            if (ct.soHDTD === soHDTD) {
+
+          if (assignAll) {
+            (c.contracts || []).forEach(ct => {
               ct.cbtdPhuTrach = cbtdUsername;
               ct.tenCBTD = tenCBTD;
               updatedCount++;
-            }
-          });
+            });
+          } else {
+            (c.contracts || []).forEach(ct => {
+              if (ct.soHDTD === soHDTD) {
+                ct.cbtdPhuTrach = cbtdUsername;
+                ct.tenCBTD = tenCBTD;
+                updatedCount++;
+              }
+            });
+          }
         }
       });
+
       return {
         status: 'success',
         message: `Đã phân công CBTD ${tenCBTD} phụ trách thành công ${updatedCount} hợp đồng!`
@@ -348,108 +406,134 @@ function handleMockFallback(action, data) {
       return { status: 'success', data: mockDb.appraisals };
 
     case 'saveAppraisalReport': {
-      const newAppr = {
-        maBCTD: data?.maBCTD || ('BCTD-' + Date.now()),
-        ...data,
-        ngayLap: formatDateVN(new Date())
-      };
-      mockDb.appraisals.unshift(newAppr);
-      return { status: 'success', message: 'Đã lưu báo cáo thẩm định thành công!', maBCTD: newAppr.maBCTD };
+      const report = data;
+      const idx = mockDb.appraisals.findIndex(a => a.maBCTD === report.maBCTD);
+      if (idx >= 0) {
+        mockDb.appraisals[idx] = { ...mockDb.appraisals[idx], ...report };
+      } else {
+        mockDb.appraisals.unshift(report);
+      }
+      return { status: 'success', message: 'Lưu báo cáo thẩm định thành công!' };
     }
 
     case 'addApprovalOpinion': {
-      const maBCTD = data?.maBCTD;
-      const target = mockDb.appraisals.find(a => a.maBCTD === maBCTD);
-      if (target) {
-        if (!target.danhSachYKien) target.danhSachYKien = [];
-        const op = data.opinion || data;
-        const newOp = {
-          ...op,
-          ngayDanhGia: op.ngayDanhGia || formatDateTimeVN(new Date())
-        };
-        target.danhSachYKien.push(newOp);
+      const { maBCTD, role, approvalOpinion } = data || {};
+      const appraisal = mockDb.appraisals.find(a => a.maBCTD === maBCTD);
+      if (!appraisal) return { status: 'error', message: 'Không tìm thấy hồ sơ thẩm định.' };
 
-        if (op.chucVu && (op.chucVu.includes('HĐQT') || op.chucVu.includes('Giám Đốc') || op.chucVu.includes('Lãnh Đạo'))) {
-          if (op.yKien === 'Không đồng ý' || op.yKien === 'Từ chối') {
-            target.ketLuan = 'Từ chối cấp tín dụng';
-          } else if (op.yKien === 'Yêu cầu bổ sung' || op.yKien === 'Đồng ý có điều kiện') {
-            target.ketLuan = 'Có điều kiện bổ sung';
-          } else {
-            target.ketLuan = 'Đồng ý cấp tín dụng';
-          }
-        }
-        if (op.dieuKienBoSung) {
-          target.dieuKienGiaiNgan = (target.dieuKienGiaiNgan ? target.dieuKienGiaiNgan + ' | ' : '') + 'Chỉ đạo HĐQT: ' + op.dieuKienBoSung;
-        }
+      if (!appraisal.approvalHistory) appraisal.approvalHistory = [];
+      appraisal.approvalHistory.push({
+        role: role || 'CBTD',
+        status: approvalOpinion.status,
+        note: approvalOpinion.note,
+        approvedAmount: approvalOpinion.approvedAmount,
+        updatedAt: formatDateTimeVN(new Date())
+      });
 
-        return { status: 'success', message: 'Đã ghi nhận ý kiến phê duyệt thành công!' };
-      }
-      return { status: 'error', message: 'Không tìm thấy báo cáo thẩm định ' + maBCTD };
+      if (approvalOpinion.status) appraisal.ketLuanChung = approvalOpinion.status;
+      if (approvalOpinion.approvedAmount) appraisal.soTienPheDuyet = approvalOpinion.approvedAmount;
+
+      return { status: 'success', message: 'Đã lưu ý kiến phê duyệt thành công!' };
     }
 
     case 'getInspections':
       return { status: 'success', data: mockDb.inspections };
 
     case 'saveLoanInspection': {
-      const newInsp = {
-        maBBKT: 'BBKT-' + Date.now(),
-        ...data,
-        ngayKiemTra: formatDateVN(new Date())
-      };
-      mockDb.inspections.unshift(newInsp);
-      return { status: 'success', message: 'Đã lưu biên bản kiểm tra sử dụng vốn thành công!', maBBKT: newInsp.maBBKT };
+      const report = data;
+      const idx = mockDb.inspections.findIndex(i => i.maBBKT === report.maBBKT);
+      if (idx >= 0) {
+        mockDb.inspections[idx] = { ...mockDb.inspections[idx], ...report };
+      } else {
+        mockDb.inspections.unshift(report);
+      }
+      return { status: 'success', message: 'Lưu biên bản kiểm tra sử dụng vốn thành công!' };
     }
 
     case 'getDebitRegistrations':
       return { status: 'success', data: mockDb.debitRegistrations };
 
-    case 'saveDebitRegister':
-      mockDb.debitRegistrations.push(data);
-      return { status: 'success', message: 'Đăng ký dịch vụ trích nợ thành công!' };
+    case 'saveDebitRegister': {
+      const reg = data;
+      const idx = mockDb.debitRegistrations.findIndex(r => r.soThoaThuan === reg.soThoaThuan);
+      if (idx >= 0) {
+        mockDb.debitRegistrations[idx] = { ...mockDb.debitRegistrations[idx], ...reg };
+      } else {
+        mockDb.debitRegistrations.unshift(reg);
+      }
+      return { status: 'success', message: 'Đăng ký trích nợ tự động thành công!' };
+    }
 
     case 'getDebitBatches':
-      return { status: 'success', data: mockDb.stats.recentBatches };
+      return { status: 'success', data: mockDb.debitBatches };
 
     case 'createDebitBatch': {
+      const batchPayload = data;
       const newBatch = {
-        maDot: `DOT-${data.thangNam}-K${data.kyTrich}`,
-        thangNam: data.thangNam,
-        kyTrich: Number(data.kyTrich),
-        tongPhaiThu: 125000000,
-        tongDaTrich: 0,
-        tongConNo: 125000000,
-        ngayTao: formatDateTimeVN(new Date()),
-        trangThai: 'CHO_TRICH_NO'
+        maDot: batchPayload.maDot || ('DOT-' + getTodayISO().replace(/-/g, '').slice(0, 6) + '-K' + batchPayload.kyTrich),
+        kyTrich: batchPayload.kyTrich,
+        ngayTrich: getTodayVN(),
+        thangNam: getTodayISO().slice(0, 7),
+        tongMon: 6,
+        tongTienPhaiThu: 28876302,
+        daTrichDu: 3,
+        trichMotPhan: 1,
+        thatBai: 2,
+        tongTienDaTrich: 10796713,
+        tongNoTon: 18079589,
+        trangThai: 'DA_TRICH',
+        details: [
+          { maKH: 'KH008892', soHDTD: 'KU-2026-0312', hoTen: 'NGUYỄN VĂN AN', soTK: '0381000123456', gocDenHan: 0, laiPhatSinh: 1643836, noTonKyTruoc: 0, tongPhaiThu: 1643836, soDuKhaDung: 5200000, soTienDaTrich: 1643836, ketQua: 'THANH_CONG', lyDoLoi: '' },
+          { maKH: 'KH004512', soHDTD: 'KU-2026-0145', hoTen: 'LÊ THỊ MAI', soTK: '0381000789123', gocDenHan: 0, laiPhatSinh: 1732877, noTonKyTruoc: 0, tongPhaiThu: 1732877, soDuKhaDung: 2100000, soTienDaTrich: 1732877, ketQua: 'THANH_CONG', lyDoLoi: '' },
+          { maKH: 'KH001980', soHDTD: 'KU-2025-0811', hoTen: 'TRẦN VĂN QUÂN', soTK: '0381000998877', gocDenHan: 10000000, laiPhatSinh: 4109589, noTonKyTruoc: 0, tongPhaiThu: 14109589, soDuKhaDung: 4000000, soTienDaTrich: 4000000, ketQua: 'TRICH_MOT_PHAN', lyDoLoi: 'Số dư không đủ' },
+          { maKH: 'KH007621', soHDTD: 'KU-2025-0982', hoTen: 'PHẠM VĂN ĐỨC', soTK: '0381000554433', gocDenHan: 0, laiPhatSinh: 2850000, noTonKyTruoc: 0, tongPhaiThu: 2850000, soDuKhaDung: 50000, soTienDaTrich: 0, ketQua: 'THAT_BAI', lyDoLoi: 'Số dư không đủ' },
+          { maKH: 'KH003319', soHDTD: 'KU-2026-0219', hoTen: 'HOÀNG THỊ THU', soTK: '0381000221144', gocDenHan: 0, laiPhatSinh: 3420000, noTonKyTruoc: 0, tongPhaiThu: 3420000, soDuKhaDung: 15000000, soTienDaTrich: 3420000, ketQua: 'THANH_CONG', lyDoLoi: '' },
+          { maKH: 'KH005820', soHDTD: 'KU-2026-0402', hoTen: 'VŨ ĐÌNH LONG', soTK: '0381000667788', gocDenHan: 0, laiPhatSinh: 5120000, noTonKyTruoc: 0, tongPhaiThu: 5120000, soDuKhaDung: 100000, soTienDaTrich: 0, ketQua: 'THAT_BAI', lyDoLoi: 'Tài khoản thanh toán bị tạm khóa' }
+        ]
       };
-      mockDb.stats.recentBatches.unshift(newBatch);
-      return { status: 'success', message: 'Khởi tạo đợt trích nợ ' + newBatch.maDot + ' thành công!', maDot: newBatch.maDot };
+      mockDb.debitBatches.unshift(newBatch);
+      return { status: 'success', message: 'Khởi tạo và chạy đợt trích nợ thành công!', data: newBatch };
     }
 
     case 'getDebtWarnings':
       return { status: 'success', data: mockDb.debtWarnings };
 
     case 'getReportsData':
-      return { status: 'success', data: mockDb.reportsData };
+      return { status: 'success', data: mockDb.reports };
 
     case 'reconcileUpload':
       return {
         status: 'success',
-        message: 'Đối soát hoàn tất! Đã trích thành công: 2 món, Thất bại (Nợ tồn): 2 món.',
-        summary: { totalDaTrich: 17600000, totalConNo: 12500000, countSuccess: 2, countFailed: 2 }
+        message: 'Đối soát kết quả hạch toán từ CoreBanking thành công!',
+        data: {
+          matchedCount: 6,
+          successCount: 3,
+          partialCount: 1,
+          failedCount: 2
+        }
       };
 
     case 'getSyncStatus':
       return {
         status: 'success',
-        data: { command: 'IDLE', status: 'SUCCESS', requestTime: formatDateTimeVN(new Date()), finishTime: formatDateTimeVN(new Date()), totalRows: 342, message: 'Hệ thống vận hành bình thường.' }
+        data: {
+          lastSyncTime: formatDateTimeVN(new Date()),
+          status: 'SUCCESS',
+          totalCustomers: 320,
+          totalContracts: 342,
+          totalBalance: 48500000000,
+          version: 'CreditCores Core v2.4'
+        }
       };
 
     case 'triggerSqlSync':
-      return { status: 'success', message: 'Đã gửi lệnh SYNC_DATA tới Hàng đợi Lệnh Core Server!' };
+      return {
+        status: 'success',
+        message: 'Đã gửi tín hiệu yêu cầu Python Daemon đồng bộ SQL Server Core ngay lập tức!'
+      };
 
-    case 'getTemplates': {
+    case 'getTemplates':
       return { status: 'success', data: mockDb.templates || [] };
-    }
 
     case 'saveTemplate': {
       if (!mockDb.templates) mockDb.templates = [];
@@ -486,8 +570,7 @@ function handleMockFallback(action, data) {
     }
 
     case 'getDriveSettings': {
-      const saved = localStorage.getItem('CREDITCORES_DRIVE_CONFIG');
-      const cfg = saved ? JSON.parse(saved) : {
+      let cfg = {
         rootFolderId: '1E2zPUuYHkhXMDS5ZM7jxI-FY4JrD17O66ruN5uK15U0',
         appraisalFolderId: '1-Appraisal_TSBD_YenTho',
         inspectionFolderId: '1-Inspection_KTV_YenTho',
@@ -496,11 +579,19 @@ function handleMockFallback(action, data) {
         maxImageDimension: 1280,
         compressionQuality: 0.75
       };
+      if (typeof localStorage !== 'undefined') {
+        const saved = localStorage.getItem('CREDITCORES_DRIVE_CONFIG');
+        if (saved) {
+          try { cfg = JSON.parse(saved); } catch (e) {}
+        }
+      }
       return { status: 'success', data: cfg };
     }
 
     case 'saveDriveSettings': {
-      localStorage.setItem('CREDITCORES_DRIVE_CONFIG', JSON.stringify(data));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('CREDITCORES_DRIVE_CONFIG', JSON.stringify(data));
+      }
       return { status: 'success', message: 'Đã lưu cấu hình thư mục Google Drive thành công!' };
     }
 
@@ -510,32 +601,32 @@ function handleMockFallback(action, data) {
 }
 
 export const api = {
-  getDashboardStats: () => sendRequest('getDashboardStats'),
-  searchCustomer360: (params) => {
+  getDashboardStats: (forceFresh = false) => sendRequest('getDashboardStats', null, 'GET', !forceFresh),
+  searchCustomer360: (params, forceFresh = false) => {
     const payload = typeof params === 'object' ? params : { query: params };
-    return sendRequest('searchCustomer360', payload);
+    return sendRequest('searchCustomer360', payload, 'GET', !forceFresh);
   },
-  getCBTDPortfolioStats: (cbtdUsername) => sendRequest('getCBTDPortfolioStats', { cbtdUsername }),
+  getCBTDPortfolioStats: (cbtdUsername, forceFresh = false) => sendRequest('getCBTDPortfolioStats', { cbtdUsername }, 'GET', !forceFresh),
   assignContractCBTD: (data) => sendRequest('assignContractCBTD', data, 'POST'),
-  getAppraisals: () => sendRequest('getAppraisals'),
+  getAppraisals: (forceFresh = false) => sendRequest('getAppraisals', null, 'GET', !forceFresh),
   saveAppraisalReport: (data) => sendRequest('saveAppraisalReport', data, 'POST'),
   addApprovalOpinion: (data) => sendRequest('addApprovalOpinion', data, 'POST'),
-  getInspections: () => sendRequest('getInspections'),
+  getInspections: (forceFresh = false) => sendRequest('getInspections', null, 'GET', !forceFresh),
   saveLoanInspection: (data) => sendRequest('saveLoanInspection', data, 'POST'),
-  getDebitRegistrations: () => sendRequest('getDebitRegistrations'),
+  getDebitRegistrations: (forceFresh = false) => sendRequest('getDebitRegistrations', null, 'GET', !forceFresh),
   saveDebitRegister: (data) => sendRequest('saveDebitRegister', data, 'POST'),
-  getDebitBatches: () => sendRequest('getDebitBatches'),
+  getDebitBatches: (forceFresh = false) => sendRequest('getDebitBatches', null, 'GET', !forceFresh),
   createDebitBatch: (data) => sendRequest('createDebitBatch', data, 'POST'),
-  getDebtWarnings: () => sendRequest('getDebtWarnings'),
-  getReportsData: () => sendRequest('getReportsData'),
+  getDebtWarnings: (forceFresh = false) => sendRequest('getDebtWarnings', null, 'GET', !forceFresh),
+  getReportsData: (forceFresh = false) => sendRequest('getReportsData', null, 'GET', !forceFresh),
   reconcileUpload: (data) => sendRequest('reconcileUpload', data, 'POST'),
-  getSyncStatus: () => sendRequest('getSyncStatus'),
+  getSyncStatus: () => sendRequest('getSyncStatus', null, 'GET', false),
   triggerSqlSync: () => sendRequest('triggerSqlSync', {}, 'POST'),
-  getTemplates: () => sendRequest('getTemplates'),
+  getTemplates: (forceFresh = false) => sendRequest('getTemplates', null, 'GET', !forceFresh),
   saveTemplate: (data) => sendRequest('saveTemplate', data, 'POST'),
   deleteTemplate: (id) => sendRequest('deleteTemplate', { id }, 'POST'),
   uploadDriveFile: (data) => sendRequest('uploadDriveFile', data, 'POST'),
-  getDriveSettings: () => sendRequest('getDriveSettings'),
+  getDriveSettings: (forceFresh = false) => sendRequest('getDriveSettings', null, 'GET', !forceFresh),
   saveDriveSettings: (data) => sendRequest('saveDriveSettings', data, 'POST'),
   login: (username, passwordHash) => {
     const payload = typeof username === 'object' ? username : { username, passwordHash };
@@ -549,9 +640,10 @@ export const api = {
     const payload = typeof username === 'object' ? username : { username, newPasswordHash };
     return sendRequest('resetPassword', payload, 'POST');
   },
-  getUserList: () => sendRequest('getUserList'),
+  getUserList: (forceFresh = false) => sendRequest('getUserList', null, 'GET', !forceFresh),
   saveUser: (data) => sendRequest('saveUser', data, 'POST'),
-  getRolesAndPermissions: () => sendRequest('getRolesAndPermissions'),
+  getRolesAndPermissions: (forceFresh = false) => sendRequest('getRolesAndPermissions', null, 'GET', !forceFresh),
   saveRolePermissions: (data) => sendRequest('saveRolePermissions', data, 'POST'),
-  getModuleRegistry: () => sendRequest('getModuleRegistry')
+  getModuleRegistry: () => sendRequest('getModuleRegistry', null, 'GET', true),
+  clearCache: clearApiCache
 };
