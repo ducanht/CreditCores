@@ -25,6 +25,7 @@ import {
   Lock
 } from 'lucide-react';
 import ThousandInput from '../ThousandInput';
+import ImageUploader from '../ImageUploader';
 import { isValidCCCD } from '../../utils/validators';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
@@ -728,13 +729,38 @@ export default function AppraisalFormModal({
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label small fw-bold text-slate-700">Tài Liệu Chứng Minh Nguồn Thu Nhập</label>
+                      <label className="form-label small fw-bold text-slate-700">Mô Tả Nguồn Chứng Minh Thu Nhập</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="form-control mb-2"
                         value={formData.chungMinhThuNhap}
                         onChange={(e) => setFormData({ ...formData, chungMinhThuNhap: e.target.value })}
-                        placeholder="Mô tả chứng từ hoặc dán link tài liệu chứng minh thu nhập..."
+                        placeholder="Hóa đơn xuất bán hàng, sổ theo dõi doanh thu..."
+                      />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <ImageUploader
+                        label="Ảnh Chân Dung / Nhận Diện Thành Viên (Nén & Lưu Drive)"
+                        prefix="KH_AVATAR"
+                        entityId={formData.maKH || 'KH'}
+                        extraInfo={formData.hoTen}
+                        currentValue={formData.hinhAnhKH}
+                        onChange={(url) => setFormData({ ...formData, hinhAnhKH: url })}
+                        folderType="customer"
+                      />
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <ImageUploader
+                        label="Tài Liệu / Chứng Từ Nguồn Thu Nhập (Ảnh/PDF)"
+                        prefix="DOC_THUNHAP"
+                        entityId={formData.maKH || 'KH'}
+                        extraInfo={formData.maBCTD || 'BCTD'}
+                        currentValue={formData.chungMinhThuNhapDoc || ''}
+                        onChange={(url) => setFormData({ ...formData, chungMinhThuNhapDoc: url })}
+                        folderType="appraisal"
+                        acceptDocs={true}
                       />
                     </div>
                   </div>
@@ -1033,25 +1059,26 @@ export default function AppraisalFormModal({
                         />
                       </div>
 
-                      <div className="col-md-8">
+                      <div className="col-12 col-md-6">
                         <label className="form-label small fw-bold text-slate-700">Mô Tả Hiện Trạng & Ghi Chú Tài Sản</label>
-                        <input
-                          type="text"
+                        <textarea
+                          rows={3}
                           className="form-control"
                           value={formData.moTaTSBD}
                           onChange={(e) => setFormData({ ...formData, moTaTSBD: e.target.value })}
-                          placeholder="Đường liên thôn rộng 5m, xe tải vào tận nơi..."
+                          placeholder="Đường liên thôn rộng 5m, xe tải vào tận nơi, hiện trạng nhà 2 tầng..."
                         />
                       </div>
 
-                      <div className="col-md-4">
-                        <label className="form-label small fw-bold text-slate-700">Hình Ảnh Tài Sản / Sổ Đỏ (URL)</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={formData.hinhAnhTSBD}
-                          onChange={(e) => setFormData({ ...formData, hinhAnhTSBD: e.target.value })}
-                          placeholder="Dán link ảnh thực địa tài sản..."
+                      <div className="col-12 col-md-6">
+                        <ImageUploader
+                          label="Ảnh Tài Sản Bảo Đảm / Sổ Đỏ (Nén & Lưu Drive)"
+                          prefix="TSBD"
+                          entityId={formData.maBCTD || 'BCTD'}
+                          extraInfo={formData.maKH}
+                          currentValue={formData.hinhAnhTSBD}
+                          onChange={(url) => setFormData({ ...formData, hinhAnhTSBD: url })}
+                          folderType="appraisal"
                         />
                       </div>
                     </div>

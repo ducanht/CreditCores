@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, AlertCircle } from 'lucide-react';
 import { isValidDateVN } from '../../utils/validators';
+import ImageUploader from '../ImageUploader';
 
 export default function InspectionFormModal({
   show,
@@ -278,6 +279,32 @@ export default function InspectionFormModal({
                     placeholder="Mô tả hiện trạng tài sản, hoạt động kinh doanh và ý kiến của đoàn kiểm tra..."
                     value={formData.moTaThucTe}
                     onChange={(e) => setFormData({ ...formData, moTaThucTe: e.target.value })}
+                  />
+                </div>
+
+                {/* 2 Khối Tải / Chụp Ảnh Thực Địa & Hồ Sơ Đính Kèm */}
+                <div className="col-12 col-md-6">
+                  <ImageUploader
+                    label="Ảnh Kiểm Tra Thực Địa / TSBĐ (Nén & Lưu Drive)"
+                    prefix="KT_THUCDIA"
+                    entityId={formData.maBBKT || 'BBKT'}
+                    extraInfo={formData.soHDTD || formData.maKH}
+                    currentValue={formData.hinhAnhKiemTra}
+                    onChange={(url) => setFormData({ ...formData, hinhAnhKiemTra: url })}
+                    folderType="inspection"
+                  />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <ImageUploader
+                    label="Tài Liệu / Hóa Đơn Mua Sắm (Ảnh/PDF)"
+                    prefix="KT_CHUNGTU"
+                    entityId={formData.maBBKT || 'BBKT'}
+                    extraInfo={formData.soHDTD || formData.maKH}
+                    currentValue={formData.fileBienBanUrl}
+                    onChange={(url) => setFormData({ ...formData, fileBienBanUrl: url })}
+                    folderType="inspection"
+                    acceptDocs={true}
                   />
                 </div>
               </div>

@@ -469,6 +469,41 @@ function handleMockFallback(action, data) {
       return { status: 'success', message: 'Xóa biểu mẫu thành công!' };
     }
 
+    case 'uploadDriveFile': {
+      const fileId = 'DRIVE_' + Date.now();
+      const fileUrl = data?.base64Data || `https://drive.google.com/file/d/${fileId}/view`;
+      return {
+        status: 'success',
+        message: 'Tải tệp lên Google Drive thành công!',
+        data: {
+          fileId,
+          fileUrl,
+          fileName: data?.fileName,
+          downloadUrl: fileUrl,
+          viewUrl: fileUrl
+        }
+      };
+    }
+
+    case 'getDriveSettings': {
+      const saved = localStorage.getItem('CREDITCORES_DRIVE_CONFIG');
+      const cfg = saved ? JSON.parse(saved) : {
+        rootFolderId: '1E2zPUuYHkhXMDS5ZM7jxI-FY4JrD17O66ruN5uK15U0',
+        appraisalFolderId: '1-Appraisal_TSBD_YenTho',
+        inspectionFolderId: '1-Inspection_KTV_YenTho',
+        documentsFolderId: '1-Docs_Customer_YenTho',
+        autoCompress: true,
+        maxImageDimension: 1280,
+        compressionQuality: 0.75
+      };
+      return { status: 'success', data: cfg };
+    }
+
+    case 'saveDriveSettings': {
+      localStorage.setItem('CREDITCORES_DRIVE_CONFIG', JSON.stringify(data));
+      return { status: 'success', message: 'Đã lưu cấu hình thư mục Google Drive thành công!' };
+    }
+
     default:
       return { status: 'error', message: 'Hành động không xác định: ' + action };
   }
@@ -499,6 +534,9 @@ export const api = {
   getTemplates: () => sendRequest('getTemplates'),
   saveTemplate: (data) => sendRequest('saveTemplate', data, 'POST'),
   deleteTemplate: (id) => sendRequest('deleteTemplate', { id }, 'POST'),
+  uploadDriveFile: (data) => sendRequest('uploadDriveFile', data, 'POST'),
+  getDriveSettings: () => sendRequest('getDriveSettings'),
+  saveDriveSettings: (data) => sendRequest('saveDriveSettings', data, 'POST'),
   login: (username, passwordHash) => {
     const payload = typeof username === 'object' ? username : { username, passwordHash };
     return sendRequest('login', payload, 'POST');
