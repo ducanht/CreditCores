@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Search,
+import { MapPin, Search,
   User,
   CreditCard,
   Landmark,
@@ -15,8 +14,7 @@ import {
   UserCog,
   AlertTriangle,
   FileCheck2,
-  Calendar
-} from 'lucide-react';
+  Calendar } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatCurrencyVN } from '../utils/dateUtils';
 
