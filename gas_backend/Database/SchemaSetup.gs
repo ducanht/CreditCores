@@ -161,7 +161,16 @@ var SchemaSetup = {
   /**
    * Thực hiện rà soát, tạo mới và Auto-migration cho toàn bộ 12 Sheet
    */
-  ensureDatabaseSchema: function(ss) {
+  ensureDatabaseSchema: function(ss, force) {
+    if (!force) {
+      try {
+        var cache = CacheService.getScriptCache();
+        if (cache.get("schema_validated") === "true") {
+          return { status: "success", message: "Schema đã được kiểm tra (cached)." };
+        }
+      } catch (e) {}
+    }
+
     ss = getSpreadsheetInstance(ss);
     if (!ss) {
       Logger.log("❌ Không thể kết nối Google Spreadsheet!");
@@ -279,6 +288,12 @@ var SchemaSetup = {
     }
 
     SpreadsheetApp.flush();
+
+    try {
+      var cache = CacheService.getScriptCache();
+      cache.put("schema_validated", "true", 3600); // 1 hour
+    } catch (e) {}
+
     return {
       status: "success",
       message: "Đã kiểm soát, khởi tạo và đồng bộ 100% cấu trúc 12 bảng CSDL chuẩn trên Google Sheets!"
@@ -287,6 +302,6 @@ var SchemaSetup = {
 
   setupAllSheets: function(ss) {
     if (!ss) ss = SpreadsheetApp.getActiveSpreadsheet();
-    return this.ensureDatabaseSchema(ss);
+    return this.ensureDatabaseSchema(ss, true);
   }
 };
