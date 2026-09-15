@@ -248,47 +248,130 @@ def get_sql_connection(sql_cfg):
         )
     return pyodbc.connect(conn_str, timeout=15)
 
-# --- 6. TRUY VẤN DỮ LIỆU TỪ SQL SERVER COREBANKING (PURE PYTHON) ---
+# --- 6. HÀM CHUẨN HÓA DỮ LIỆU ĐẶC THÙ NG-eFUND & TRUY VẤN COREBANKING ---
+def format_efund_date(val):
+    """
+    Chuyển đổi ngày tháng từ định dạng NG-eFUND (YYYYMMDD) sang dd/MM/yyyy.
+    Ví dụ: 19630224 -> 24/02/1963, 20210812 -> 12/08/2021, 20031231 -> 31/12/2003.
+    """
+    if not val:
+        return ""
+    s = str(val).strip().replace("-", "").replace("/", "")
+    if len(s) == 8 and s.isdigit():
+        return f"{s[6:8]}/{s[4:6]}/{s[0:4]}"
+    return str(val).strip()
+
+def clean_address(val):
+    """
+    Làm sạch khoảng trắng thừa trước dấu phẩy trong địa chỉ và khu vực.
+    Ví dụ: 'Thôn Tu Mục , xã Quý Lộc , tỉnh Thanh Hoá' -> 'Thôn Tu Mục, xã Quý Lộc, tỉnh Thanh Hoá'
+    """
+    if not val:
+        return ""
+    import re
+    cleaned = re.sub(r'\s+,', ',', str(val).strip())
+    return re.sub(r'\s+', ' ', cleaned)
+
+def clean_number_code(val):
+    """
+    Bảo toàn số 0 ở đầu cho CCCD, SĐT, Số TV, Số TK, Mã KH khi đẩy lên Google Sheets.
+    Ví dụ: 038163029501 -> '038163029501, 0002 -> '0002, 0100002 -> '0100002.
+    """
+    if val is None or val == "":
+        return ""
+    s = str(val).strip()
+    if s.isdigit() and s.startswith("0") and len(s) > 1:
+        return "'" + s
+    return s
+
+def clean_currency(val):
+    """
+    Chuẩn hóa số tiền VNĐ (loại bỏ phần thập phân .00 nếu có).
+    Ví dụ: 616000.00 -> 616000
+    """
+    if val is None or val == "":
+        return 0
+    try:
+        return int(round(float(val)))
+    except Exception:
+        return val
+
 def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     """
-    Truy vấn bảng Khách hàng, Tài khoản CASA và Thành viên.
-    Trả về danh sách các bản ghi (dict).
+    Truy vấn bảng Khách hàng, Thành viên, Khu vực từ CSDL NG-eFUND.
+    Tự động chuẩn hóa:
+    - Ngày tháng YYYYMMDD -> dd/MM/yyyy.
+    - Bảo toàn số 0 ở đầu cho CCCD, Điện thoại, Số thành viên, Số tài khoản, Mã KH.
+    - Làm sạch địa chỉ, chuẩn hóa tiền vốn cổ phần.
     """
     query = """
     SELECT 
-        kh.MaKH,
-        kh.HoTen,
-        kh.DiaChi,
-        CONVERT(VARCHAR(10), kh.NgaySinh, 103) AS NgaySinh,
-        kh.CCCD,
-        CONVERT(VARCHAR(10), kh.NgayCap, 103) AS NgayCap,
-        kh.NoiCap,
-        ISNULL(kh.DienThoai, '') AS DienThoai,
-        ISNULL(kh.DienThoaiDD, '') AS DienThoaiDD,
-        ISNULL(tk.SoTK, '') AS SoTK,
-        ISNULL(kv.TenKhuVuc, kh.DiaChi) AS KhuVuc,
-        ISNULL(kh.SoTV, '') AS SoTV,
-        ISNULL(kh.SoSoCP, '') AS SoSoCP,
-        CONVERT(VARCHAR(10), kh.NgayVaoTV, 103) AS NgayVaoTV,
-        ISNULL(kh.TongTienCP, 0) AS TongTienCP,
-        ? AS NgayCapNhat
-    FROM DC_KHACH_HANG kh WITH (NOLOCK)
-    LEFT JOIN KT_TAI_KHOAN tk WITH (NOLOCK) ON kh.MaKH = tk.MaKH AND tk.LoaiTK = 'CASA' AND tk.TrangThai = 'A'
-    LEFT JOIN DC_KHU_VUC kv WITH (NOLOCK) ON kh.MaKhuVuc = kv.MaKhuVuc
-    WHERE kh.TrangThai = 'A'
-    ORDER BY kh.MaKH ASC;
+        kh.MA_KHACH_HANG AS MaKH,
+        kh.TEN_KHACH_HANG AS HoTen,
+        kh.DIA_CHI AS DiaChi,
+        kh.NGAY_SINH AS NgaySinh,
+        kh.SO_CMND AS CCCD,
+        kh.NGAY_CAP AS NgayCap,
+        kh.NOI_CAP AS NoiCap,
+        kh.SO_DIEN_THOAI AS DienThoai,
+        kh.SO_DI_DONG AS DienThoaiDD,
+        kh.SO_TAI_KHOAN AS SoTK,
+        kv.TEN_KHU_VUC AS KhuVuc,
+        tv.SO_THANH_VIEN AS SoTV,
+        tv.SO_CO_PHAN AS SoSoCP,
+        tv.NGAY_MO_SO AS NgayVaoTV,
+        ISNULL(SUM(tv.SO_TIEN), 0) AS TongTienCP
+    FROM dbo.DC_KHACH_HANG kh WITH (NOLOCK)
+    LEFT JOIN dbo.DC_KHU_VUC kv WITH (NOLOCK) ON kh.MA_KHU_VUC = kv.MA_KHU_VUC
+    LEFT JOIN dbo.DC_THANH_VIEN tv WITH (NOLOCK) ON kh.MA_KHACH_HANG = tv.MA_KHACH_HANG
+    GROUP BY 
+        kh.MA_KHACH_HANG,
+        kh.TEN_KHACH_HANG,
+        kh.DIA_CHI,
+        kh.NGAY_SINH,
+        kh.SO_CMND,
+        kh.NGAY_CAP,
+        kh.NOI_CAP,
+        kh.SO_DIEN_THOAI,
+        kh.SO_DI_DONG,
+        kh.SO_TAI_KHOAN,
+        kv.TEN_KHU_VUC,
+        tv.SO_THANH_VIEN,
+        tv.SO_CO_PHAN,
+        tv.NGAY_MO_SO
+    ORDER BY kh.MA_KHACH_HANG;
     """
-    logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Khách hàng & Thành viên (DC_KHACH_HANG)...")
+    logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Khách hàng & Thành viên từ NG-eFUND...")
     cursor = sql_conn.cursor()
-    cursor.execute(query, sync_timestamp_str)
+    cursor.execute(query)
     columns = [column[0] for column in cursor.description]
     records = []
+
     for row in cursor.fetchall():
-        record = {}
-        for col, val in zip(columns, row):
-            record[col] = str(val).strip() if val is not None else ""
+        row_map = {col: (val if val is not None else "") for col, val in zip(columns, row)}
+
+        record = {
+            "MaKH": clean_number_code(row_map.get("MaKH")),
+            "HoTen": str(row_map.get("HoTen", "")).strip(),
+            "DiaChi": clean_address(row_map.get("DiaChi")),
+            "NgaySinh": format_efund_date(row_map.get("NgaySinh")),
+            "CCCD": clean_number_code(row_map.get("CCCD")),
+            "NgayCap": format_efund_date(row_map.get("NgayCap")),
+            "NoiCap": str(row_map.get("NoiCap", "")).strip(),
+            "DienThoai": clean_number_code(row_map.get("DienThoai")),
+            "DienThoaiDD": clean_number_code(row_map.get("DienThoaiDD")),
+            "SoTK": clean_number_code(row_map.get("SoTK")),
+            "KhuVuc": clean_address(row_map.get("KhuVuc")),
+            "SoTV": clean_number_code(row_map.get("SoTV")),
+            "SoSoCP": str(row_map.get("SoSoCP", "")).strip(),
+            "NgayVaoTV": format_efund_date(row_map.get("NgayVaoTV")),
+            "TongTienCP": clean_currency(row_map.get("TongTienCP")),
+            "NgayCapNhat": sync_timestamp_str
+        }
         records.append(record)
+
     cursor.close()
+    logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} khách hàng từ NG-eFUND.")
     return records
 
 def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
