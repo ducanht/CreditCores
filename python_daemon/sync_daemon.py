@@ -296,6 +296,18 @@ def clean_currency(val):
     except Exception:
         return val
 
+def clean_interest_rate(val):
+    """
+    Chuẩn hóa lãi suất (%/năm), làm tròn 2 chữ số thập phân.
+    Ví dụ: 10.4600 -> 10.46
+    """
+    if not val:
+        return 0.0
+    try:
+        return round(float(val), 2)
+    except Exception:
+        return val
+
 def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     """
     Truy vấn bảng Khách hàng, Thành viên, Khu vực từ CSDL NG-eFUND.
@@ -376,44 +388,66 @@ def fetch_customer_core_data(sql_conn, sync_timestamp_str):
 
 def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     """
-    Truy vấn bảng Khế ước / Hợp đồng Tín dụng (TD_KHE_UOC, TD_HOP_DONG_TD).
-    Trả về danh sách các bản ghi (dict).
+    Truy vấn bảng Khế ước & Hợp đồng Tín dụng từ CSDL NG-eFUND.
+    Tự động chuẩn hóa:
+    - Ngày tháng YYYYMMDD -> dd/MM/yyyy (NgayVay, DenHan, TraLaiDenNgay).
+    - Chuẩn hóa số tiền vay, dư nợ (bỏ phần thập phân .00).
+    - Chuẩn hóa lãi suất (10.4600 -> 10.46).
+    - Bảo toàn số 0 ở đầu Mã khách hàng để liên kết chính xác với KH_CORE.
+    - Làm sạch mô tả mục đích vay.
     """
     query = """
     SELECT 
-        ku.SoHDTD,
-        ku.MaKH,
-        ISNULL(ku.TienVay, 0) AS TienVay,
-        ISNULL(ku.DuNo, 0) AS DuNo,
-        ISNULL(ku.LaiSuat, 0) AS LaiSuat,
-        CONVERT(VARCHAR(10), ku.NgayVay, 103) AS NgayVay,
-        CONVERT(VARCHAR(10), ku.DenHan, 103) AS DenHan,
-        CONVERT(VARCHAR(10), ku.TraLaiDenNgay, 103) AS TraLaiDenNgay,
-        ISNULL(ku.MaLoaiVay, 'LV01') AS MaLoaiVay,
-        ISNULL(ku.SoThangVay, 12) AS SoThangVay,
-        ISNULL(lv.TenLoaiVay, ku.MucDichVay) AS MoTaVay,
-        'qtdyentho.cbtd' AS CBTD_PhuTrach,
-        N'Lê Văn Tín (CBTD)' AS Ten_CBTD,
-        'DANG_VAY' AS TrangThaiHD,
-        '' AS NgayTatToan,
-        ? AS NgayCapNhat
-    FROM TD_KHE_UOC ku WITH (NOLOCK)
-    INNER JOIN TD_HOP_DONG_TD hd WITH (NOLOCK) ON ku.SoHDTD_Goc = hd.SoHDTD
-    LEFT JOIN DC_LOAI_VAY lv WITH (NOLOCK) ON ku.MaLoaiVay = lv.MaLoaiVay
-    WHERE ku.DuNo > 0 AND ku.TrangThai = 'A'
-    ORDER BY ku.SoHDTD ASC;
+        d.SO_HDTD AS SoHDTD,
+        d.MA_KHACH_HANG AS MaKH,
+        d.SO_TIEN_VAY AS TienVay,
+        a.SO_DU AS DuNo,
+        a.LAI_SUAT AS LaiSuat,
+        d.NGAY_VAY AS NgayVay,
+        d.NGAY_DAO_HAN AS DenHan,
+        a.THU_LAI_DEN_NGAY AS TraLaiDenNgay,
+        sp.TEN_SAN_PHAM AS MaLoaiVay,
+        d.SO_THANG_VAY AS SoThangVay,
+        d.MO_TA_MUC_DICH_VAY AS MoTaVay
+    FROM dbo.TD_KHE_UOC a WITH (NOLOCK)
+    INNER JOIN dbo.TD_HOP_DONG_TD d WITH (NOLOCK) ON a.MA_HDTD = d.MA_HDTD
+    INNER JOIN dbo.KT_TAI_KHOAN c WITH (NOLOCK) ON c.SO_TAI_KHOAN = a.SO_TAI_KHOAN
+    LEFT JOIN dbo.vwTD_SAN_PHAM sp WITH (NOLOCK) ON sp.MA_SAN_PHAM = a.MA_SAN_PHAM
+    WHERE a.SO_DU > 0 
+      AND c.SO_DU > 0
+    ORDER BY d.MA_KHACH_HANG, d.NGAY_VAY DESC;
     """
-    logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Khế ước & Dư nợ Tín dụng (TD_KHE_UOC)...")
+    logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Hợp đồng Tín dụng & Dư nợ từ NG-eFUND...")
     cursor = sql_conn.cursor()
-    cursor.execute(query, sync_timestamp_str)
+    cursor.execute(query)
     columns = [column[0] for column in cursor.description]
     records = []
+
     for row in cursor.fetchall():
-        record = {}
-        for col, val in zip(columns, row):
-            record[col] = val if val is not None else ""
+        row_map = {col: (val if val is not None else "") for col, val in zip(columns, row)}
+
+        record = {
+            "SoHDTD": str(row_map.get("SoHDTD", "")).strip(),
+            "MaKH": clean_number_code(row_map.get("MaKH")),
+            "TienVay": clean_currency(row_map.get("TienVay")),
+            "DuNo": clean_currency(row_map.get("DuNo")),
+            "LaiSuat": clean_interest_rate(row_map.get("LaiSuat")),
+            "NgayVay": format_efund_date(row_map.get("NgayVay")),
+            "DenHan": format_efund_date(row_map.get("DenHan")),
+            "TraLaiDenNgay": format_efund_date(row_map.get("TraLaiDenNgay")),
+            "MaLoaiVay": str(row_map.get("MaLoaiVay", "")).strip(),
+            "SoThangVay": clean_currency(row_map.get("SoThangVay")) or 12,
+            "MoTaVay": clean_address(row_map.get("MoTaVay")),
+            "CBTD_PhuTrach": "qtdyentho.cbtd",
+            "Ten_CBTD": "Lê Văn Tín (CBTD)",
+            "TrangThaiHD": "DANG_VAY",
+            "NgayTatToan": "",
+            "NgayCapNhat": sync_timestamp_str
+        }
         records.append(record)
+
     cursor.close()
+    logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} hợp đồng tín dụng từ NG-eFUND.")
     return records
 
 # --- 7. BỘ SINH DỮ LIỆU MẪU NGÂN QUỸ CHUẨN QTDND YÊN THỌ (MOCK DATA) ---
