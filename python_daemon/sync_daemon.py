@@ -7,15 +7,17 @@ Tổ chức: Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
 Bảo mật: Kết nối SQL Server nội bộ (Windows Trusted Auth / SQL Auth),
          Mã hóa một chiều TLS 1.3 đẩy lên Google Sheets qua Service Account.
 
-Tính năng cốt lõi:
-1. Đa nguồn dữ liệu: SQL Server CoreBanking (Active), Mock Data Generator (--mock), Excel/CSV.
-2. Tự động nhận diện ODBC Driver (ODBC Driver 18, 17, SQL Server) kèm mã hóa an toàn.
-3. Chống lỗi mã hóa tiếng Việt trên Windows terminal (UTF-8 auto-reconfigure).
-4. Phòng chống Formula Injection (CWE-1236) khi ghi dữ liệu lên Google Sheets.
-5. Self-Healing Schema: Tự động khởi tạo và chuẩn hóa 12 Sheet theo chuẩn SchemaSetup.
-6. Lắng nghe liên tục hàng đợi từ Google Sheets (Sheet SETTING) hoặc chạy tức thì (--now).
-7. Bảo toàn phân công Cán bộ tín dụng (CBTD) và tự động nhận diện Hợp đồng tất toán.
-8. Cơ chế thử lại (Retry with Exponential Backoff) khi gặp giới hạn Google Sheets API.
+Tính năng cốt lõi (100% Pure Python - Không phụ thuộc pandas):
+1. Không cần cài đặt pandas/numpy nặng nề: Chạy cực nhẹ, mượt mà trên mọi máy chủ.
+2. Đa nguồn dữ liệu: SQL Server CoreBanking (Active), Mock Data Generator (--mock).
+3. Hỗ trợ 100% Biến môi trường Windows (MY_SQL_PASS, SQL_PASS...) bảo mật không lộ mật khẩu.
+4. Tự động nhận diện ODBC Driver (ODBC Driver 18, 17, SQL Server) kèm mã hóa an toàn.
+5. Chống lỗi mã hóa tiếng Việt trên Windows terminal (UTF-8 auto-reconfigure).
+6. Phòng chống Formula Injection (CWE-1236) khi ghi dữ liệu lên Google Sheets.
+7. Self-Healing Schema: Tự động khởi tạo và chuẩn hóa 12 Sheet theo chuẩn SchemaSetup.
+8. Lắng nghe liên tục hàng đợi từ Google Sheets (Sheet SETTING) hoặc chạy tức thì (--now).
+9. Bảo toàn phân công Cán bộ tín dụng (CBTD) và tự động nhận diện Hợp đồng tất toán.
+10. Cơ chế thử lại (Retry with Exponential Backoff) khi gặp giới hạn Google Sheets API.
 ========================================================================================
 """
 
@@ -27,7 +29,6 @@ import logging
 from datetime import datetime
 import argparse
 import pyodbc
-import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -148,7 +149,7 @@ def sanitize_cell_value(val):
     Ngăn chặn việc vô tình hoặc cố ý chèn công thức nguy hiểm (=, +, -, @)
     vào ô dữ liệu Google Sheets.
     """
-    if val is None or pd.isna(val):
+    if val is None:
         return ""
     if isinstance(val, (int, float)):
         return val
@@ -157,15 +158,6 @@ def sanitize_cell_value(val):
         # Thêm dấu nháy đơn đầu để Google Sheets xử lý strictly dưới dạng văn bản
         return "'" + s
     return s
-
-def sanitize_dataframe(df):
-    """
-    Làm sạch toàn bộ DataFrame trước khi gửi lên Google Sheets.
-    """
-    df_clean = df.copy()
-    for col in df_clean.columns:
-        df_clean[col] = df_clean[col].apply(sanitize_cell_value)
-    return df_clean
 
 # --- 4. KẾT NỐI GOOGLE SHEETS BẢO MẬT QUA SERVICE ACCOUNT ---
 def get_gspread_client(credentials_path):
@@ -256,11 +248,11 @@ def get_sql_connection(sql_cfg):
         )
     return pyodbc.connect(conn_str, timeout=15)
 
-# --- 6. TRUY VẤN DỮ LIỆU TỪ SQL SERVER COREBANKING ---
+# --- 6. TRUY VẤN DỮ LIỆU TỪ SQL SERVER COREBANKING (PURE PYTHON) ---
 def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     """
     Truy vấn bảng Khách hàng, Tài khoản CASA và Thành viên.
-    Tự động gắn cột NgayCapNhat để người dùng biết thời điểm dữ liệu được lấy từ Core.
+    Trả về danh sách các bản ghi (dict).
     """
     query = """
     SELECT 
@@ -287,13 +279,22 @@ def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     ORDER BY kh.MaKH ASC;
     """
     logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Khách hàng & Thành viên (DC_KHACH_HANG)...")
-    df = pd.read_sql_query(query, sql_conn, params=[sync_timestamp_str])
-    return df
+    cursor = sql_conn.cursor()
+    cursor.execute(query, sync_timestamp_str)
+    columns = [column[0] for column in cursor.description]
+    records = []
+    for row in cursor.fetchall():
+        record = {}
+        for col, val in zip(columns, row):
+            record[col] = str(val).strip() if val is not None else ""
+        records.append(record)
+    cursor.close()
+    return records
 
 def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     """
     Truy vấn bảng Khế ước / Hợp đồng Tín dụng (TD_KHE_UOC, TD_HOP_DONG_TD).
-    Tự động gắn cột NgayCapNhat để đối soát hạn mức và thời gian thu lãi.
+    Trả về danh sách các bản ghi (dict).
     """
     query = """
     SELECT 
@@ -320,8 +321,17 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     ORDER BY ku.SoHDTD ASC;
     """
     logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Khế ước & Dư nợ Tín dụng (TD_KHE_UOC)...")
-    df = pd.read_sql_query(query, sql_conn, params=[sync_timestamp_str])
-    return df
+    cursor = sql_conn.cursor()
+    cursor.execute(query, sync_timestamp_str)
+    columns = [column[0] for column in cursor.description]
+    records = []
+    for row in cursor.fetchall():
+        record = {}
+        for col, val in zip(columns, row):
+            record[col] = val if val is not None else ""
+        records.append(record)
+    cursor.close()
+    return records
 
 # --- 7. BỘ SINH DỮ LIỆU MẪU NGÂN QUỸ CHUẨN QTDND YÊN THỌ (MOCK DATA) ---
 def generate_mock_banking_data(sync_timestamp_str):
@@ -410,7 +420,7 @@ def generate_mock_banking_data(sync_timestamp_str):
         }
     ]
 
-    return pd.DataFrame(customers), pd.DataFrame(contracts)
+    return customers, contracts
 
 # --- 8. TỰ ĐỘNG KHỞI TẠO & CHỮA LÀNH CSDL 12 BẢNG (SELF-HEALING SCHEMA) ---
 ALL_SCHEMAS = {
@@ -564,19 +574,25 @@ def get_or_create_worksheet(spreadsheet, title, headers):
         sheet.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
         return sheet
 
-def sync_dataframe_to_sheet(sheet, df, start_row=2, max_retries=3):
+def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
     """
-    Xóa dữ liệu cũ và ghi toàn bộ dữ liệu mới vào sheet bằng lệnh batch có cơ chế retry.
-    Áp dụng sanitize chống Formula Injection.
+    Ghi danh sách bản ghi (list of dicts) vào sheet bằng 1 lệnh batch duy nhất.
+    Áp dụng sanitize chống Formula Injection (CWE-1236).
     """
-    if df.empty:
-        logger.warning(f"⚠️ DataFrame rỗng, không có dữ liệu để ghi vào sheet {sheet.title}.")
+    if not records:
+        logger.warning(f"⚠️ Không có bản ghi nào để ghi vào sheet '{sheet.title}'.")
         return 0
 
-    df_clean = sanitize_dataframe(df)
-    values = df_clean.fillna("").values.tolist()
+    values = []
+    for r in records:
+        row_vals = []
+        for h in headers:
+            val = r.get(h, "")
+            row_vals.append(sanitize_cell_value(val))
+        values.append(row_vals)
+
     num_rows = len(values)
-    num_cols = len(df.columns)
+    num_cols = len(headers)
 
     for attempt in range(max_retries):
         try:
@@ -627,16 +643,16 @@ def process_sync_request(spreadsheet, sql_cfg, use_mock=False):
 
     try:
         if use_mock:
-            df_kh, df_hdtd = generate_mock_banking_data(sync_timestamp_str)
+            records_kh, records_hdtd = generate_mock_banking_data(sync_timestamp_str)
         else:
             with get_sql_connection(sql_cfg) as sql_conn:
-                df_kh = fetch_customer_core_data(sql_conn, sync_timestamp_str)
-                df_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
+                records_kh = fetch_customer_core_data(sql_conn, sync_timestamp_str)
+                records_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
 
         # 1. Đẩy dữ liệu Khách hàng & Thành viên (KH_CORE)
         kh_headers = ["MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat"]
         kh_sheet = get_or_create_worksheet(spreadsheet, "KH_CORE", kh_headers)
-        rows_kh = sync_dataframe_to_sheet(kh_sheet, df_kh, start_row=2)
+        rows_kh = sync_records_to_sheet(kh_sheet, kh_headers, records_kh, start_row=2)
 
         # 2. Đẩy dữ liệu Khế ước & Dư nợ (HDTD_CORE) kèm bảo toàn CBTD
         hdtd_headers = ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"]
@@ -650,18 +666,18 @@ def process_sync_request(spreadsheet, sql_cfg, use_mock=False):
         existing_map = {str(r.get("SoHDTD", "")).strip(): r for r in existing_records if str(r.get("SoHDTD", "")).strip()}
 
         # Bảo toàn CBTD đã phân công
-        for idx, row in df_hdtd.iterrows():
-            so_hd = str(row["SoHDTD"]).strip()
+        for r in records_hdtd:
+            so_hd = str(r.get("SoHDTD", "")).strip()
             if so_hd in existing_map:
                 prev_cbtd = str(existing_map[so_hd].get("CBTD_PhuTrach", "")).strip()
                 prev_ten = str(existing_map[so_hd].get("Ten_CBTD", "")).strip()
                 if prev_cbtd:
-                    df_hdtd.at[idx, "CBTD_PhuTrach"] = prev_cbtd
+                    r["CBTD_PhuTrach"] = prev_cbtd
                 if prev_ten:
-                    df_hdtd.at[idx, "Ten_CBTD"] = prev_ten
+                    r["Ten_CBTD"] = prev_ten
 
         # Nhận diện HĐ tất toán
-        active_so_hd_set = set(df_hdtd["SoHDTD"].astype(str).str.strip())
+        active_so_hd_set = {str(r.get("SoHDTD", "")).strip() for r in records_hdtd}
         settled_rows = []
         for so_hd, prev_r in existing_map.items():
             if so_hd not in active_so_hd_set:
@@ -685,13 +701,8 @@ def process_sync_request(spreadsheet, sql_cfg, use_mock=False):
                 }
                 settled_rows.append(settled_row)
 
-        if settled_rows:
-            df_settled = pd.DataFrame(settled_rows)
-            df_hdtd_combined = pd.concat([df_hdtd, df_settled], ignore_index=True)
-        else:
-            df_hdtd_combined = df_hdtd
-
-        rows_hdtd = sync_dataframe_to_sheet(hdtd_sheet, df_hdtd_combined, start_row=2)
+        all_hdtd_records = records_hdtd + settled_rows
+        rows_hdtd = sync_records_to_sheet(hdtd_sheet, hdtd_headers, all_hdtd_records, start_row=2)
 
         finish_time = datetime.now()
         total_rows = rows_kh + rows_hdtd
