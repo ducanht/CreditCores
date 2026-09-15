@@ -57,7 +57,9 @@ DEFAULT_SHEET_ID = "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw"
 
 def load_config():
     """
-    Nạp cấu hình từ file config.json hoặc biến môi trường / fallback mặc định.
+    Nạp cấu hình linh hoạt: Ưu tiên Biến môi trường Windows (Bảo mật - Không cần lưu mật khẩu)
+    và kết hợp với file config.json (nếu có).
+    Hỗ trợ cả tiền tố MY_SQL_* (từ code cũ) và SQL_*.
     """
     cfg = {}
     if os.path.exists(CONFIG_FILE):
@@ -67,20 +69,71 @@ def load_config():
         except Exception as e:
             logger.error(f"❌ Lỗi khi đọc {CONFIG_FILE}: {e}")
 
-    # Fallback từ biến môi trường nếu thiếu
-    google_sheet_id = cfg.get("google_sheet_id") or os.environ.get("GOOGLE_SHEET_ID") or DEFAULT_SHEET_ID
-    credentials_file = cfg.get("credentials_file") or os.environ.get("CREDENTIALS_FILE") or "credentials.json"
-    poll_interval = cfg.get("poll_interval_seconds", 5)
+    # 1. Google Sheet ID & Credentials: Biến môi trường > config.json > Mặc định
+    google_sheet_id = (
+        os.getenv("SHEET_ID")
+        or os.getenv("GOOGLE_SHEET_ID")
+        or cfg.get("google_sheet_id")
+        or DEFAULT_SHEET_ID
+    )
+    credentials_file = (
+        os.getenv("JSON_PATH")
+        or os.getenv("CREDENTIALS_FILE")
+        or cfg.get("credentials_file")
+        or "credentials.json"
+    )
+    poll_interval = int(os.getenv("POLL_INTERVAL") or cfg.get("poll_interval_seconds", 5))
 
-    sql_cfg = cfg.get("sql_server", {
-        "driver": "auto",
-        "server": os.environ.get("SQL_SERVER", "localhost\\SQLEXPRESS"),
-        "database": os.environ.get("SQL_DATABASE", "CORE_BANKING_YENTHO"),
-        "use_windows_auth": True,
-        "username": "sa",
-        "password": "",
-        "trust_server_certificate": "yes"
-    })
+    # 2. Cấu hình SQL Server: Ưu tiên Biến môi trường Windows (MY_SQL_* hoặc SQL_*)
+    sql_cfg_base = cfg.get("sql_server", {})
+
+    server = (
+        os.getenv("MY_SQL_SERVER")
+        or os.getenv("SQL_SERVER")
+        or sql_cfg_base.get("server")
+        or "localhost\\SQLEXPRESS"
+    )
+    database = (
+        os.getenv("MY_SQL_DB")
+        or os.getenv("SQL_DB")
+        or os.getenv("SQL_DATABASE")
+        or sql_cfg_base.get("database")
+        or "CORE_BANKING_YENTHO"
+    )
+    username = (
+        os.getenv("MY_SQL_USER")
+        or os.getenv("SQL_USER")
+        or os.getenv("SQL_USERNAME")
+        or sql_cfg_base.get("username")
+        or "sa"
+    )
+    password = (
+        os.getenv("MY_SQL_PASS")
+        or os.getenv("SQL_PASS")
+        or os.getenv("SQL_PASSWORD")
+        or sql_cfg_base.get("password")
+        or ""
+    )
+    driver = sql_cfg_base.get("driver") or os.getenv("SQL_DRIVER") or "auto"
+    use_windows_auth = sql_cfg_base.get("use_windows_auth", False if password else True)
+    trust_cert = sql_cfg_base.get("trust_server_certificate", "yes")
+
+    # Nếu có mật khẩu từ biến môi trường Windows, tự động bật SQL Auth
+    env_pass = os.getenv("MY_SQL_PASS") or os.getenv("SQL_PASS") or os.getenv("SQL_PASSWORD")
+    if env_pass:
+        password = env_pass
+        use_windows_auth = False
+        logger.info("🔒 Đã tự động nạp mật khẩu SQL Server từ Biến môi trường Windows (Bảo mật tối đa, không lưu tệp).")
+
+    sql_cfg = {
+        "driver": driver,
+        "server": server,
+        "database": database,
+        "use_windows_auth": use_windows_auth,
+        "username": username,
+        "password": password,
+        "trust_server_certificate": trust_cert
+    }
 
     return {
         "google_sheet_id": google_sheet_id,
@@ -118,9 +171,17 @@ def sanitize_dataframe(df):
 def get_gspread_client(credentials_path):
     """
     Khởi tạo client gspread bảo mật với Scope đầy đủ cho Spreadsheets và Drive.
+    Tự động tìm kiếm đường dẫn tương đối trong thư mục chứa script.
     """
-    if not os.path.exists(credentials_path):
-        logger.error(f"❌ Không tìm thấy file Google Service Account key: {credentials_path}")
+    resolved_path = credentials_path
+    if not os.path.isabs(resolved_path):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        candidate = os.path.join(script_dir, credentials_path)
+        if os.path.exists(candidate):
+            resolved_path = candidate
+
+    if not os.path.exists(resolved_path):
+        logger.error(f"❌ Không tìm thấy file Google Service Account key: {resolved_path}")
         logger.info("💡 Hướng dẫn: Đặt file JSON khóa tải từ Google Cloud Console vào thư mục này với tên 'credentials.json'")
         sys.exit(1)
 
@@ -128,7 +189,7 @@ def get_gspread_client(credentials_path):
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds = Credentials.from_service_account_file(credentials_path, scopes=scopes)
+    creds = Credentials.from_service_account_file(resolved_path, scopes=scopes)
     return gspread.authorize(creds)
 
 # --- 5. TỰ ĐỘNG DÒ TÌM & KẾT NỐI NỘI BỘ SQL SERVER ---
