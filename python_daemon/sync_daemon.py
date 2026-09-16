@@ -9,7 +9,7 @@ Bảo mật: Kết nối SQL Server nội bộ (Windows Trusted Auth / SQL Auth)
 
 Tính năng cốt lõi (100% Pure Python - Không phụ thuộc pandas):
 1. Không cần cài đặt pandas/numpy nặng nề: Chạy cực nhẹ, mượt mà trên mọi máy chủ.
-2. Đa nguồn dữ liệu: SQL Server CoreBanking (Active), Mock Data Generator (--mock).
+2. Nguồn dữ liệu trực tiếp: 100% SQL Server CoreBanking (NG-eFUND) thời gian thực.
 3. Hỗ trợ 100% Biến môi trường Windows (MY_SQL_PASS, SQL_PASS...) bảo mật không lộ mật khẩu.
 4. Tự động nhận diện ODBC Driver (ODBC Driver 18, 17, SQL Server) kèm mã hóa an toàn.
 5. Chống lỗi mã hóa tiếng Việt trên Windows terminal (UTF-8 auto-reconfigure).
@@ -450,95 +450,6 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} hợp đồng tín dụng từ NG-eFUND.")
     return records
 
-# --- 7. BỘ SINH DỮ LIỆU MẪU NGÂN QUỸ CHUẨN QTDND YÊN THỌ (MOCK DATA) ---
-def generate_mock_banking_data(sync_timestamp_str):
-    """
-    Sinh tập dữ liệu mẫu nghiệp vụ ngân quỹ QTDND Yên Thọ chuẩn 100% để kiểm thử
-    đẩy dữ liệu lên Google Sheets mà không cần cài đặt SQL Server.
-    """
-    customers = [
-        {
-            "MaKH": "KH008892", "HoTen": "NGUYỄN VĂN AN", "DiaChi": "Thôn 3, Xã Yên Thọ",
-            "NgaySinh": "15/05/1985", "CCCD": "038086012345", "NgayCap": "15/05/2021",
-            "NoiCap": "Cục CSQLHC về TTXH", "DienThoai": "02373850123", "DienThoaiDD": "0912345678",
-            "SoTK": "3500205123456", "KhuVuc": "Thôn 3, Yên Thọ", "SoTV": "TV-0892",
-            "SoSoCP": "CP-0412", "NgayVaoTV": "10/01/2018", "TongTienCP": 15000000,
-            "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "MaKH": "KH008893", "HoTen": "LÊ THỊ BÍCH", "DiaChi": "Thôn 1, Xã Yên Thọ",
-            "NgaySinh": "20/08/1990", "CCCD": "038190005678", "NgayCap": "10/06/2022",
-            "NoiCap": "Cục CSQLHC về TTXH", "DienThoai": "", "DienThoaiDD": "0987654321",
-            "SoTK": "3500205654321", "KhuVuc": "Thôn 1, Yên Thọ", "SoTV": "TV-0893",
-            "SoSoCP": "CP-0413", "NgayVaoTV": "15/03/2019", "TongTienCP": 20000000,
-            "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "MaKH": "KH008894", "HoTen": "TRẦN VĂN CƯỜNG", "DiaChi": "Thôn 2, Xã Yên Trường",
-            "NgaySinh": "12/03/1978", "CCCD": "038078009876", "NgayCap": "12/04/2021",
-            "NoiCap": "Cục CSQLHC về TTXH", "DienThoai": "02373850456", "DienThoaiDD": "0903456789",
-            "SoTK": "3500205789012", "KhuVuc": "Thôn 2, Yên Trường", "SoTV": "TV-0894",
-            "SoSoCP": "CP-0414", "NgayVaoTV": "05/06/2015", "TongTienCP": 30000000,
-            "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "MaKH": "KH008895", "HoTen": "HOÀNG THỊ DUYÊN", "DiaChi": "Thôn Tân Lộc, Xã Quý Lộc",
-            "NgaySinh": "25/11/1992", "CCCD": "038192011223", "NgayCap": "18/09/2022",
-            "NoiCap": "Cục CSQLHC về TTXH", "DienThoai": "", "DienThoaiDD": "0978112233",
-            "SoTK": "3500205334455", "KhuVuc": "Thôn Tân Lộc, Quý Lộc", "SoTV": "TV-0895",
-            "SoSoCP": "CP-0415", "NgayVaoTV": "22/11/2020", "TongTienCP": 10000000,
-            "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "MaKH": "KH008896", "HoTen": "PHẠM VĂN ĐỨC", "DiaChi": "Thôn 4, Xã Yên Thọ",
-            "NgaySinh": "05/09/1982", "CCCD": "038082033445", "NgayCap": "10/02/2023",
-            "NoiCap": "Cục CSQLHC về TTXH", "DienThoai": "", "DienThoaiDD": "0945678123",
-            "SoTK": "3500205889900", "KhuVuc": "Thôn 4, Yên Thọ", "SoTV": "TV-0896",
-            "SoSoCP": "CP-0416", "NgayVaoTV": "14/08/2017", "TongTienCP": 25000000,
-            "NgayCapNhat": sync_timestamp_str
-        }
-    ]
-
-    contracts = [
-        {
-            "SoHDTD": "KU-2025-0982", "MaKH": "KH008892", "TienVay": 300000000, "DuNo": 250000000,
-            "LaiSuat": 9.5, "NgayVay": "15/08/2025", "DenHan": "15/08/2026", "TraLaiDenNgay": "15/07/2026",
-            "MaLoaiVay": "LV01", "SoThangVay": 12, "MoTaVay": "Cho vay phát triển chăn nuôi bò sữa",
-            "CBTD_PhuTrach": "qtdyentho.cbtd", "Ten_CBTD": "Lê Văn Tín (CBTD)", "TrangThaiHD": "DANG_VAY",
-            "NgayTatToan": "", "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "SoHDTD": "KU-2026-0145", "MaKH": "KH008892", "TienVay": 300000000, "DuNo": 200000000,
-            "LaiSuat": 10.2, "NgayVay": "10/02/2026", "DenHan": "10/02/2028", "TraLaiDenNgay": "10/07/2026",
-            "MaLoaiVay": "LV03", "SoThangVay": 24, "MoTaVay": "Cho vay kinh doanh vật tư nông nghiệp",
-            "CBTD_PhuTrach": "qtdyentho.cbtd", "Ten_CBTD": "Lê Văn Tín (CBTD)", "TrangThaiHD": "DANG_VAY",
-            "NgayTatToan": "", "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "SoHDTD": "KU-2026-0210", "MaKH": "KH008893", "TienVay": 200000000, "DuNo": 180000000,
-            "LaiSuat": 9.0, "NgayVay": "01/03/2026", "DenHan": "01/03/2027", "TraLaiDenNgay": "01/08/2026",
-            "MaLoaiVay": "LV01", "SoThangVay": 12, "MoTaVay": "Cho vay mở rộng xưởng may gia công",
-            "CBTD_PhuTrach": "qtdyentho.cbtd", "Ten_CBTD": "Lê Văn Tín (CBTD)", "TrangThaiHD": "DANG_VAY",
-            "NgayTatToan": "", "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "SoHDTD": "KU-2025-0550", "MaKH": "KH008894", "TienVay": 450000000, "DuNo": 390000000,
-            "LaiSuat": 9.8, "NgayVay": "10/05/2025", "DenHan": "10/05/2028", "TraLaiDenNgay": "10/07/2026",
-            "MaLoaiVay": "LV02", "SoThangVay": 36, "MoTaVay": "Cho vay mua máy móc gặt đập liên hợp",
-            "CBTD_PhuTrach": "qtdyentho.cbtd", "Ten_CBTD": "Lê Văn Tín (CBTD)", "TrangThaiHD": "DANG_VAY",
-            "NgayTatToan": "", "NgayCapNhat": sync_timestamp_str
-        },
-        {
-            "SoHDTD": "KU-2024-0331", "MaKH": "KH008895", "TienVay": 150000000, "DuNo": 0,
-            "LaiSuat": 9.0, "NgayVay": "10/01/2024", "DenHan": "10/01/2025", "TraLaiDenNgay": "10/01/2025",
-            "MaLoaiVay": "LV01", "SoThangVay": 12, "MoTaVay": "Cho vay cải tạo ao nuôi cá",
-            "CBTD_PhuTrach": "qtdyentho.cbtd", "Ten_CBTD": "Lê Văn Tín (CBTD)", "TrangThaiHD": "DA_TAT_TOAN",
-            "NgayTatToan": "08/01/2025", "NgayCapNhat": sync_timestamp_str
-        }
-    ]
-
-    return customers, contracts
-
 # --- 8. TỰ ĐỘNG KHỞI TẠO & CHỮA LÀNH CSDL 12 BẢNG (SELF-HEALING SCHEMA) ---
 ALL_SCHEMAS = {
     "ROLES": {
@@ -737,9 +648,9 @@ def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
                 raise
 
 # --- 10. QUY TRÌNH THỰC THI ĐỒNG BỘ TOÀN DIỆN ---
-def process_sync_request(spreadsheet, sql_cfg, use_mock=False):
+def process_sync_request(spreadsheet, sql_cfg):
     """
-    Thực thi quy trình kéo dữ liệu từ SQL Server Core (hoặc Mock Generator)
+    Thực thi quy trình kéo dữ liệu 100% từ SQL Server CoreBanking (NG-eFUND)
     và đẩy thẳng lên Google Sheets.
     """
     start_time = datetime.now()
@@ -755,16 +666,13 @@ def process_sync_request(spreadsheet, sql_cfg, use_mock=False):
         range_name="B2:D2",
         value_input_option="USER_ENTERED"
     )
-    source_name = "MOCK GENERATOR (QTDND YÊN THỌ)" if use_mock else f"SQL SERVER ({sql_cfg.get('server')})"
+    source_name = f"SQL SERVER ({sql_cfg.get('server')})"
     logger.info(f"⚡ BẮT ĐẦU ĐỒNG BỘ TỪ {source_name} LÚC {sync_timestamp_str}...")
 
     try:
-        if use_mock:
-            records_kh, records_hdtd = generate_mock_banking_data(sync_timestamp_str)
-        else:
-            with get_sql_connection(sql_cfg) as sql_conn:
-                records_kh = fetch_customer_core_data(sql_conn, sync_timestamp_str)
-                records_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
+        with get_sql_connection(sql_cfg) as sql_conn:
+            records_kh = fetch_customer_core_data(sql_conn, sync_timestamp_str)
+            records_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
 
         # 1. Đẩy dữ liệu Khách hàng & Thành viên (KH_CORE)
         kh_headers = ["MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat"]
@@ -891,7 +799,7 @@ def run_diagnostics(spreadsheet, sql_cfg):
             ver = cursor.fetchone()[0]
             logger.info(f"✅ SQL Server: KẾT NỐI THÀNH CÔNG! ({ver.splitlines()[0]})")
     except Exception as e:
-        logger.warning(f"⚠️ SQL Server: Không kết nối được ({e}). Bạn có thể dùng cờ --mock để kiểm thử Google Sheets.")
+        logger.warning(f"⚠️ SQL Server: Không kết nối được ({e}). Vui lòng kiểm tra cấu hình mạng và thông tin đăng nhập.")
 
     logger.info("=================================================================")
 
@@ -902,7 +810,6 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--now", action="store_true", help="Thực hiện đồng bộ ngay 1 lần từ SQL Server và thoát")
-    parser.add_argument("--mock", action="store_true", help="Đẩy dữ liệu mẫu ngân hàng QTDND Yên Thọ lên Google Sheets ngay lập tức")
     parser.add_argument("--init-schema", action="store_true", help="Khởi tạo hoặc sửa chữa cấu trúc 12 bảng CSDL Google Sheets")
     parser.add_argument("--test-connection", action="store_true", help="Kiểm tra kết nối tới Google Sheets và SQL Server")
     args = parser.parse_args()
@@ -929,16 +836,10 @@ def main():
         run_diagnostics(spreadsheet, sql_cfg)
         sys.exit(0)
 
-    # 3. Chế độ Mock Data
-    if args.mock:
-        logger.info("🚀 Chế độ MOCK: Đẩy dữ liệu mẫu ngân quỹ QTDND Yên Thọ lên Google Sheets...")
-        process_sync_request(spreadsheet, sql_cfg, use_mock=True)
-        sys.exit(0)
-
     # 4. Chế độ chạy thủ công tức thì từ SQL Server
     if args.now:
         logger.info("🚀 Chế độ chạy thủ công tức thì (--now)...")
-        process_sync_request(spreadsheet, sql_cfg, use_mock=False)
+        process_sync_request(spreadsheet, sql_cfg)
         sys.exit(0)
 
     # 5. Chế độ Daemon lắng nghe liên tục 24/7
@@ -959,7 +860,7 @@ def main():
 
             if command == "SYNC_DATA" and status in ["PENDING", "REQUESTED"]:
                 logger.info(f"🔔 Phát hiện lệnh đồng bộ từ WebApp (COMMAND='{command}', STATUS='{status}')")
-                process_sync_request(spreadsheet, sql_cfg, use_mock=False)
+                process_sync_request(spreadsheet, sql_cfg)
 
         except gspread.exceptions.APIError as api_err:
             logger.warning(f"Google Sheets API tạm thời bận: {api_err}. Đang tiếp tục lắng nghe...")

@@ -21,7 +21,9 @@ import { formatCurrencyVN, formatDateVN, getTodayVN } from '../utils/dateUtils';
 import Pagination from './Pagination';
 
 export default function Reconciliation({ onOpenCustomerQuickView }) {
-  const [selectedBatch, setSelectedBatch] = useState('DOT-202608-K1');
+  const [selectedBatch, setSelectedBatch] = useState('');
+  const [batches, setBatches] = useState([]);
+  const [loadingBatches, setLoadingBatches] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState(null);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'THANH_CONG' | 'TRICH_MOT_PHAN' | 'THAT_BAI'
@@ -29,16 +31,41 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [items, setItems] = useState([]);
 
-  // Danh sách kết quả đối soát mẫu chuẩn nghiệp vụ
-  const [items, setItems] = useState([
-    { maKH: 'KH008892', soHDTD: 'KU-2026-0312', hoTen: 'NGUYỄN VĂN AN', soTK: '0381000123456', phaiThu: 1643836, daTrich: 1643836, ketQua: 'THANH_CONG', lyDoLoi: '' },
-    { maKH: 'KH004512', soHDTD: 'KU-2026-0145', hoTen: 'LÊ THỊ MAI', soTK: '0381000789123', phaiThu: 1732877, daTrich: 1732877, ketQua: 'THANH_CONG', lyDoLoi: '' },
-    { maKH: 'KH001980', soHDTD: 'KU-2025-0811', hoTen: 'TRẦN VĂN QUÂN', soTK: '0381000998877', phaiThu: 14109589, daTrich: 4000000, ketQua: 'TRICH_MOT_PHAN', lyDoLoi: 'Số dư khả dụng chỉ còn 4,000,000 đ' },
-    { maKH: 'KH007621', soHDTD: 'KU-2025-0982', hoTen: 'PHẠM VĂN ĐỨC', soTK: '0381000554433', phaiThu: 2850000, daTrich: 0, ketQua: 'THAT_BAI', lyDoLoi: 'Số dư tài khoản không đủ hạn mức' },
-    { maKH: 'KH003319', soHDTD: 'KU-2026-0219', hoTen: 'HOÀNG THỊ THU', soTK: '0381000221144', phaiThu: 3420000, daTrich: 3420000, ketQua: 'THANH_CONG', lyDoLoi: '' },
-    { maKH: 'KH005820', soHDTD: 'KU-2026-0402', hoTen: 'VŨ ĐÌNH LONG', soTK: '0381000667788', phaiThu: 5120000, daTrich: 0, ketQua: 'THAT_BAI', lyDoLoi: 'Tài khoản thanh toán đang tạm khóa' }
-  ]);
+  useEffect(() => {
+    async function loadBatches() {
+      setLoadingBatches(true);
+      try {
+        const res = await api.getDebitBatches();
+        if (res.status === 'success' && Array.isArray(res.data)) {
+          setBatches(res.data);
+          if (res.data.length > 0) {
+            setSelectedBatch(res.data[0].maDot);
+            if (res.data[0].items || res.data[0].chiTietDanhSach) {
+              setItems(res.data[0].items || res.data[0].chiTietDanhSach);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi nạp đợt trích nợ:', err);
+      } finally {
+        setLoadingBatches(false);
+      }
+    }
+    loadBatches();
+  }, []);
+
+  const handleBatchChange = (newBatchId) => {
+    setSelectedBatch(newBatchId);
+    const b = batches.find((x) => x.maDot === newBatchId);
+    if (b && (b.items || b.chiTietDanhSach)) {
+      setItems(b.items || b.chiTietDanhSach);
+    } else {
+      setItems([]);
+    }
+    setPage(1);
+  };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
@@ -262,13 +289,19 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
             <span className="small text-muted fw-medium d-none d-sm-inline" style={{ fontSize: '0.78rem' }}>Đợt:</span>
             <select
               className="form-select form-select-sm fw-medium"
-              style={{ width: 175 }}
+              style={{ minWidth: 190 }}
               value={selectedBatch}
-              onChange={(e) => setSelectedBatch(e.target.value)}
+              onChange={(e) => handleBatchChange(e.target.value)}
             >
-              <option value="DOT-202608-K1">Kỳ 1 (05/08/2026)</option>
-              <option value="DOT-202608-K2">Kỳ 2 (15/08/2026)</option>
-              <option value="DOT-202608-K3">Kỳ 3 (25/08/2026)</option>
+              {batches.length > 0 ? (
+                batches.map((b) => (
+                  <option key={b.maDot} value={b.maDot}>
+                    {b.maDot} (Kỳ {b.kyTrich} - {b.thangNam})
+                  </option>
+                ))
+              ) : (
+                <option value="">{loadingBatches ? 'Đang tải đợt...' : 'Chưa có đợt trích nợ'}</option>
+              )}
             </select>
           </div>
 

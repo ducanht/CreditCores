@@ -148,21 +148,14 @@ Tự động tạo mới các Sheet còn thiếu, định dạng màu sắc tiê
 python sync_daemon.py --init-schema
 ```
 
-### Chế độ 3: Đẩy dữ liệu mẫu nghiệp vụ QTDND Yên Thọ lên Google Sheets ngay lập tức (Mock Mode)
-Dùng để kiểm thử kết nối Google Sheets và WebApp ngay cả khi chưa nối vào máy chủ SQL Server:
-```powershell
-python sync_daemon.py --mock
-```
-*Lệnh này sẽ tạo các khách hàng chuẩn (Nguyễn Văn An, Lê Thị Bích, Trần Văn Cường...), hợp đồng vay và đẩy lên Google Sheets trong 2-3 giây.*
-
-### Chế độ 4: Đồng bộ trực tiếp từ SQL Server CoreBanking tức thì (On-Demand Mode)
-Truy vấn SQL Server cục bộ và đẩy ngay lập tức lên Google Sheets mà không cần WebApp gửi lệnh:
+### Chế độ 3: Đồng bộ trực tiếp từ SQL Server CoreBanking tức thì (On-Demand Mode)
+Truy vấn SQL Server NG-eFUND cục bộ và đẩy ngay lập tức lên Google Sheets mà không cần WebApp gửi lệnh:
 ```powershell
 python sync_daemon.py --now
 ```
 
-### Chế độ 5: Khởi chạy Daemon 24/7 lắng nghe lệnh từ WebApp (Daemon Mode)
-Tiến trình chạy nền liên tục kiểm tra sheet `SETTING` mỗi 5 giây. Khi cán bộ nhấn nút **"Gửi Lệnh SYNC_DATA Ngay"** trên giao diện WebApp, Python sẽ tự động kéo dữ liệu và đẩy lên trong 3-5 giây:
+### Chế độ 4: Khởi chạy Daemon 24/7 lắng nghe lệnh từ WebApp (Daemon Mode)
+Tiến trình chạy nền liên tục kiểm tra sheet `SETTING` mỗi 5 giây. Khi cán bộ nhấn nút **"Gửi Lệnh SYNC_DATA Ngay"** trên giao diện WebApp, Python sẽ tự động kéo dữ liệu thực từ SQL Server và đẩy lên trong 3-5 giây:
 ```powershell
 python sync_daemon.py
 ```

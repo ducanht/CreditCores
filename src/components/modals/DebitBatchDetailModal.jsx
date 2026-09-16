@@ -30,48 +30,7 @@ export default function DebitBatchDetailModal({
 
   if (!show || !batch) return null;
 
-  const items = batch.items || batch.chiTietDanhSach || [
-    {
-      maKH: 'KH008892',
-      hoTen: 'NGUYỄN VĂN AN',
-      soTK: '0381000123456',
-      soHDTD: 'KU-2026-0312',
-      tongDuNo: 200000000,
-      laiPhatSinh: 1643836,
-      gocDenHan: 0,
-      noTon: 0,
-      soTienTrich: 1643836,
-      daTrich: 1643836,
-      trangThai: 'THANH_CONG'
-    },
-    {
-      maKH: 'KH004512',
-      hoTen: 'LÊ THỊ MAI',
-      soTK: '0381000789123',
-      soHDTD: 'KU-2026-0145',
-      tongDuNo: 150000000,
-      laiPhatSinh: 1232877,
-      gocDenHan: 0,
-      noTon: 500000,
-      soTienTrich: 1732877,
-      daTrich: 1732877,
-      trangThai: 'THANH_CONG'
-    },
-    {
-      maKH: 'KH001980',
-      hoTen: 'TRẦN VĂN QUÂN',
-      soTK: '0381000998877',
-      soHDTD: 'KU-2025-0811',
-      tongDuNo: 500000000,
-      laiPhatSinh: 4109589,
-      gocDenHan: 10000000,
-      noTon: 0,
-      soTienTrich: 14109589,
-      daTrich: 0,
-      trangThai: 'THAT_BAI',
-      lyDo: 'Số dư tài khoản thanh toán không đủ'
-    }
-  ];
+  const items = batch.items || batch.chiTietDanhSach || [];
 
   const filteredItems = items.filter((item) => {
     const term = searchTerm.toLowerCase();
