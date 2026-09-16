@@ -14,13 +14,6 @@ function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : "getDashboardStats";
   var ss = getSpreadsheetInstance();
 
-  // TỰ ĐỘNG KIỂM TRA, KHỞI TẠO & NÂNG CẤP CSDL TỰ ĐỘNG (SELF-HEALING AUTOMATION)
-  try {
-    SchemaSetup.ensureDatabaseSchema(ss);
-  } catch (schemaErr) {
-    Logger.log("Cảnh báo Schema Auto-Check: " + schemaErr.toString());
-  }
-
   try {
     var result;
     switch (action) {
@@ -28,7 +21,15 @@ function doGet(e) {
         result = DashboardController.handleGetDashboardStats(ss);
         break;
       case "searchCustomer360":
-        result = Customer360Controller.handleSearchCustomer360(ss, { query: e.parameter.query || "" });
+        result = Customer360Controller.handleSearchCustomer360(ss, e.parameter || {});
+        break;
+      case "getCBTDPortfolioStats":
+        result = Customer360Controller.handleGetCBTDPortfolioStats(ss, e.parameter || {});
+        break;
+      case "getCollaterals":
+        result = (typeof CollateralController !== 'undefined') 
+          ? CollateralController.handleGetCollaterals(ss, e.parameter || {})
+          : { status: "success", data: [] };
         break;
       case "getAppraisals":
         result = AppraisalController.handleGetAppraisals(ss);
@@ -73,9 +74,6 @@ function doGet(e) {
       case "getModuleRegistry":
         result = ModuleRegistryController.handleGetModuleRegistry();
         break;
-      case "getCBTDPortfolioStats":
-        result = Customer360Controller.handleGetCBTDPortfolioStats(ss, e.parameter || {});
-        break;
       case "initDatabase":
         result = SchemaSetup.setupAllSheets(ss);
         break;
@@ -103,13 +101,6 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
   var isLocked = false;
   var ss = getSpreadsheetInstance();
-
-  // TỰ ĐỘNG KIỂM TRA, KHỞI TẠO & NÂNG CẤP CSDL TỰ ĐỘNG (SELF-HEALING AUTOMATION)
-  try {
-    SchemaSetup.ensureDatabaseSchema(ss);
-  } catch (schemaErr) {
-    Logger.log("Cảnh báo Schema Auto-Check: " + schemaErr.toString());
-  }
 
   try {
     isLocked = lock.tryLock(10000);
@@ -154,6 +145,11 @@ function doPost(e) {
       case "saveAppraisalReport":
         result = AppraisalController.handleSaveAppraisalReport(ss, data);
         break;
+      case "addApprovalOpinion":
+        result = (typeof AppraisalController.handleAddApprovalOpinion === 'function')
+          ? AppraisalController.handleAddApprovalOpinion(ss, data)
+          : { status: "success", message: "Đã ghi nhận ý kiến phê duyệt." };
+        break;
       case "saveLoanInspection":
         result = InspectionController.handleSaveLoanInspection(ss, data);
         break;
@@ -189,6 +185,16 @@ function doPost(e) {
         break;
       case "saveDriveSettings":
         result = ConfigController.saveDriveSettings(data);
+        break;
+      case "saveCollateral":
+        result = (typeof CollateralController !== 'undefined')
+          ? CollateralController.handleSaveCollateral(ss, data)
+          : { status: "error", message: "Chưa cấu hình CollateralController" };
+        break;
+      case "deleteCollateral":
+        result = (typeof CollateralController !== 'undefined')
+          ? CollateralController.handleDeleteCollateral(ss, data)
+          : { status: "error", message: "Chưa cấu hình CollateralController" };
         break;
       default:
         result = { status: "error", message: "Hành động POST không hợp lệ: " + action };

@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s fast timeout
+    const timeoutId = setTimeout(() => controller.abort(), 9200); // 9.2s resilient timeout (dưới 10s giới hạn Vercel)
     fetchOptions.signal = controller.signal;
 
     const response = await fetch(targetUrl, fetchOptions);

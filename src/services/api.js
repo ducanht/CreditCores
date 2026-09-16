@@ -105,8 +105,8 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
         }
       }
 
-      // Đặt timeout 15s đủ cho cold-start và truy vấn lớn từ Google Apps Script
-      const timeoutMs = 15000;
+      // Đặt timeout 20s đủ cho cold-start và truy vấn lớn từ Google Apps Script
+      const timeoutMs = candidate.isProxy ? 10000 : 20000;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       options.signal = controller.signal;
@@ -116,6 +116,11 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
 
       if (res.ok) {
         const json = await res.json();
+        if (json && json.fallbackRequired) {
+          // Proxy yêu cầu chuyển sang direct GAS
+          if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 5000;
+          continue;
+        }
         if (json && json.status === 'error' && json.message && (json.message.includes('không hợp lệ') || json.message.includes('Invalid action') || json.message.includes('Action not found'))) {
           continue;
         }

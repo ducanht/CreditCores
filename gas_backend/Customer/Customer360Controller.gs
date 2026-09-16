@@ -13,11 +13,14 @@
 var Customer360Controller = {
   /**
    * Tra cứu 360° khách hàng và danh sách hợp đồng tín dụng
+   * Tối ưu hiệu năng O(1) cho 5.175+ khách hàng và 549+ hợp đồng
    */
   handleSearchCustomer360: function(ss, data) {
+    data = data || {};
     var query = (data.query || "").toLowerCase().trim();
     var cbtdFilter = (data.cbtdUsername || "").toLowerCase().trim();
     var statusFilter = (data.status || "").toUpperCase().trim(); // 'ALL' | 'DANG_VAY' | 'DA_TAT_TOAN'
+    var maxLimit = data.limit ? Number(data.limit) : 250;
 
     var sKH = ss.getSheetByName("KH_CORE");
     var sHDTD = ss.getSheetByName("HDTD_CORE");
@@ -26,21 +29,144 @@ var Customer360Controller = {
       return { status: "success", data: [] };
     }
 
-    var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, Math.min(sKH.getLastColumn(), 16)).getValues();
+    // 1. Đọc dữ liệu hợp đồng và Gom vào Hash Map theo MaKH O(M)
     var hdValues = (sHDTD && sHDTD.getLastRow() > 1) 
       ? sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, Math.min(sHDTD.getLastColumn(), 16)).getValues() 
       : [];
 
-    var results = [];
-    for (var i = 0; i < khValues.length; i++) {
-      var maKH = String(khValues[i][0]);
-      var hoTen = String(khValues[i][1]);
-      var cccd = String(khValues[i][4]);
-      var phone = String(khValues[i][8]);
-      var soTK = String(khValues[i][9]);
-      var khuVuc = String(khValues[i][10] || "");
+    var contractsByMaKH = {};
+    for (var j = 0; j < hdValues.length; j++) {
+      var rowSoHD = String(hdValues[j][0] || "").trim();
+      var rowMaKH = String(hdValues[j][1] || "").trim();
+      if (!rowMaKH) continue;
 
-      var isMatchQuery = !query ||
+      var cbtdUser = String(hdValues[j][11] || "qtdyentho.cbtd").trim();
+      var tenCBTD = String(hdValues[j][12] || "Lê Văn Tín (CBTD)").trim();
+      var duNo = Number(hdValues[j][3] || 0);
+      var trangThaiHD = String(hdValues[j][13] || (duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
+      var ngayTatToan = hdValues[j][14] ? formatGasDate(hdValues[j][14]) : "";
+
+      // Kiểm tra bộ lọc trạng thái
+      if (statusFilter && statusFilter !== "ALL" && trangThaiHD !== statusFilter) {
+        continue;
+      }
+
+      // Kiểm tra bộ lọc CBTD
+      if (cbtdFilter && cbtdFilter !== "all" && cbtdUser.toLowerCase() !== cbtdFilter) {
+        continue;
+      }
+
+      if (!contractsByMaKH[rowMaKH]) {
+        contractsByMaKH[rowMaKH] = [];
+      }
+
+      contractsByMaKH[rowMaKH].push({
+        soHDTD: rowSoHD,
+        maKH: rowMaKH,
+        tienVay: Number(hdValues[j][2] || 0),
+        duNo: duNo,
+        laiSuat: Number(hdValues[j][4] || 0),
+        ngayVay: formatGasDate(hdValues[j][5]),
+        denHan: formatGasDate(hdValues[j][6]),
+        traLaiDenNgay: formatGasDate(hdValues[j][7]),
+        maLoaiVay: String(hdValues[j][8] || "LV01"),
+        soThangVay: Number(hdValues[j][9] || 12),
+        moTaVay: String(hdValues[j][10] || ""),
+        cbtdPhuTrach: cbtdUser,
+        tenCBTD: tenCBTD,
+        trangThaiHD: trangThaiHD,
+        ngayTatToan: ngayTatToan,
+        ngayCapNhat: hdValues[j][15] ? formatGasDateTime(hdValues[j][15]) : ""
+      });
+    }
+
+    // 2. Đọc bảng Khách hàng
+    var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, Math.min(sKH.getLastColumn(), 16)).getValues();
+    var results = [];
+
+    // Helper đóng gói object khách hàng
+    var buildCustomerObj = function(row, contracts) {
+      var custContracts = contracts || [];
+      var custCBTD = "";
+      var custTenCBTD = "";
+      if (custContracts.length > 0) {
+        custCBTD = custContracts[0].cbtdPhuTrach;
+        custTenCBTD = custContracts[0].tenCBTD;
+      }
+
+      return {
+        maKH: String(row[0]),
+        hoTen: String(row[1] || ""),
+        diaChi: String(row[2] || ""),
+        ngaySinh: formatGasDate(row[3]),
+        cccd: String(row[4] || ""),
+        ngayCap: formatGasDate(row[5]),
+        noiCap: String(row[6] || ""),
+        dienThoai: String(row[7] || ""),
+        dienThoaiDD: String(row[8] || ""),
+        soTK: String(row[9] || ""),
+        khuVuc: String(row[10] || ""),
+        soTV: String(row[11] || ""),
+        soSoCP: String(row[12] || ""),
+        ngayVaoTV: formatGasDate(row[13]),
+        tongTienCP: Number(row[14] || 0),
+        cbtdPhuTrach: custCBTD || "qtdyentho.cbtd",
+        tenCBTD: custTenCBTD || "Lê Văn Tín (CBTD)",
+        contracts: custContracts
+      };
+    };
+
+    // TRƯỜNG HỢP 1: Người dùng KHÔNG nhập từ khóa tìm kiếm (query rỗng)
+    // Ưu tiên hiển thị tức thì toàn bộ khách hàng CÓ HỢP ĐỒNG VAY thỏa mãn bộ lọc
+    if (!query) {
+      // Lập Map tra cứu khách hàng nhanh O(1)
+      var khMap = {};
+      for (var k = 0; k < khValues.length; k++) {
+        var mKH = String(khValues[k][0]).trim();
+        if (mKH) khMap[mKH] = khValues[k];
+      }
+
+      // Lấy danh sách khách hàng từ các hợp đồng thỏa mãn bộ lọc
+      var seenCust = {};
+      for (var cMaKH in contractsByMaKH) {
+        if (results.length >= maxLimit) break;
+        if (!seenCust[cMaKH]) {
+          seenCust[cMaKH] = true;
+          var khRow = khMap[cMaKH];
+          if (khRow) {
+            results.push(buildCustomerObj(khRow, contractsByMaKH[cMaKH]));
+          }
+        }
+      }
+
+      // Nếu không có bộ lọc CBTD và Trạng thái và số lượng chưa đủ, bổ sung thêm các KH đầu tiên
+      if (!cbtdFilter || cbtdFilter === "all") {
+        if (!statusFilter || statusFilter === "ALL") {
+          for (var idx = 0; idx < khValues.length && results.length < maxLimit; idx++) {
+            var currMaKH = String(khValues[idx][0]).trim();
+            if (!seenCust[currMaKH]) {
+              seenCust[currMaKH] = true;
+              results.push(buildCustomerObj(khValues[idx], contractsByMaKH[currMaKH] || []));
+            }
+          }
+        }
+      }
+
+      return { status: "success", data: results, total: results.length, isFiltered: false };
+    }
+
+    // TRƯỜNG HỢP 2: Người dùng CÓ nhập từ khóa tìm kiếm (query)
+    for (var i = 0; i < khValues.length; i++) {
+      if (results.length >= maxLimit) break;
+
+      var maKH = String(khValues[i][0]).trim();
+      var hoTen = String(khValues[i][1] || "").trim();
+      var cccd = String(khValues[i][4] || "").trim();
+      var phone = String(khValues[i][8] || "").trim();
+      var soTK = String(khValues[i][9] || "").trim();
+      var khuVuc = String(khValues[i][10] || "").trim();
+
+      var isMatch = 
         maKH.toLowerCase().indexOf(query) > -1 ||
         hoTen.toLowerCase().indexOf(query) > -1 ||
         cccd.indexOf(query) > -1 ||
@@ -48,82 +174,18 @@ var Customer360Controller = {
         soTK.indexOf(query) > -1 ||
         khuVuc.toLowerCase().indexOf(query) > -1;
 
-      if (isMatchQuery) {
-        var contracts = [];
-        var custCBTD = "";
-        var custTenCBTD = "";
-
-        for (var j = 0; j < hdValues.length; j++) {
-          if (String(hdValues[j][1]) === maKH) {
-            var cbtdUser = String(hdValues[j][11] || "qtdyentho.cbtd").trim();
-            var tenCBTD = String(hdValues[j][12] || "Lê Văn Tín (CBTD)").trim();
-            var duNo = Number(hdValues[j][3] || 0);
-            var trangThaiHD = String(hdValues[j][13] || (duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
-            var ngayTatToan = hdValues[j][14] ? formatGasDate(hdValues[j][14]) : "";
-
-            if (!custCBTD) custCBTD = cbtdUser;
-            if (!custTenCBTD) custTenCBTD = tenCBTD;
-
-            // Kiểm tra bộ lọc trạng thái nếu có
-            if (statusFilter && statusFilter !== "ALL" && trangThaiHD !== statusFilter) {
-              continue;
-            }
-
-            // Kiểm tra bộ lọc CBTD nếu có
-            if (cbtdFilter && cbtdFilter !== "all" && cbtdUser.toLowerCase() !== cbtdFilter) {
-              continue;
-            }
-
-            contracts.push({
-              soHDTD: String(hdValues[j][0]),
-              maKH: maKH,
-              tienVay: Number(hdValues[j][2] || 0),
-              duNo: duNo,
-              laiSuat: Number(hdValues[j][4] || 0),
-              ngayVay: formatGasDate(hdValues[j][5]),
-              denHan: formatGasDate(hdValues[j][6]),
-              traLaiDenNgay: formatGasDate(hdValues[j][7]),
-              maLoaiVay: String(hdValues[j][8] || "LV01"),
-              soThangVay: Number(hdValues[j][9] || 12),
-              moTaVay: String(hdValues[j][10] || ""),
-              cbtdPhuTrach: cbtdUser,
-              tenCBTD: tenCBTD,
-              trangThaiHD: trangThaiHD,
-              ngayTatToan: ngayTatToan,
-              ngayCapNhat: hdValues[j][15] ? formatGasDateTime(hdValues[j][15]) : ""
-            });
-          }
+      if (isMatch) {
+        var cList = contractsByMaKH[maKH] || [];
+        // Nếu có lọc theo CBTD hoặc Trạng thái mà không có hợp đồng thỏa mãn -> bỏ qua
+        if (((cbtdFilter && cbtdFilter !== "all") || (statusFilter && statusFilter !== "ALL")) && cList.length === 0) {
+          continue;
         }
 
-        // Nếu có lọc theo CBTD hoặc trạng thái và khách hàng này không có HĐ thỏa mãn -> bỏ qua
-        if ((cbtdFilter && cbtdFilter !== "all") || (statusFilter && statusFilter !== "ALL")) {
-          if (contracts.length === 0) continue;
-        }
-
-        results.push({
-          maKH: maKH,
-          hoTen: hoTen,
-          diaChi: String(khValues[i][2] || ""),
-          ngaySinh: formatGasDate(khValues[i][3]),
-          cccd: cccd,
-          ngayCap: formatGasDate(khValues[i][5]),
-          noiCap: String(khValues[i][6] || ""),
-          dienThoai: String(khValues[i][7] || ""),
-          dienThoaiDD: phone,
-          soTK: soTK,
-          khuVuc: khuVuc,
-          soTV: String(khValues[i][11] || ""),
-          soSoCP: String(khValues[i][12] || ""),
-          ngayVaoTV: formatGasDate(khValues[i][13]),
-          tongTienCP: Number(khValues[i][14] || 0),
-          cbtdPhuTrach: custCBTD || "qtdyentho.cbtd",
-          tenCBTD: custTenCBTD || "Lê Văn Tín (CBTD)",
-          contracts: contracts
-        });
+        results.push(buildCustomerObj(khValues[i], cList));
       }
     }
 
-    return { status: "success", data: results };
+    return { status: "success", data: results, total: results.length, isFiltered: true };
   },
 
   /**

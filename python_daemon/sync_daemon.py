@@ -99,7 +99,7 @@ def load_config():
         or os.getenv("SQL_DB")
         or os.getenv("SQL_DATABASE")
         or sql_cfg_base.get("database")
-        or "CORE_BANKING_YENTHO"
+        or "NG-eFUND"
     )
     username = (
         os.getenv("MY_SQL_USER")
