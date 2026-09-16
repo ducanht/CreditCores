@@ -1,30 +1,38 @@
 # 🏛️ CẤU TRÚC DỮ LIỆU TOÀN DIỆN (DATA SCHEMA) & QUẢN TRỊ CSDL
-# 12 Bảng CSDL Chuẩn Hóa Trên Google Sheets — CreditCores
+# 14 Bảng CSDL Chuẩn Hóa Trên Google Sheets + 2 Bảng Báo Cáo Mở Rộng — CreditCores
+# Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
 
-Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ thống **CreditCores** (QTDND Yên Thọ), cơ chế lưu trữ đợt trích nợ 2 cấp (Master - Detail), xử lý snapshot hợp đồng, chuẩn hóa định dạng kiểu dữ liệu và cơ chế tự động kiểm soát cấu trúc dữ liệu (**Schema Governance & Auto-Migration**).
-
----
-
-## 📋 Danh Mục 12 Bảng CSDL Chuẩn
-
-```
-1.  ROLES              - Quản lý Nhóm Vai Trò & Ma Trận Quyền 360°
-2.  USERS              - Tài Khoản Cán Bộ & Phân Quyền Cá Nhân Hóa
-3.  SETTING            - Cấu Hình & Hàng Đợi Lệnh Đồng Bộ Core 24/7 (Commands Queue)
-4.  KH_CORE            - Dữ Liệu Khách Hàng & Thành Viên Góp Vốn (Kèm NgayCapNhat)
-5.  HDTD_CORE          - Hợp Đồng Tín Dụng & Khế Ước Dư Nợ Hiện Hữu (Active Snapshot)
-6.  DANG_KY_TRICH_NO   - Danh Sách Đăng Ký Thỏa Thuận Trích Nợ Tự Động CASA
-7.  DOT_TRICH_NO       - Bảng Master Quản Lý Các Đợt Trích Nợ Định Kỳ (Kỳ 1, 2, 3)
-8.  CHI_TIET_TRICH_NO  - Bảng Detail Lưu Vĩnh Viễn Snapshot Từng Món Nợ Trong Đợt
-9.  NO_TON_DONG        - Sổ Theo Dõi Nợ Tồn Đọng Chuyển Kỳ Sau & Cảnh Báo
-10. THAM_DINH_TD       - Hồ Sơ Thẩm Định Tín Dụng, CIC, TSĐB & Ý Kiến Đa Cấp
-11. KIEM_TRA_VON       - Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân (CBTD, BKS, HĐQT)
-12. CAU_HINH_BIEU_MAU - Kho Biểu Mẫu Google Docs/Word & Thẻ Biến Mail Merge
-```
+Tài liệu này định nghĩa chi tiết **14 bảng CSDL chuẩn** và **2 bảng báo cáo phân tích mở rộng** của hệ thống **CreditCores**, cơ chế lưu trữ đợt trích nợ 2 cấp (Master - Detail), snapshot hợp đồng bất biến, chuẩn hóa định dạng kiểu dữ liệu và cơ chế tự động kiểm soát cấu trúc dữ liệu (**Schema Governance & Auto-Migration**).
 
 ---
 
-## 📑 1. Từ Điển Dữ Liệu Chi Tiết 12 Bảng (Data Dictionary)
+## 📋 Danh Mục 14 Bảng CSDL Chuẩn + 2 Bảng Mở Rộng
+
+```
+=== DANH MỤC 14 BẢNG VẬN HÀNH CHUẨN HÓA ===
+1.  ROLES              - Quản lý Nhóm Vai Trò & Ma Trận Quyền 360° (5 cột)
+2.  USERS              - Tài Khoản Cán Bộ & Phân Quyền Cá Nhân Hóa (8 cột)
+3.  SETTING            - Cấu Hình & Hàng Đợi Lệnh Đồng Bộ Core 24/7 (7 cột)
+4.  KH_CORE            - Dữ Liệu Khách Hàng & Thành Viên Góp Vốn (16 cột)
+5.  HDTD_CORE          - Hợp Đồng Tín Dụng & Khế Ước Dư Nợ Hiện Hữu (16 cột)
+6.  DANG_KY_TRICH_NO   - Danh Sách Đăng Ký Thỏa Thuận Trích Nợ Tự Động CASA (9 cột)
+7.  DOT_TRICH_NO       - Bảng Master Quản Lý Các Đợt Trích Nợ Định Kỳ (10 cột)
+8.  CHI_TIET_TRICH_NO  - Bảng Detail Lưu Vĩnh Viễn Snapshot Từng Món Nợ Trong Đợt (15 cột)
+9.  NO_TON_DONG        - Sổ Theo Dõi Nợ Tồn Đọng Chuyển Kỳ Sau & Cảnh Báo (9 cột)
+10. THAM_DINH_TD       - Hồ Sơ Thẩm Định Tín Dụng, CIC, TSĐB & Ý Kiến Đa Cấp (74 cột)
+11. KIEM_TRA_VON       - Biên Bản Kiểm Tra Sử Dụng Vốn Sau Giải Ngân (20 cột)
+12. TSBD_CORE          - Kho Danh Mục Tài Sản Bảo Đảm, Sổ Đỏ, Định Giá & Pháp Lý (31 cột)
+13. CAU_HINH_BIEU_MAU - Kho Biểu Mẫu Google Docs/Word & Thẻ Biến Mail Merge (10 cột)
+14. DOCUMENT_STORAGE   - Nhật Ký Lưu Trữ Tài Liệu Đã Xuất Bản Trên Google Drive (9 cột)
+
+=== DANH MỤC 2 BẢNG BÁO CÁO PHÂN TÍCH MỞ RỘNG ===
+15. BC_DOANH_SO_TD     - Sao Kê Hợp Đồng Tín Dụng & Doanh Số Theo Khoảng Thời Gian (12 cột)
+16. TOP_DU_NO_BINH_QUAN- Bảng Xếp Hạng Khách Hàng Có Dư Nợ Bình Quân Năm Cao Nhất (21 cột)
+```
+
+---
+
+## 📑 1. Từ Điển Dữ Liệu Chi Tiết 14 Bảng Vận Hành (Data Dictionary)
 
 ### 1. `ROLES` (Quản Lý Nhóm Vai Trò)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
@@ -50,8 +58,8 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 ### 3. `SETTING` (Hàng Đợi Lệnh & Cấu Hình Đồng Bộ)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
 | :--- | :--- | :---: | :---: | :--- |
-| A | `COMMAND` | String | `@` | Lệnh đồng bộ (`IDLE`, `SYNC_DATA`, `EXPORT_DEBIT_BATCH`) |
-| B | `STATUS` | Enum | `@` | Trạng thái thực thi (`SUCCESS`, `RUNNING`, `ERROR`) |
+| A | `COMMAND` | String | `@` | Lệnh đồng bộ (`IDLE`, `SYNC_DATA`, `EXPORT_LOAN_STATEMENT`) |
+| B | `STATUS` | Enum | `@` | Trạng thái thực thi (`SUCCESS`, `PENDING`, `RUNNING`, `ERROR`) |
 | C | `REQUEST_TIME` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm WebApp gửi lệnh |
 | D | `START_TIME` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm Python Daemon nhận lệnh |
 | E | `FINISH_TIME` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm Python Daemon hoàn thành |
@@ -61,7 +69,7 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 ### 4. `KH_CORE` (Dữ Liệu Khách Hàng & Thành Viên)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
 | :--- | :--- | :---: | :---: | :--- |
-| A | `MaKH` | String | `@` | Mã khách hàng (PK: `KH008892`) |
+| A | `MaKH` | String | `@` | Mã khách hàng (PK: `KH008892` - luôn có số 0 đầu) |
 | B | `HoTen` | String | `@` | Họ và tên khách hàng |
 | C | `DiaChi` | String | `@` | Địa chỉ thường trú |
 | D | `NgaySinh` | Date | `dd/MM/yyyy` | Ngày tháng năm sinh |
@@ -70,8 +78,8 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 | G | `NoiCap` | String | `@` | Nơi cấp CCCD |
 | H | `DienThoai` | String | `@` | Số điện thoại bàn |
 | I | `DienThoaiDD` | String | `@` | Số điện thoại di động |
-| J | `SoTK` | String | `@` | Số tài khoản tiền gửi thanh toán CASA |
-| K | `KhuVuc` | String | `@` | Địa bàn (Thôn, Xã Yên Thọ, Yên Trường, Yên Thịnh) |
+| J | `SoTK` | String | `@` | Số tài khoản tiền gửi thanh toán CASA (luôn có số 0 đầu) |
+| K | `KhuVuc` | String | `@` | Địa bàn (Thôn, Xã Yên Thọ, Yên Trường, Quý Lộc) |
 | L | `SoTV` | String | `@` | Số thẻ thành viên QTDND |
 | M | `SoSoCP` | String | `@` | Số sổ cổ phần góp vốn |
 | N | `NgayVaoTV` | Date | `dd/MM/yyyy` | Ngày kết nạp thành viên |
@@ -84,16 +92,16 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 | A | `SoHDTD` | String | `@` | Số hợp đồng / khế ước tín dụng (PK) |
 | B | `MaKH` | String | `@` | Mã khách hàng (FK `KH_CORE`) |
 | C | `TienVay` | Number | `#,##0` | Số tiền giải ngân ban đầu (VNĐ) |
-| D | `DuNo` | Number | `#,##0` | Dư nợ gốc hiện tại (VNĐ) |
+| D | `DuNo` | Number | `#,##0` | Dư nợ gốc hiện tại (VNĐ, = 0 nếu đã tất toán) |
 | E | `LaiSuat` | Number | `0.00` | Lãi suất cho vay (%/năm) |
 | F | `NgayVay` | Date | `dd/MM/yyyy` | Ngày giải ngân nhận nợ |
 | G | `DenHan` | Date | `dd/MM/yyyy` | Ngày đáo hạn hợp đồng |
 | H | `TraLaiDenNgay` | Date | `dd/MM/yyyy` | Ngày đã thanh toán lãi gần nhất |
-| I | `MaLoaiVay` | String | `@` | Mã sản phẩm cho vay (`LV01`, `LV02`...) |
+| I | `MaLoaiVay` | String | `@` | Mã/Tên sản phẩm cho vay (`LV01`, `Nông nghiệp`...) |
 | J | `SoThangVay` | Number | `#,##0` | Thời hạn vay (tháng) |
 | K | `MoTaVay` | String | `@` | Phương án sản xuất kinh doanh |
-| L | `CBTD_PhuTrach` | String | `@` | Username Cán bộ Tín dụng quản lý HĐ (`qtdyentho.cbtd`) |
-| M | `Ten_CBTD` | String | `@` | Họ tên đầy đủ CBTD phụ trách (`Lê Văn Tín (CBTD)`) |
+| L | `CBTD_PhuTrach` | String | `@` | Username Cán bộ Tín dụng quản lý HĐ (Bảo toàn khi sync) |
+| M | `Ten_CBTD` | String | `@` | Họ tên đầy đủ CBTD phụ trách (Bảo toàn khi sync) |
 | N | `TrangThaiHD` | Enum | `@` | Trạng thái hợp đồng (`DANG_VAY`, `DA_TAT_TOAN`) |
 | O | `NgayTatToan` | String | `dd/MM/yyyy` | Ngày ghi nhận tất toán (khi dư nợ Core về 0) |
 | P | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server hoặc phân công |
@@ -157,105 +165,10 @@ Tài liệu này định nghĩa chi tiết **12 bảng CSDL chuẩn** của hệ
 | H | `GhiChu` | String | `@` | Ghi chú biện pháp xử lý |
 | I | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm cập nhật |
 
-### 10. `THAM_DINH_TD` / `BAO_CAO_THAM_DINH` (Hồ Sơ Thẩm Định 5 Nhóm Nghiệp Vụ)
+### 10. `THAM_DINH_TD` (Hồ Sơ Thẩm Định 5 Nhóm Nghiệp Vụ - 74 Cột)
+- Gồm 74 cột chi tiết thuộc 5 nhóm: Pháp lý & Kê khai thu nhập (Cột A-W), Tài sản bảo đảm (Cột X-AO), Thực địa & Dòng tiền & CIC (Cột AP-BD), Đề xuất CBTD & Chỉ số LTV/EMI/DSR/DSCR (Cột BE-BQ), Phê duyệt đa cấp 4 tầng & Ký duyệt (Cột BR-BV).
 
-Bảng CSDL `BAO_CAO_THAM_DINH` gồm **74 cột** chuẩn hóa, phân chia chặt chẽ theo 5 nhóm thông tin:
-
-#### 🔹 Nhóm 1: Thông Tin Pháp Lý, Nhu Cầu & Kê Khai Thu Nhập Chi Tiết
-| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :--- | :--- | :--- |
-| A | `MaBCTD` | String | `@` | Mã báo cáo thẩm định (PK: `BCTD-2026-081`) |
-| B | `MaKH` | String | `@` | Mã khách hàng (FK `KH_CORE`) |
-| C | `HoTen` | String | `@` | Họ và tên khách hàng |
-| D | `SoCCCD` | String | `@` | Số CCCD 12 chữ số (có số 0 đầu) |
-| E | `NgaySinh` | Date / String | `dd/MM/yyyy` | Ngày tháng năm sinh |
-| F | `GioiTinh` | Enum | `@` | Giới tính (`Nam`, `Nữ`) |
-| G | `DienThoai` | String | `@` | Số điện thoại liên lạc |
-| H | `DiaChi` | String | `@` | Địa chỉ cư trú thường trú |
-| I | `TinhTrangHonNhan` | Enum | `@` | Tình trạng hôn nhân (`Đã kết hôn`, `Độc thân`...) |
-| J | `NguoiDongVay` | String | `@` | Thông tin người đồng vay / Vợ / Chồng / Bảo lãnh |
-| K | `HinhAnhKH` | String (URL) | `@` | Ảnh chân dung khách hàng |
-| L | `NganhNghe` | String | `@` | Ngành nghề hoạt động chính |
-| M | `TrinhDo` | String | `@` | Trình độ học vấn văn hóa |
-| N | `ThuNhapNguoiVay` | Number | `#,##0` | Thu nhập của người đứng vay chính (VNĐ/tháng) |
-| O | `NguonThuNguoiVay` | String | `@` | Nguồn gốc tạo ra thu nhập của người vay |
-| P | `ThuNhapDongVay` | Number | `#,##0` | Thu nhập của người đồng vay / Vợ chồng (VNĐ/tháng) |
-| Q | `NguonThuDongVay` | String | `@` | Nguồn gốc tạo ra thu nhập của người đồng vay |
-| R | `ChungMinhThuNhap` | String | `@` | Danh sách tài liệu/chứng từ chứng minh nguồn thu |
-| S | `ThuNhapRong` | Number | `#,##0` | Thu nhập ròng hàng tháng = Tổng thu nhập - Tổng chi phí |
-| T | `DeXuatVay` | Number | `#,##0` | Số tiền khách hàng xin vay (VNĐ) |
-| U | `MucDichVay` | String | `@` | Mục đích sử dụng vốn chi tiết |
-| V | `ThoiHanVay` | Number | `#,##0` | Thời hạn vay đề nghị (tháng) |
-| W | `PhuongThucTraNo` | String | `@` | Phương thức trả nợ |
-
-#### 🔹 Nhóm 2: Thông Tin Tài Sản Bảo Đảm (TSBĐ & Đất Đa Loại Diện Tích)
-| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :--- | :--- | :--- |
-| X | `CoTSBD` | Enum | `@` | Có TSBĐ hay Tín chấp (`Có`, `Không`) |
-| Y | `HinhThucBaoDam` | String | `@` | Hình thức bảo đảm (Thế chấp QSDĐ, Sổ tiết kiệm...) |
-| Z | `LoaiTSBD` | String | `@` | Loại tài sản (Đất ở, Đất CLN, Nhà xưởng...) |
-| AA | `SoGCN` | String | `@` | Số seri Giấy chứng nhận QSDĐ / Sổ đỏ |
-| AB | `ThuaDatSo` | String | `@` | Thửa đất số |
-| AC | `ToBanDoSo` | String | `@` | Tờ bản đồ số |
-| AD | `DienTich` | Number | `#,##0.0` | Tổng diện tích thửa đất ($m^2$) |
-| AE | `DiaChiTSBD` | String | `@` | Địa chỉ nơi có tài sản bảo đảm |
-| AF | `ChuSoHuuTSBD` | String | `@` | Họ tên chủ sở hữu đứng tên trên GCN |
-| AG | `QuanHeVoiNguoiVay`| String | `@` | Quan hệ với người vay (Chính chủ, Bố mẹ...) |
-| AH | `GiaTriTSBD` | Number | `#,##0` | Tổng giá trị định giá nội bộ QTDND (VNĐ) |
-| AI | `NguonGocTSBD` | String | `@` | Nguồn gốc tài sản (Chuyển nhượng, Thừa kế, Tặng cho...) |
-| AJ | `GiaTriThiTruong` | Number | `#,##0` | Giá trị thị trường tham khảo (VNĐ) |
-| AK | `HinhAnhTSBD` | String (URL) | `@` | Ảnh thực địa tài sản bảo đảm / Sổ đỏ |
-| AL | `ChiTietLoaiDat` | String (JSON)| `@` | Bảng mảng JSON chi tiết các loại đất (ONT, CLN, NTS...) kèm đơn giá/m² |
-| AM | `GiaTriCongTrinh` | Number | `#,##0` | Giá trị công trình xây dựng / Nhà ở trên đất (VNĐ) |
-| AN | `TinhTrangPhapLyTSBD`| String | `@` | Tình trạng pháp lý (Hợp pháp, không tranh chấp) |
-| AO | `MoTaTSBD` | String | `@` | Mô tả chi tiết hiện trạng tài sản thực tế |
-
-#### 🔹 Nhóm 3: Thông Tin Thực Địa, Dòng Tiền & Lịch Sử Tín Dụng CIC
-| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :--- | :--- | :--- |
-| AP | `ThuNhapChinh` | Number | `#,##0` | Tổng thu nhập hàng tháng (VNĐ) |
-| AQ | `ThuNhapPhu` | Number | `#,##0` | Thu nhập phụ khác (VNĐ) |
-| AR | `TongThuNhapThang` | Number | `#,##0` | Tổng thu nhập hàng tháng (VNĐ) |
-| AS | `ChiPhiSinhHoat` | Number | `#,##0` | Chi phí sinh hoạt gia đình / tháng (VNĐ) |
-| AT | `ChiPhiSXKD` | Number | `#,##0` | Chi phí hoạt động sản xuất kinh doanh / tháng (VNĐ) |
-| AU | `TongChiPhiThang` | Number | `#,##0` | Tổng chi phí / tháng = Sinh hoạt + SXKD (VNĐ) |
-| AV | `ThangDuThang` | Number | `#,##0` | Thặng dư tích lũy hàng tháng = Thu - Chi (VNĐ) |
-| AW | `XepHangCIC` | String | `@` | Xếp hạng tín dụng CIC (`Nhóm 1 (Tốt)`, `Nhóm 2`...) |
-| AX | `SoTCTDQuanHe` | Number | `#,##0` | Số lượng TCTD đang có quan hệ tín dụng |
-| AY | `DuNoCICNgoai` | Number | `#,##0` | Tổng dư nợ tại các TCTD khác ngoài QTD (VNĐ) |
-| AZ | `LichSuTraNo` | String | `@` | Lịch sử trả nợ (Tốt, không quá hạn) |
-| BA | `GhiChuCIC` | String | `@` | Ghi chú chi tiết kết quả tra cứu CIC |
-| BB | `DiaDiemThamDinh` | String | `@` | Địa điểm thực hiện thẩm định thực tế |
-| BC | `HienTrangSXKD` | String | `@` | Đánh giá hiện trạng cơ sở SXKD / việc làm |
-| BD | `TuCachKhachHang` | String | `@` | Đánh giá tư cách đạo đức, uy tín tại địa phương |
-
-#### 🔹 Nhóm 4: Đề Xuất CBTD, Phương Án Tối Ưu & Các Chỉ Số Tài Chính
-| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :--- | :--- | :--- |
-| BE | `DuyetVay` | Number | `#,##0` | Số tiền CBTD đề xuất duyệt cho vay (VNĐ) |
-| BF | `ThoiHanThang` | Number | `#,##0` | Thời hạn vay đề xuất (tháng) |
-| BG | `LaiSuatDuyet` | Number | `0.00` | Lãi suất cho vay đề xuất (%/năm) |
-| BH | `PhuongThucGiaiNgan`| String | `@` | Phương thức giải ngân (Tài khoản CASA / Tiền mặt) |
-| BI | `PhuongThucTraGoc` | Enum | `@` | `HANG_THANG`, `HANG_QUY`, `BAN_NIEN`, `HANG_NAM`, `CUOI_KY` |
-| BJ | `PhuongAnToiUu` | String | `@` | Nhận định phân tích và đề xuất phương án tối ưu |
-| BK | `BienPhapBaoDam` | String | `@` | Biện pháp bảo đảm & thủ tục công chứng GDBĐ |
-| BL | `TyLeLTV` | Number | `0.0` | Tỷ lệ Vay/TSĐB $LTV = \frac{Duyệt Vay}{Giá Trị TS} \times 100\%$ |
-| BM | `NghiaVuTraNoThang` | Number | `#,##0` | Nghĩa vụ nợ tháng $EMI = Gốc + Lãi$ ước tính (VNĐ) |
-| BN | `TyLeDSR` | Number | `0.0` | Tỷ lệ Nghĩa vụ nợ / Thu nhập $DTI = \frac{EMI}{Thu Nhập} \times 100\%$ |
-| BO | `HeSoBuDap` | Number | `0.00` | Hệ số bù đắp dòng tiền $DSCR = \frac{Thu Nhập Ròng}{EMI}$ |
-| BP | `DieuKienGiaiNgan` | String | `@` | Các điều kiện tiên quyết trước khi giải ngân vốn |
-| BQ | `MucDoRuiRo` | Enum | `@` | Đánh giá mức độ rủi ro (`Thấp`, `Trung bình`, `Cao`) |
-
-#### 🔹 Nhóm 5: Ý Kiến Phê Duyệt Đa Cấp, Ký Duyệt & Xuất Bản
-| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
-| :--- | :--- | :--- | :--- | :--- |
-| BR | `KetLuan` | Enum | `@` | Kết luận (`Đồng ý cấp tín dụng`, `Có điều kiện`, `Từ chối`) |
-| BS | `CanBoThamDinh` | String | `@` | Họ tên Cán bộ tín dụng thực hiện |
-| BT | `CanBoLapUsername` | String | `@` | Username cán bộ lập hồ sơ (`qtdyentho.cbtd`) |
-| BU | `DanhSachYKien` | String (JSON) | `@` | Mảng JSON lưu ý kiến phê duyệt 4 tầng chức danh |
-| BV | `NgayLap` | DateTime | `dd/MM/yyyy HH:mm:ss` | Ngày giờ lập báo cáo thẩm định |
-
-### 11. `KIEM_TRA_VON` (Biên Bản Kiểm Tra Sử Dụng Vốn)
+### 11. `KIEM_TRA_VON` (Biên Bản Kiểm Tra Sử Dụng Vốn - 20 Cột)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
 | :--- | :--- | :---: | :---: | :--- |
 | A | `MaBBKT` | String | `@` | Mã biên bản kiểm tra (PK: `BBKT-20260818-01`) |
@@ -265,7 +178,7 @@ Bảng CSDL `BAO_CAO_THAM_DINH` gồm **74 cột** chuẩn hóa, phân chia ch�
 | E | `LoaiDoanKT` | Enum | `@` | Đoàn kiểm tra (`CBTD`, `BKS`, `HDQT`, `LIEN_NGANH`) |
 | F | `ThanhPhanDoan`| String | `@` | Thành phần cán bộ tham gia đoàn |
 | G | `NgayKiemTra` | Date | `dd/MM/yyyy` | Ngày tiến hành kiểm tra |
-| H | `LanKiemTra` | Number | `#,##0` | Lần kiểm tra thứ mấy |
+| H | `LanKiemTra` | Number | `#,##0` | Lần kiểm tra thứ mấy (Lần 1, 2, 3) |
 | I | `NgayKTNext` | Date | `dd/MM/yyyy` | Ngày dự kiến kiểm tra lần tới |
 | J | `HinhThuc` | Enum | `@` | Hình thức (`Thực địa`, `Hồ sơ chứng từ`, `Kết hợp`) |
 | K | `DiaDiemKT` | String | `@` | Địa điểm thực hiện kiểm tra |
@@ -279,7 +192,42 @@ Bảng CSDL `BAO_CAO_THAM_DINH` gồm **74 cột** chuẩn hóa, phân chia ch�
 | S | `TrangThai` | Enum | `@` | Trạng thái (`ĐÃ_DUYỆT`, `CHỜ_XỬ_LÝ`) |
 | T | `NgayTao` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm tạo biên bản |
 
-### 12. `CAU_HINH_BIEU_MAU` (Kho Mẫu Mail Merge)
+### 12. `TSBD_CORE` (Kho Danh Mục Tài Sản Bảo Đảm - 31 Cột)
+| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
+| :--- | :--- | :---: | :---: | :--- |
+| A | `MaTSBD` | String | `@` | Mã tài sản bảo đảm (PK: `TSBD00123`) |
+| B | `SoGCN` | String | `@` | Số seri Giấy chứng nhận QSDĐ / Sổ đỏ |
+| C | `SoVaoSoCapGCN` | String | `@` | Số vào sổ cấp GCN của UBND huyện |
+| D | `NgayCapGCN` | Date | `dd/MM/yyyy` | Ngày cấp Giấy chứng nhận |
+| E | `NoiCapGCN` | String | `@` | Nơi cấp (Sở TN&MT / UBND Huyện) |
+| F | `MaKH` | String | `@` | Mã khách hàng vay (FK `KH_CORE`) |
+| G | `ChuSoHuu` | String | `@` | Họ tên người đứng tên trên GCN |
+| H | `CCCD_ChuTS` | String | `@` | Số CCCD chủ tài sản (12 số có số 0 đầu) |
+| I | `QuanHeChuTS` | String | `@` | Quan hệ với người vay (Chính chủ, Bố mẹ, Bảo lãnh) |
+| J | `NguoiDongSoHuu`| String | `@` | Thông tin vợ/chồng cùng đứng tên |
+| K | `ThuaDatSo` | String | `@` | Thửa đất số |
+| L | `ToBanDoSo` | String | `@` | Tờ bản đồ số |
+| M | `DiaChiThuaDat` | String | `@` | Địa chỉ nơi có tài sản bảo đảm |
+| N | `DienTich` | Number | `#,##0.0` | Tổng diện tích thửa đất (m2) |
+| O | `HinhThucSuDung`| String | `@` | Hình thức sử dụng (Sử dụng riêng, Chung) |
+| P | `ChiTietPhanLoaiDat`| String (JSON)| `@` | Chi tiết phân loại đất (ONT, CLN, NTS) kèm diện tích & đơn giá |
+| Q | `NguonGocSuDung`| String | `@` | Nguồn gốc sử dụng (Nhà nước công nhận, Chuyển nhượng...) |
+| R | `GiaTriDinhGiaQTD`| Number | `#,##0` | Giá trị định giá của Hội đồng định giá QTDND (VNĐ) |
+| S | `GiaTriThiTruong`| Number | `#,##0` | Giá trị thị trường tham khảo (VNĐ) |
+| T | `TyLeChoVayToiDa`| Number | `0.00` | Tỷ lệ cho vay tối đa theo quy chế (vd: 70%) |
+| U | `SoTienDamBaoToiDa`| Number | `#,##0` | Số tiền đảm bảo tối đa được phép cấp tín dụng (VNĐ) |
+| V | `TrangThaiTheChap`| Enum | `@` | `DANG_THE_CHAP`, `DA_GIAI_CHAP`, `CHUA_THE_CHAP` |
+| W | `SoHDTD_LienKet`| String | `@` | Số HĐTD đang thế chấp tài sản này |
+| X | `SoCongChung` | String | `@` | Số công chứng Hợp đồng thế chấp |
+| Y | `NgayCongChung` | Date | `dd/MM/yyyy` | Ngày thực hiện công chứng thế chấp |
+| Z | `VanPhongCongChung`| String| `@` | Tên Văn phòng công chứng |
+| AA | `SoDangKyGDBD` | String | `@` | Số đơn đăng ký biện pháp bảo đảm tại VP ĐKĐĐ |
+| AB | `NgayDangKyGDBD`| Date | `dd/MM/yyyy` | Ngày Văn phòng ĐKĐĐ chứng nhận thế chấp |
+| AC | `HinhAnhGCN` | String (URL)| `@` | Link ảnh chụp Giấy chứng nhận QSDĐ / Sổ đỏ |
+| AD | `HinhAnhThucDia`| String (URL)| `@` | Link ảnh chụp hiện trạng thửa đất thực tế |
+| AE | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm cập nhật hồ sơ tài sản |
+
+### 13. `CAU_HINH_BIEU_MAU` (Kho Mẫu Mail Merge - 10 Cột)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
 | :--- | :--- | :---: | :---: | :--- |
 | A | `Id` | Number | `#,##0` | Số thứ tự định danh (PK) |
@@ -293,55 +241,67 @@ Bảng CSDL `BAO_CAO_THAM_DINH` gồm **74 cột** chuẩn hóa, phân chia ch�
 | I | `TrangThai` | Enum | `@` | `Hoạt động`, `Tạm ngưng` |
 | J | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm cập nhật biểu mẫu |
 
+### 14. `DOCUMENT_STORAGE` (Nhật Ký Lưu Trữ Tài Liệu Xuất Bản - 9 Cột)
+| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
+| :--- | :--- | :---: | :---: | :--- |
+| A | `ID_HOP_DONG` | String | `@` | Mã hồ sơ / Số HĐTD liên kết |
+| B | `MA_KH` | String | `@` | Mã khách hàng |
+| C | `TEN_KHACH_HANG`| String | `@` | Họ và tên khách hàng |
+| D | `LOAI_BIEU_MAU` | String | `@` | Loại biểu mẫu đã xuất (vd: `BM_HDTD_01`) |
+| E | `NGUOI_LAP` | String | `@` | Họ tên cán bộ thực hiện xuất tài liệu |
+| F | `NGAY_LAP` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm xuất bản tài liệu |
+| G | `LINK_GOOGLE_DOC`| String (URL)| `@` | Đường dẫn tệp Google Docs đã trộn dữ liệu |
+| H | `LINK_PDF` | String (URL)| `@` | Đường dẫn tệp PDF xuất bản lưu trên Google Drive |
+| I | `TRANG_THAI` | Enum | `@` | Trạng thái tài liệu (`DA_KY`, `CHO_KY`, `HUY`) |
+
 ---
 
-## 🛡️ 2. Cơ Chế Auto-Migration & Bảo Vệ Toàn Vẹn CSDL
+## 📊 2. Cấu Trúc 2 Bảng Báo Cáo Phân Tích Mở Rộng
+
+### 15. `BC_DOANH_SO_TD` (Sao Kê Hợp Đồng Tín Dụng & Doanh Số Theo Khoảng Thời Gian - 12 Cột)
+| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
+| :--- | :--- | :---: | :---: | :--- |
+| A | `SoHDTD` | String | `@` | Số hợp đồng / khế ước tín dụng |
+| B | `MaKH` | String | `@` | Mã khách hàng (có số 0 đầu) |
+| C | `SoTV` | String | `@` | Số thẻ thành viên QTDND |
+| D | `TienVay` | Number | `#,##0` | Số tiền giải ngân ban đầu (VNĐ) |
+| E | `DuNo` | Number | `#,##0` | Dư nợ hiện tại (VNĐ) |
+| F | `LaiSuat` | Number | `0.00` | Lãi suất cho vay (%/năm) |
+| G | `NgayVay` | Date | `dd/MM/yyyy` | Ngày giải ngân nhận nợ |
+| H | `DenHan` | Date | `dd/MM/yyyy` | Ngày đáo hạn hợp đồng |
+| I | `MaLoaiVay` | String | `@` | Mã/Tên sản phẩm cho vay |
+| J | `SoThangVay` | Number | `#,##0` | Thời hạn cho vay (tháng) |
+| K | `MoTaVay` | String | `@` | Mục đích / Phương án sản xuất kinh doanh |
+| L | `KhuVuc` | String | `@` | Địa bàn (Thôn, Xã) |
+
+### 16. `TOP_DU_NO_BINH_QUAN` (Xếp Hạng Top Khách Hàng Dư Nợ Bình Quân Năm Cao Nhất - 21 Cột)
+| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
+| :--- | :--- | :---: | :---: | :--- |
+| A | `NamBaoCao` | Number | `#,##0` | Năm thống kê báo cáo (vd: 2026) |
+| B | `XepHang` | Number | `#,##0` | Thứ hạng từ 1 đến Top N |
+| C | `MaKH` | String | `@` | Mã khách hàng (PK) |
+| D | `HoTen` | String | `@` | Họ và tên khách hàng |
+| E | `SoTV` | String | `@` | Số thẻ thành viên QTDND |
+| F | `KhuVuc` | String | `@` | Địa bàn cư trú (Thôn, Xã) |
+| G - R | `DuNoThang01`..`12`| Number x 12 | `#,##0` | Dư nợ của khách hàng tại các ngày chốt cuối mỗi tháng (Tháng 1 đến Tháng 12) |
+| S | `DuNoBinhQuan` | Number | `#,##0` | **Dư nợ bình quân cả năm** = (Tổng dư nợ 12 tháng) / 12 (VNĐ) |
+| T | `TongTienVay` | Number | `#,##0` | Tổng doanh số cho vay lũy kế trong năm (VNĐ) |
+| U | `TyTrongDuNo` | Number | `0.00%` | Tỷ trọng % trên tổng dư nợ toàn Quỹ |
+
+---
+
+## 🛡️ 3. Cơ Chế Auto-Migration & Bảo Vệ Toàn Vẹn CSDL
 
 Hệ thống được bảo vệ bởi 3 tầng kiểm soát tại [`gas_backend/Database/SchemaSetup.gs`](file:///d:/Antigravity%20Projects/CreditCores/gas_backend/Database/SchemaSetup.gs):
 
 1. **Auto-Migration Không Mất Dữ Liệu (Zero Data Loss)**:
-   * Khi mở rộng trường dữ liệu (ví dụ thêm cột `LaiDuKien`, `SoNgayTinhLai`): Script quét dòng Header số 1. Nếu thiếu cột, tự động mở rộng và ghi nhãn cột mới mà **bảo toàn nguyên vẹn 100% dữ liệu cũ**, tuyệt đối không ghi đè dữ liệu.
+   * Khi mở rộng trường dữ liệu: Script quét dòng Header số 1. Nếu thiếu cột, tự động mở rộng và ghi nhãn cột mới mà **bảo toàn nguyên vẹn 100% dữ liệu cũ**, tuyệt đối không ghi đè dữ liệu.
 2. **Tự Động Chuẩn Hóa Tên Sheet Cũ (Legacy Sheet Alias)**:
    * Nhận diện và đổi tên an toàn các sheet cũ về tên chuẩn:
-     - `DS_TRICH_NO` $\to$ `DANG_KY_TRICH_NO`
-     - `LICH_SU_GIAO_DICH` $\to$ `CHI_TIET_TRICH_NO`
-     - `BAO_CAO_THAM_DINH` $\to$ `THAM_DINH_TD`
+     - `DS_TRICH_NO` -> `DANG_KY_TRICH_NO`
+     - `LICH_SU_GIAO_DICH` -> `CHI_TIET_TRICH_NO`
+     - `BAO_CAO_THAM_DINH` -> `THAM_DINH_TD`
+     - `TAI_SAN_BAO_DAM`, `DS_TSBD` -> `TSBD_CORE`
 3. **Bảo Toàn Kiểu Dữ Liệu An Toàn**:
    * CCCD, Số TK CASA luôn được gán định dạng `@` Text có dấu nháy đơn `'` ở đầu để chống mất số `0` dẫn đầu.
    * Số tiền luôn gán định dạng `#,##0` số nguyên để tránh lỗi `#VALUE!` khi tính toán.
-
----
-
-## 🔄 3. Quy Trình Bắt Buộc Khi Thay Đổi Cấu Trúc Dữ Liệu (Mandatory Schema Change Protocol)
-
-Mỗi khi phát sinh yêu cầu thay đổi trường dữ liệu, thêm cột, hoặc điều chỉnh mô hình dữ liệu đọc/ghi lên Google Sheets, AI Agent và Lập trình viên **BẮT BUỘC** phải tuân thủ nghiêm ngặt quy trình 5 bước khép kín sau:
-
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│              QUY TRÌNH 5 BƯỚC BẮT BUỘC KHI THAY ĐỔI CẤU TRÚC DỮ LIỆU (END-TO-END AUDIT)          │
-├──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1. CẬP NHẬT CSDL BACKEND (SchemaSetup.gs)                                                        │
-│    • Bổ sung mảng `headers`, `formats`, `colWidths` trong `SchemaSetup.SCHEMAS`.                 │
-│    • Đảm bảo hàm `ensureDatabaseSchema` sử dụng Smart Column Remapping (khớp tên cột cũ -> mới). │
-│                                                                                                  │
-│ 2. CẬP NHẬT CONTROLLER & ROUTER GAS (gas_backend/)                                               │
-│    • Map động theo tên cột `colMap[headerName]` thay vì chỉ số cột cứng.                        │
-│    • Xử lý fallback giá trị mặc định cho toàn bộ trường dữ liệu mới.                            │
-│    • Invalidate Cache khi có thao tác ghi dữ liệu (`CacheHelper.invalidateModuleCache`).          │
-│                                                                                                  │
-│ 3. ĐỒNG BỘ FRONTEND DATA SERVICES & UI (src/)                                                    │
-│    • Cập nhật `api.js`: Phương thức gọi API, payload POST, và Mock Handler fallback đồng nhất.  │
-│    • Cập nhật `mockData.js`: Cập nhật bộ dữ liệu mẫu đầy đủ các trường mới.                     │
-│    • Cập nhật UI Components & Modals: Form nhập liệu, Validation, Thẻ hiển thị, In ấn.           │
-│                                                                                                  │
-│ 4. BIÊN DỊCH, DEPLOY DUAL GAS & KIỂM THỬ LIVE API                                                │
-│    • Chạy `npm run build` để xác nhận 0 lỗi cú pháp Vite.                                        │
-│    • Chạy script `gas_sync_dual.ps1` để đẩy code lên cả 2 Script ID và deploy WebApp mới.       │
-│    • Gửi request live API kiểm tra dữ liệu trả về từ Google Sheets thực tế.                      │
-│                                                                                                  │
-│ 5. ĐỒNG BỘ TÀI LIỆU DỰ ÁN & RE-INDEX CBI GRAPH                                                   │
-│    • Cập nhật `DATA_SCHEMA.md`, `PROJECT_ARCHITECTURE.md`, `BUSINESS_WORKFLOWS.md`.              │
-│    • Cập nhật `AGENTS.md` và `GEMINI.md`.                                                        │
-│    • Chạy lệnh Re-index CBI Graph (`cbi index`) và chạy test suite (`npm test`).                 │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
