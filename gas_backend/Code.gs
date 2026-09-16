@@ -74,7 +74,7 @@ function doGet(e) {
         result = ModuleRegistryController.handleGetModuleRegistry();
         break;
       case "getCBTDPortfolioStats":
-        result = Customer360Controller.handleGetCBTDPortfolioStats(ss, data);
+        result = Customer360Controller.handleGetCBTDPortfolioStats(ss, e.parameter || {});
         break;
       case "initDatabase":
         result = SchemaSetup.setupAllSheets(ss);

@@ -18,6 +18,7 @@ import InspectionDetailModal from './modals/InspectionDetailModal';
 export default function LoanInspection({ prefilledContract, onOpenCustomerQuickView }) {
   const [inspections, setInspections] = useState([]);
   const [allContracts, setAllContracts] = useState([]);
+  const [allCustomers, setAllCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDoanKT, setFilterDoanKT] = useState('ALL');

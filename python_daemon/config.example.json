@@ -4,11 +4,11 @@
   "poll_interval_seconds": 5,
   "sql_server": {
     "driver": "auto",
-    "server": "localhost\\SQLEXPRESS",
-    "database": "CORE_BANKING_YENTHO",
+    "server": "127.0.0.1,1433",
+    "database": "NG-eFUND",
     "use_windows_auth": false,
-    "username": "sa",
-    "password": "YourSecurePassword@2026",
+    "username": "YOUR_SQL_USERNAME",
+    "password": "YOUR_SQL_PASSWORD",
     "trust_server_certificate": "yes"
   }
 }

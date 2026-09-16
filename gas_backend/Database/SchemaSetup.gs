@@ -276,12 +276,12 @@ var SchemaSetup = {
             .setFontColor("#FFFFFF")
             .setFontWeight("bold")
             .setHorizontalAlignment("center");
-        }
 
-        // Đảm bảo định dạng cột chuẩn
-        if (schema.formats) {
-          for (var colRange in schema.formats) {
-            try { sheet.getRange(colRange).setNumberFormat(schema.formats[colRange]); } catch(e){}
+          // Áp dụng lại định dạng cột khi có thay đổi header
+          if (schema.formats) {
+            for (var colRange in schema.formats) {
+              try { sheet.getRange(colRange).setNumberFormat(schema.formats[colRange]); } catch(e){}
+            }
           }
         }
       }
@@ -291,7 +291,7 @@ var SchemaSetup = {
 
     try {
       var cache = CacheService.getScriptCache();
-      cache.put("schema_validated", "true", 3600); // 1 hour
+      cache.put("schema_validated", "true", 21600); // 6 giờ lưu cache theo chuẩn AGENTS.md
     } catch (e) {}
 
     return {

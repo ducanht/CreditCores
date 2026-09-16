@@ -47,6 +47,15 @@ export default function TopHeader({
         <h1 className="fs-6 fw-semibold m-0 text-slate-900 font-heading text-truncate">
           {activeTabTitle}
         </h1>
+
+        <div
+          className="badge bg-success-subtle text-success border border-success-subtle d-none d-md-flex align-items-center gap-1.5 py-1 px-2.5 rounded-pill small fw-medium"
+          style={{ fontSize: '0.72rem' }}
+          title="Kết nối trực tiếp CSDL Google Sheets & Google Apps Script (Zero Mock)"
+        >
+          <span className="pulse-online"></span>
+          <span>Google Sheets Live {syncStatus?.totalContracts ? `(${syncStatus.totalContracts} HĐTD)` : ''}</span>
+        </div>
       </div>
 
       {/* Right: Minimal Essential Controls */}

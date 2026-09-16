@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import ThousandInput from '../ThousandInput';
 import { formatCurrencyVN, getTodayVN } from '../../utils/dateUtils';
+import DatePickerVN from '../DatePickerVN';
 
 export default function CollateralFormModal({
   show,
@@ -279,12 +280,10 @@ export default function CollateralFormModal({
 
                   <div className="col-12 col-md-4">
                     <label className="form-label small fw-bold text-dark">Ngày Cấp GCN</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="dd/MM/yyyy"
+                    <DatePickerVN
                       value={formData.ngayCapGCN}
-                      onChange={(e) => setFormData({ ...formData, ngayCapGCN: e.target.value })}
+                      onChange={(val) => setFormData({ ...formData, ngayCapGCN: val })}
+                      placeholder="dd/MM/yyyy"
                     />
                   </div>
 
@@ -548,12 +547,10 @@ export default function CollateralFormModal({
 
                   <div className="col-12 col-md-3">
                     <label className="form-label small fw-bold text-dark">Ngày Công Chứng</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="dd/MM/yyyy"
+                    <DatePickerVN
                       value={formData.ngayCongChung}
-                      onChange={(e) => setFormData({ ...formData, ngayCongChung: e.target.value })}
+                      onChange={(val) => setFormData({ ...formData, ngayCongChung: val })}
+                      placeholder="dd/MM/yyyy"
                     />
                   </div>
 
@@ -581,12 +578,10 @@ export default function CollateralFormModal({
 
                   <div className="col-12 col-md-4">
                     <label className="form-label small fw-bold text-dark">Ngày Đăng Ký GDBD</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="dd/MM/yyyy"
+                    <DatePickerVN
                       value={formData.ngayDangKyGDBD}
-                      onChange={(e) => setFormData({ ...formData, ngayDangKyGDBD: e.target.value })}
+                      onChange={(val) => setFormData({ ...formData, ngayDangKyGDBD: val })}
+                      placeholder="dd/MM/yyyy"
                     />
                   </div>
                 </div>

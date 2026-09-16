@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, AlertCircle } from 'lucide-react';
-import { isValidDateVN } from '../../utils/validators';
+import { isValidDateVN, getTodayVN } from '../../utils/dateUtils';
 import ImageUploader from '../ImageUploader';
+import DatePickerVN from '../DatePickerVN';
 
 export default function InspectionFormModal({
   show,
@@ -17,7 +18,7 @@ export default function InspectionFormModal({
     hoTen: '',
     loaiDoanKT: 'CBTD',
     thanhPhanDoan: '',
-    ngayKiemTra: new Date().toLocaleDateString('vi-VN'),
+    ngayKiemTra: getTodayVN(),
     lanKiemTra: 1,
     ngayKTNext: '',
     hinhThuc: 'Thực địa',
@@ -192,13 +193,11 @@ export default function InspectionFormModal({
                 </div>
 
                 <div className="col-12 col-sm-6 col-md-3">
-                  <label className="form-label small fw-bold text-dark">Ngày Kiểm Tra (dd/MM/yyyy)</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="18/08/2026"
+                  <label className="form-label small fw-bold text-dark">Ngày Kiểm Tra (*)</label>
+                  <DatePickerVN
                     value={formData.ngayKiemTra}
-                    onChange={(e) => setFormData({ ...formData, ngayKiemTra: e.target.value })}
+                    onChange={(val) => setFormData({ ...formData, ngayKiemTra: val })}
+                    placeholder="dd/MM/yyyy"
                   />
                 </div>
 
@@ -238,12 +237,10 @@ export default function InspectionFormModal({
 
                 <div className="col-12 col-sm-6 col-md-3">
                   <label className="form-label small fw-bold text-dark">Lần KT Kế Tiếp</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="18/11/2026"
+                  <DatePickerVN
                     value={formData.ngayKTNext}
-                    onChange={(e) => setFormData({ ...formData, ngayKTNext: e.target.value })}
+                    onChange={(val) => setFormData({ ...formData, ngayKTNext: val })}
+                    placeholder="dd/MM/yyyy"
                   />
                 </div>
 

@@ -759,3 +759,135 @@ html.dark .customer-click-link:hover {
     box-shadow: 0 0 0 0 rgba(154, 205, 50, 0);
   }
 }
+
+/* ========================================================================================
+   FLATPICKR VIETNAMESE CALENDAR & DATEPICKER TOGGLES
+   ======================================================================================== */
+.datepicker-vn-wrapper {
+  position: relative;
+}
+
+.datepicker-vn-wrapper .btn-datepicker-toggle:hover {
+  background-color: var(--primary-brand) !important;
+  border-color: var(--primary-brand) !important;
+}
+
+.datepicker-vn-wrapper .btn-datepicker-toggle:hover svg {
+  color: #ffffff !important;
+}
+
+.flatpickr-calendar {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid var(--border-card, #cbd5e1) !important;
+  font-family: var(--font-body, 'Be Vietnam Pro', sans-serif) !important;
+  overflow: hidden;
+  z-index: 99999 !important;
+}
+
+.flatpickr-months {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 100%) !important;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+  padding: 4px 0;
+}
+
+.flatpickr-months .flatpickr-month {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.flatpickr-current-month {
+  color: #ffffff !important;
+  font-size: 0.95rem !important;
+}
+
+.flatpickr-current-month .cur-month {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.flatpickr-current-month input.cur-year {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  padding: 8px 12px;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-months .flatpickr-next-month:hover {
+  color: var(--primary-brand, #9acd32) !important;
+}
+
+.flatpickr-weekdays {
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+span.flatpickr-weekday {
+  color: #475569 !important;
+  font-weight: 600 !important;
+  font-size: 0.78rem !important;
+}
+
+.flatpickr-day {
+  border-radius: 8px !important;
+  font-size: 0.85rem !important;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.flatpickr-day.selected, 
+.flatpickr-day.startRange, 
+.flatpickr-day.endRange {
+  background: var(--primary-emerald, #047857) !important;
+  border-color: var(--primary-emerald, #047857) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.flatpickr-day.today {
+  border-color: var(--primary-brand, #9acd32) !important;
+  border-width: 2px !important;
+}
+
+.flatpickr-day:hover {
+  background: #f4fce8 !important;
+  color: #166534 !important;
+}
+
+/* Dark Mode Flatpickr */
+html.dark .flatpickr-calendar {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.65) !important;
+}
+
+html.dark .flatpickr-weekdays {
+  background: #1e293b !important;
+  border-bottom: 1px solid #334155 !important;
+}
+
+html.dark span.flatpickr-weekday {
+  color: #94a3b8 !important;
+}
+
+html.dark .flatpickr-day {
+  color: #e2e8f0 !important;
+}
+
+html.dark .flatpickr-day:hover {
+  background: #1e293b !important;
+  color: #bef264 !important;
+}
+
+html.dark .flatpickr-day.selected {
+  background: var(--primary-emerald, #10b981) !important;
+  color: #022c22 !important;
+}
+

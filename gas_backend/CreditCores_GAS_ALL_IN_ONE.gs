@@ -806,7 +806,9 @@ var AppraisalController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(25, sheet.getLastColumn())).getValues();
+    var numRows = sheet.getLastRow() - 1;
+    var numCols = sheet.getLastColumn();
+    var values = sheet.getRange(2, 1, numRows, numCols).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
       var approvalOpinions = [];
@@ -957,7 +959,9 @@ var InspectionController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(20, sheet.getLastColumn())).getValues();
+    var numRows = sheet.getLastRow() - 1;
+    var numCols = sheet.getLastColumn();
+    var values = sheet.getRange(2, 1, numRows, numCols).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
       results.push({

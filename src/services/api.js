@@ -48,7 +48,7 @@ export function clearApiCache() {
 }
 
 /**
- * Resilient Network Request Wrapper with Dual-Mode Fallback & High-Speed Cache
+ * Resilient Network Request Wrapper with Live Google Sheets Priority
  */
 async function sendRequest(action, data = null, method = 'GET', useCache = true) {
   const isReadOp = method === 'GET';
@@ -66,7 +66,6 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
   const directGasUrl = getGasApiUrl();
   const isBrowser = typeof window !== 'undefined';
   const isVercelOrigin = isBrowser && window.location.hostname.includes('vercel.app');
-  const isLocalhost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   // Danh sách các endpoints thử nghiệm
   const candidateUrls = [];
@@ -80,6 +79,8 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
   if (directGasUrl && directGasUrl.startsWith('http') && now > endpointHealth.gasFailingUntil) {
     candidateUrls.push({ url: directGasUrl, isProxy: false });
   }
+
+  let lastError = null;
 
   for (const candidate of candidateUrls) {
     try {
@@ -97,12 +98,19 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
         }
         fetchUrl += (fetchUrl.includes('?') ? '&' : '?') + queryParams.toString();
       } else {
-        options.headers = { 'Content-Type': 'application/json' };
-        options.body = JSON.stringify({ action: action, data: data });
+        if (candidate.isProxy) {
+          options.headers = { 'Content-Type': 'application/json' };
+          options.body = JSON.stringify({ action: action, data: data });
+        } else {
+          // Direct GAS: Dùng text/plain để tránh CORS OPTIONS preflight của trình duyệt
+          options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+          options.body = JSON.stringify({ action: action, data: data });
+          options.redirect = 'follow';
+        }
       }
 
-      // Fast Timeout: 3500ms thay vì chờ 9s giật lag
-      const timeoutMs = isLocalhost ? 2800 : 3800;
+      // Đặt timeout 15s đủ cho cold-start và truy vấn lớn từ Google Apps Script
+      const timeoutMs = 15000;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       options.signal = controller.signal;
@@ -121,30 +129,43 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
           apiCache.set(cacheKey, { response: json, timestamp: Date.now() });
         }
 
+        // Xóa cache khi có thao tác ghi dữ liệu (Mutation)
+        if (!isReadOp) {
+          clearApiCache();
+        }
+
         return json;
       } else {
-        // Đánh dấu endpoint lỗi tạm thời 20s
-        if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 20000;
-        else endpointHealth.gasFailingUntil = now + 20000;
+        // Đánh dấu endpoint lỗi tạm thời 3s (không khóa quá lâu)
+        if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 3000;
+        else endpointHealth.gasFailingUntil = now + 3000;
+        lastError = new Error(`Máy chủ phản hồi HTTP ${res.status}`);
       }
     } catch (err) {
-      if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 20000;
-      else endpointHealth.gasFailingUntil = now + 20000;
+      if (candidate.isProxy) endpointHealth.proxyFailingUntil = now + 3000;
+      else endpointHealth.gasFailingUntil = now + 3000;
+      lastError = err;
     }
   }
 
-  // 2. Fallback sang Local Stateful Engine khi mạng lag / offline
-  const fallbackResult = handleMockFallback(action, data);
-  if (isReadOp && fallbackResult && fallbackResult.status === 'success') {
-    apiCache.set(cacheKey, { response: fallbackResult, timestamp: Date.now() });
+  // 2. Chế độ Mock chỉ kích hoạt khi người dùng bật cờ mô phỏng thủ công trong cài đặt
+  const isExplicitMock = typeof localStorage !== 'undefined' && localStorage.getItem('CREDITCORES_USE_MOCK') === 'true';
+  if (isExplicitMock) {
+    console.warn(`[CreditCores] Đang kích hoạt Mock Data mô phỏng (${action}).`);
+    const fallbackResult = handleMockFallback(action, data);
+    if (isReadOp && fallbackResult && fallbackResult.status === 'success') {
+      apiCache.set(cacheKey, { response: fallbackResult, timestamp: Date.now() });
+    }
+    if (!isReadOp) clearApiCache();
+    return fallbackResult;
   }
 
-  // Nếu là thao tác Ghi (Mutation), tự động xóa cache liên quan để số liệu mới nhất hiển thị
-  if (!isReadOp) {
-    clearApiCache();
-  }
-
-  return fallbackResult;
+  // 3. Báo lỗi chuẩn mực tới người dùng, tuyệt đối không tự động tráo đổi mock data giả
+  console.error(`[CreditCores Live API] Lỗi gọi hành động "${action}":`, lastError);
+  return {
+    status: 'error',
+    message: `Không thể kết nối đến máy chủ Google Sheets (${action}): ${lastError ? lastError.message : 'Lỗi mạng'}`
+  };
 }
 
 /**
