@@ -398,24 +398,32 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     """
     query = """
     SELECT 
-        d.SO_HDTD AS SoHDTD,
-        d.MA_KHACH_HANG AS MaKH,
-        d.SO_TIEN_VAY AS TienVay,
-        a.SO_DU AS DuNo,
-        a.LAI_SUAT AS LaiSuat,
-        d.NGAY_VAY AS NgayVay,
-        d.NGAY_DAO_HAN AS DenHan,
-        a.THU_LAI_DEN_NGAY AS TraLaiDenNgay,
-        sp.TEN_SAN_PHAM AS MaLoaiVay,
-        d.SO_THANG_VAY AS SoThangVay,
-        d.MO_TA_MUC_DICH_VAY AS MoTaVay
-    FROM dbo.TD_KHE_UOC a WITH (NOLOCK)
-    INNER JOIN dbo.TD_HOP_DONG_TD d WITH (NOLOCK) ON a.MA_HDTD = d.MA_HDTD
-    INNER JOIN dbo.KT_TAI_KHOAN c WITH (NOLOCK) ON c.SO_TAI_KHOAN = a.SO_TAI_KHOAN
-    LEFT JOIN dbo.vwTD_SAN_PHAM sp WITH (NOLOCK) ON sp.MA_SAN_PHAM = a.MA_SAN_PHAM
-    WHERE a.SO_DU > 0 
-      AND c.SO_DU > 0
-    ORDER BY d.MA_KHACH_HANG, d.NGAY_VAY DESC;
+        D.SO_HDTD AS SoHDTD,
+        D.MA_KHACH_HANG AS MaKH,
+        D.SO_TIEN_VAY AS TienVay,
+        A.SO_DU AS DuNo,
+        A.LAI_SUAT AS LaiSuat,
+        D.NGAY_VAY AS NgayVay,
+        D.NGAY_DAO_HAN AS DenHan,
+        A.THU_LAI_DEN_NGAY AS TraLaiDenNgay,
+        SP.TEN_SAN_PHAM AS MaLoaiVay,
+        D.SO_THANG_VAY AS SoThangVay,
+        D.MO_TA_MUC_DICH_VAY AS MoTaVay
+    FROM dbo.TD_KHE_UOC A
+    INNER JOIN dbo.TD_HOP_DONG_TD D
+        ON A.MA_HDTD = D.MA_HDTD
+    INNER JOIN dbo.DC_KHACH_HANG B
+        ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
+    INNER JOIN dbo.KT_TAI_KHOAN C
+        ON C.SO_TAI_KHOAN = A.SO_TAI_KHOAN
+    INNER JOIN dbo.DC_KHU_VUC KV
+        ON B.MA_KHU_VUC = KV.MA_KHU_VUC
+    INNER JOIN dbo.vwTD_SAN_PHAM SP
+        ON SP.MA_SAN_PHAM = A.MA_SAN_PHAM
+    INNER JOIN dbo.DC_LOAI_VAY LV
+        ON LV.MA_LOAI_VAY = SP.MA_LOAI_VAY
+    WHERE C.SO_DU > 0 
+    ORDER BY D.MA_KHACH_HANG, D.NGAY_VAY DESC;
     """
     logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Hợp đồng Tín dụng & Dư nợ từ NG-eFUND...")
     cursor = sql_conn.cursor()
