@@ -118,8 +118,6 @@ export default function CollateralFormModal({
     }
   }, [selectedCollateral]);
 
-  if (!show) return null;
-
   const handleSelectCustomer = (maKH) => {
     const cust = allCustomers.find((c) => c.maKH === maKH);
     if (cust) {
@@ -197,6 +195,8 @@ export default function CollateralFormModal({
 
     onSubmit(payload);
   };
+
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}>

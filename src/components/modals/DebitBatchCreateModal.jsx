@@ -37,8 +37,6 @@ export default function DebitBatchCreateModal({
   const [expandedKH, setExpandedKH] = useState(null);
   const [cycleInfo, setCycleInfo] = useState(null);
 
-  if (!show) return null;
-
   const handleNextToStep2 = (e) => {
     e.preventDefault();
     const ky = Number(formData.kyTrich);
@@ -160,6 +158,8 @@ export default function DebitBatchCreateModal({
       cyclePeriod: cycleInfo
     });
   };
+
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>

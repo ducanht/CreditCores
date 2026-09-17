@@ -11,8 +11,7 @@ import {
   AlertTriangle,
   FileCheck2,
   Calendar,
-  Layers,
-  Sparkles
+  Layers
 } from 'lucide-react';
 import ThousandInput from '../ThousandInput';
 import { formatCurrencyVN, formatDateTimeVN, formatDateVN } from '../../utils/dateUtils';

@@ -9,8 +9,7 @@ import {
   ShieldCheck,
   Building2,
   User,
-  Layers,
-  Sparkles
+  Layers
 } from 'lucide-react';
 import { formatCurrencyVN, getTodayVN, formatDateVN } from '../../utils/dateUtils';
 
@@ -38,8 +37,6 @@ export default function ContractPackageModal({
       if (preselectedContract.maKH) setSelectedMaKH(preselectedContract.maKH);
     }
   }, [preselectedCustomer, preselectedContract]);
-
-  if (!show) return null;
 
   // Lấy đối tượng dữ liệu thực tế
   const customer = allCustomers.find((c) => c.maKH === selectedMaKH) || (allCustomers.length > 0 ? allCustomers[0] : null);
@@ -254,6 +251,8 @@ export default function ContractPackageModal({
       }, index * 300);
     });
   };
+
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}>
@@ -499,7 +498,7 @@ export default function ContractPackageModal({
               className="btn btn-brand btn-sm text-white fw-bold px-4 shadow-sm d-flex align-items-center gap-1.5"
               onClick={handleExportFullPackage}
             >
-              <Sparkles size={16} /> Xuất Trọn Bộ 6 Hợp Đồng (.doc)
+              <FileCheck2 size={16} /> Xuất Bộ Hồ Sơ Tín Dụng (.doc)
             </button>
           </div>
         </div>

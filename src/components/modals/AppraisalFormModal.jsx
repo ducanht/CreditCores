@@ -20,7 +20,6 @@ import {
   FileText,
   Upload,
   Calendar,
-  Sparkles,
   Search,
   Lock
 } from 'lucide-react';
@@ -143,8 +142,6 @@ export default function AppraisalFormModal({
       }));
     }
   }, [prefilledCustomer, currentUser]);
-
-  if (!show) return null;
 
   // Lựa chọn khách hàng từ CoreBanking
   const handleSelectCustomer = (maKH, customObj = null) => {
@@ -346,6 +343,8 @@ export default function AppraisalFormModal({
 
     onSubmit(payload);
   };
+
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}>
@@ -1349,14 +1348,14 @@ export default function AppraisalFormModal({
                 <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle">
                   <div className="d-flex justify-content-between align-items-center mb-1">
                     <h6 className="fw-bold text-primary m-0 d-flex align-items-center gap-1.5">
-                      <Sparkles size={16} /> Đánh Giá Khả Năng Trả Nợ & Đề Xuất Phương Án Tối Ưu
+                      <CheckCircle2 size={16} /> Đánh Giá Nguồn Thu & Phương Án Cấp Tín Dụng
                     </h6>
                     <button
                       type="button"
                       className="btn btn-xs btn-outline-primary"
                       onClick={() => setFormData({ ...formData, phuongAnToiUu: generateOptimalSuggestion() })}
                     >
-                      Tự động phân tích lại
+                      Cập nhật lại phương án
                     </button>
                   </div>
                   <textarea

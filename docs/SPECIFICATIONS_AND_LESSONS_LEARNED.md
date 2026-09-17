@@ -360,13 +360,13 @@ TD_KHE_UOC, TD_HOP_DONG_TD, DC_KHACH_HANG, KT_TAI_KHOAN")]
 
 ---
 
-## ⚠️ 4. BẢNG 13 BÀI HỌC KINH NGHIỆM XƯƠNG MÁU & QUY TẮC CHỐNG TÁI PHẠM LỖI (LESSONS LEARNED)
+## ⚠️ 4. BẢNG 15 BÀI HỌC KINH NGHIỆM XƯƠNG MÁU & QUY TẮC CHỐNG TÁI PHẠM LỖI (LESSONS LEARNED)
 
-Dưới đây là 13 sự cố, lỗi kỹ thuật và nghiệp vụ thực tế đã từng xảy ra trong quá trình phát triển hệ thống CreditCores. **Toàn bộ kỹ sư và AI Agent phải ghi nhớ và tuân thủ các giải pháp khắc phục triệt để**:
+Dưới đây là 15 sự cố, lỗi kỹ thuật và nghiệp vụ thực tế đã từng xảy ra trong quá trình phát triển hệ thống CreditCores. **Toàn bộ kỹ sư và AI Agent phải ghi nhớ và tuân thủ các giải pháp khắc phục triệt để**:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│              BẢNG TỔNG HỢP 13 BÀI HỌC KINH NGHIỆM XƯƠNG MÁU (ANTI-PATTERNS CATALOG)               │
+│              BẢNG TỔNG HỢP 15 BÀI HỌC KINH NGHIỆM XƯƠNG MÁU (ANTI-PATTERNS CATALOG)               │
 ├────┬───────────────────────────────┬──────────────────────────────┬──────────────────────────────┤
 │ STT│ Tên Sự Cố / Anti-Pattern      │ Rủi Ro & Hậu Quả Thực Tế     │ Biện Pháp Khắc Phục Triệt Để │
 ├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
@@ -422,6 +422,16 @@ Dưới đây là 13 sự cố, lỗi kỹ thuật và nghiệp vụ thực tế
 │    │ trị mẫu giả (Dummy Values)    │ "NGUYỄN VĂN AN", "Hà Nội" làm│ trả về chuỗi rỗng "" hoặc 0; │
 │    │                               │ sai lệch chứng từ pháp lý.   │ tuyệt đối không dùng giá trị │
 │    │                               │                              │ mẫu mặc định giả tạo.        │
+├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ 14 │ Lỗi Temporal Dead Zone (TDZ)  │ Đặt "if (!show) return null" │ Mọi hooks và handler PHẢI    │
+│    │ do Early Return trong Modals  │ trước các hàm handler khiến  │ khai báo ở trên; guard "if   │
+│    │                               │ React ném lỗi "Cannot access │ (!show) return null" bắt     │
+│    │                               │ 'K' before initialization".  │ buộc đặt ngay trước return JSX│
+├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ 15 │ Lạm dụng thuật ngữ/icon AI    │ Dùng từ phô trương "thông    │ Chuẩn hóa 100% văn phong tín │
+│    │ (AI buzzwords & Sparkles)     │ minh", "AI", icon Sparkles   │ dụng QTDND; dùng icon tác    │
+│    │                               │ gây mất chuyên nghiệp và rối │ nghiệp thực tế (CheckCircle2,│
+│    │                               │ mắt cán bộ nghiệp vụ.        │ FileCheck2, Search, Download)│
 └────┴───────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
 ```
 

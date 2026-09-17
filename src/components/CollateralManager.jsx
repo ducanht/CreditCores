@@ -7,7 +7,6 @@ import {
   FileText,
   FileSpreadsheet,
   Printer,
-  Sparkles,
   Edit2,
   Trash2,
   ExternalLink,
@@ -200,7 +199,7 @@ export default function CollateralManager({ onOpenCustomerQuickView }) {
             className="btn btn-sm btn-outline-primary fw-bold d-flex align-items-center gap-1.5"
             onClick={() => { setPackageTargetCustomer(null); setShowPackageModal(true); }}
           >
-            <Sparkles size={14} /> Lập Trọn Bộ Hợp Đồng (Full Package)
+            <FileCheck2 size={14} /> Lập Bộ Hợp Đồng Tín Dụng
           </button>
         </div>
 
@@ -431,7 +430,7 @@ export default function CollateralManager({ onOpenCustomerQuickView }) {
                             setShowPackageModal(true);
                           }}
                         >
-                          <Sparkles size={14} />
+                          <FileCheck2 size={14} />
                         </button>
                         <button
                           type="button"

@@ -24,14 +24,6 @@ export default function DebitRegisterModal({
   const [contractList, setContractList] = useState([]);
   const [formError, setFormError] = useState('');
 
-  useEffect(() => {
-    if (prefilledCustomer) {
-      handleSelectCustomer(prefilledCustomer.maKH, prefilledCustomer);
-    }
-  }, [prefilledCustomer]);
-
-  if (!show) return null;
-
   const handleSelectCustomer = (maKH, customObj = null) => {
     const cust = customObj || allCustomers.find((c) => c.maKH === maKH);
     if (cust) {
@@ -50,6 +42,12 @@ export default function DebitRegisterModal({
     }
   };
 
+  useEffect(() => {
+    if (prefilledCustomer) {
+      handleSelectCustomer(prefilledCustomer.maKH, prefilledCustomer);
+    }
+  }, [prefilledCustomer]);
+
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formData.maKH || !formData.hoTen || !formData.soTK) {
@@ -64,6 +62,8 @@ export default function DebitRegisterModal({
 
     onSubmit(formData);
   };
+
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>

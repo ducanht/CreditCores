@@ -321,8 +321,8 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                   <MapPin size={18} />
                 </div>
                 <div>
-                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Phân Bố Dư Nợ Theo 3 Xã</h5>
-                  <span className="text-muted small">Cơ cấu địa bàn phục vụ của QTDND Yên Thọ</span>
+                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Phân Bố Dư Nợ Theo Địa Bàn</h5>
+                  <span className="text-muted small">Số liệu thực tế theo 3 xã thuộc địa bàn hoạt động</span>
                 </div>
               </div>
               <button
@@ -334,56 +334,33 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
             </div>
 
             <div className="d-flex flex-column gap-3 pt-2">
-              {/* Xã Yên Thọ */}
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold text-dark small">Xã Yên Thọ (Thôn 1, 2, 3, 4)</span>
-                  <span className="fw-bold text-success small num-tabular">
-                    {formatCurrencyVN(totalDuNo * 0.48)} <span className="text-muted fw-normal">(48.0%)</span>
-                  </span>
-                </div>
-                <div className="progress" style={{ height: '8px' }}>
-                  <div className="progress-bar bg-success" role="progressbar" style={{ width: '48%' }}></div>
-                </div>
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                  <span>Địa bàn trọng điểm</span>
-                  <span>142 khách hàng</span>
-                </div>
-              </div>
-
-              {/* Xã Yên Trường */}
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold text-dark small">Xã Yên Trường (Thôn 1, 2, 3)</span>
-                  <span className="fw-bold text-primary small num-tabular">
-                    {formatCurrencyVN(totalDuNo * 0.35)} <span className="text-muted fw-normal">(35.0%)</span>
-                  </span>
-                </div>
-                <div className="progress" style={{ height: '8px' }}>
-                  <div className="progress-bar bg-primary" role="progressbar" style={{ width: '35%' }}></div>
-                </div>
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                  <span>Địa bàn mở rộng</span>
-                  <span>110 khách hàng</span>
-                </div>
-              </div>
-
-              {/* Xã Yên Bái / Quý Lộc */}
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold text-dark small">Xã Yên Bái / Quý Lộc</span>
-                  <span className="fw-bold text-info small num-tabular">
-                    {formatCurrencyVN(totalDuNo * 0.17)} <span className="text-muted fw-normal">(17.0%)</span>
-                  </span>
-                </div>
-                <div className="progress" style={{ height: '8px' }}>
-                  <div className="progress-bar bg-info" role="progressbar" style={{ width: '17%' }}></div>
-                </div>
-                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                  <span>Địa bàn liên xã</span>
-                  <span>68 khách hàng</span>
-                </div>
-              </div>
+              {stats?.areaStats && stats.areaStats.length > 0 ? (
+                stats.areaStats.map((area, idx) => {
+                  const colors = ['bg-success', 'bg-primary', 'bg-info', 'bg-warning'];
+                  const colorClass = colors[idx % colors.length];
+                  const percentVal = totalDuNo > 0 ? Math.min(100, Math.round(((area.duNo || 0) / totalDuNo) * 100)) : 0;
+                  return (
+                    <div key={area.name || idx}>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="fw-bold text-dark small">{area.name}</span>
+                        <span className="fw-bold text-dark small num-tabular">
+                          {formatCurrencyVN(area.duNo || 0)}{' '}
+                          <span className="text-muted fw-normal">({area.rate || `${percentVal}%`})</span>
+                        </span>
+                      </div>
+                      <div className="progress" style={{ height: '8px' }}>
+                        <div className={`progress-bar ${colorClass}`} role="progressbar" style={{ width: `${percentVal}%` }}></div>
+                      </div>
+                      <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                        <span>Thành viên: {area.countKH || 0} khách hàng</span>
+                        <span>Tỷ trọng: {percentVal}%</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-4 text-muted small">Đang nạp phân bổ địa bàn từ CSDL...</div>
+              )}
             </div>
           </div>
         </div>
@@ -397,52 +374,43 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                   <PieChart size={18} />
                 </div>
                 <div>
-                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Cơ Cấu Sản Phẩm Tín Dụng</h5>
-                  <span className="text-muted small">Phân loại theo mục đích vay vốn</span>
+                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Cơ Cấu Sản Phẩm Cho Vay</h5>
+                  <span className="text-muted small">Phân loại theo mục đích và sản phẩm tín dụng</span>
                 </div>
               </div>
-              <span className="badge bg-light text-dark border small fw-semibold">3 Nhóm chính</span>
+              <span className="badge bg-light text-dark border small fw-semibold">
+                {stats?.loanTypes?.length || 0} Sản phẩm
+              </span>
             </div>
 
             <div className="d-flex flex-column gap-3 pt-2">
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold text-dark small">Nông Nghiệp & Nuôi Trồng Thủy Sản</span>
-                  <span className="fw-bold text-success small num-tabular">55.0%</span>
-                </div>
-                <div className="progress" style={{ height: '8px' }}>
-                  <div className="progress-bar bg-success" style={{ width: '55%' }}></div>
-                </div>
-                <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                  Phục vụ sản xuất nông nghiệp, chăn nuôi trang trại
-                </div>
-              </div>
-
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold text-dark small">Thương Mại & Dịch Vụ Nông Thôn</span>
-                  <span className="fw-bold text-primary small num-tabular">30.0%</span>
-                </div>
-                <div className="progress" style={{ height: '8px' }}>
-                  <div className="progress-bar bg-primary" style={{ width: '30%' }}></div>
-                </div>
-                <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                  Kinh doanh cửa hàng, thu mua nông sản, vận tải
-                </div>
-              </div>
-
-              <div>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="fw-bold text-dark small">Tiêu Dùng & Xây Dựng Đời Sống</span>
-                  <span className="fw-bold text-warning small num-tabular">15.0%</span>
-                </div>
-                <div className="progress" style={{ height: '8px' }}>
-                  <div className="progress-bar bg-warning" style={{ width: '15%' }}></div>
-                </div>
-                <div className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                  Sửa chữa nhà ở, tiêu dùng sinh hoạt thành viên
-                </div>
-              </div>
+              {stats?.loanTypes && stats.loanTypes.length > 0 ? (
+                stats.loanTypes.map((lt, idx) => {
+                  const colors = ['bg-success', 'bg-primary', 'bg-warning', 'bg-info', 'bg-secondary'];
+                  const colorClass = colors[idx % colors.length];
+                  const percentVal = totalDuNo > 0 ? Math.min(100, Math.round(((lt.duNo || 0) / totalDuNo) * 100)) : 0;
+                  return (
+                    <div key={lt.name || idx}>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="fw-bold text-dark small">{lt.name}</span>
+                        <span className="fw-bold text-dark small num-tabular">
+                          {formatCurrencyVN(lt.duNo || 0)}{' '}
+                          <span className="text-muted fw-normal">({percentVal}%)</span>
+                        </span>
+                      </div>
+                      <div className="progress" style={{ height: '8px' }}>
+                        <div className={`progress-bar ${colorClass}`} style={{ width: `${percentVal}%` }}></div>
+                      </div>
+                      <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
+                        <span>Quy mô: {lt.count || 0} hợp đồng</span>
+                        <span>Chiếm {percentVal}% tổng dư nợ</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-4 text-muted small">Đang nạp cơ cấu sản phẩm vay từ CSDL...</div>
+              )}
             </div>
           </div>
         </div>

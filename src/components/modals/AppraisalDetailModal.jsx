@@ -17,7 +17,6 @@ import {
   Layers,
   Calculator,
   Percent,
-  Sparkles,
   Download,
   Lock,
   Clock,
@@ -427,7 +426,7 @@ export default function AppraisalDetailModal({ appraisal, onClose, onOpenAddOpin
               {appraisal.phuongAnToiUu && (
                 <div className="p-2.5 bg-primary-subtle rounded-3 border border-primary-subtle small mb-2">
                   <strong className="text-primary d-flex align-items-center gap-1 mb-1">
-                    <Sparkles size={14} /> Nhận định & Khuyến nghị phương án tối ưu:
+                    <CheckCircle2 size={14} /> Đánh giá & Khuyến nghị phương án cho vay:
                   </strong>
                   <span>{appraisal.phuongAnToiUu}</span>
                 </div>

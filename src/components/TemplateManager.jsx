@@ -19,7 +19,6 @@ import {
   Download,
   User,
   Check,
-  Sparkles,
   Save,
   Sliders,
   FileCode,
@@ -1199,7 +1198,7 @@ export default function TemplateManager() {
                           className="btn btn-outline-primary btn-xs py-0.5 px-2 d-flex align-items-center gap-1"
                           onClick={handleAutoScanFormTags}
                         >
-                          <Sparkles size={12} /> Tự Động Quét Thẻ Biến
+                          <Search size={12} /> Quét Thẻ Biến
                         </button>
                       </div>
                       <textarea
@@ -1519,7 +1518,7 @@ export default function TemplateManager() {
                     {isGenerating ? (
                       <><RefreshCw size={13} className="spin-animation" /> Đang khởi tạo...</>
                     ) : (
-                      <><Sparkles size={13} /> Khởi Tạo Hợp Đồng (Lưu Drive)</>
+                      <><FileCheck size={13} /> Khởi Tạo Hợp Đồng (Lưu Drive)</>
                     )}
                   </button>
                   <button

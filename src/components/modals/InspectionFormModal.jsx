@@ -34,19 +34,6 @@ export default function InspectionFormModal({
 
   const [formError, setFormError] = useState('');
 
-  useEffect(() => {
-    if (prefilledContract) {
-      handleSelectContract(prefilledContract.soHDTD, prefilledContract);
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        maBBKT: 'BBKT-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000))
-      }));
-    }
-  }, [prefilledContract]);
-
-  if (!show) return null;
-
   const handleSelectContract = (soHDTD, contractObj = null) => {
     const c = contractObj || allContracts.find((item) => item.soHDTD === soHDTD);
     if (c) {
@@ -60,6 +47,17 @@ export default function InspectionFormModal({
       setFormError('');
     }
   };
+
+  useEffect(() => {
+    if (prefilledContract) {
+      handleSelectContract(prefilledContract.soHDTD, prefilledContract);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        maBBKT: 'BBKT-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000))
+      }));
+    }
+  }, [prefilledContract]);
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -80,6 +78,8 @@ export default function InspectionFormModal({
 
     onSubmit(formData);
   };
+
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
