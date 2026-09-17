@@ -32,57 +32,143 @@ var DashboardController = {
     var totalHopDong = 0;
     var totalDuThuLai = 0;
 
-    // Cơ cấu sản phẩm vay
-    var loanTypeMap = {};
-
-    if (sHDTD && sHDTD.getLastRow() > 1) {
-      var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, 12).getValues();
-      for (var i = 0; i < hdValues.length; i++) {
-        var duNo = Number(hdValues[i][3]) || 0;
-        var laiSuat = Number(hdValues[i][4]) || 0;
-        var loaiVay = String(hdValues[i][10] || hdValues[i][8] || "Khác").trim();
-
-        totalDuNo += duNo;
-        totalHopDong++;
-        totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
-
-        if (!loanTypeMap[loaiVay]) {
-          loanTypeMap[loaiVay] = { name: loaiVay, count: 0, duNo: 0 };
-        }
-        loanTypeMap[loaiVay].count++;
-        loanTypeMap[loaiVay].duNo += duNo;
-      }
-    }
-
-    // Cơ cấu dư nợ theo 3 địa bàn xã chính
-    var areaMap = {
-      "Xã Yên Thọ": { name: "Xã Yên Thọ (Thôn 1, 2, 3, 4)", countKH: 0, duNo: 0 },
-      "Xã Yên Trường": { name: "Xã Yên Trường (Thôn 1, 2, 3)", countKH: 0, duNo: 0 },
-      "Xã Yên Bái / Quý Lộc": { name: "Xã Yên Bái / Quý Lộc", countKH: 0, duNo: 0 }
-    };
-
+    // 1. Ánh xạ địa bàn khách hàng từ KH_CORE
+    var custAreaMap = {};
     if (sKH && sKH.getLastRow() > 1) {
       var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, 11).getValues();
       for (var k = 0; k < khValues.length; k++) {
-        var khuVuc = String(khValues[k][10] || khValues[k][2] || "").trim();
-        var matched = "Xã Yên Thọ";
-        if (khuVuc.indexOf("Yên Trường") > -1) matched = "Xã Yên Trường";
-        else if (khuVuc.indexOf("Yên Bái") > -1 || khuVuc.indexOf("Quý Lộc") > -1) matched = "Xã Yên Bái / Quý Lộc";
-        
-        if (areaMap[matched]) {
-          areaMap[matched].countKH++;
+        var makh = String(khValues[k][0]).replace(/^'/, '').trim();
+        var rawKhuVuc = (String(khValues[k][10] || "") + " " + String(khValues[k][2] || "")).toLowerCase();
+        var matchedArea = "Quý Lộc";
+        if (rawKhuVuc.indexOf("yên trường") > -1 || rawKhuVuc.indexOf("yen truong") > -1) {
+          matchedArea = "Yên Trường";
+        } else if (rawKhuVuc.indexOf("vĩnh lộc") > -1 || rawKhuVuc.indexOf("vinh loc") > -1) {
+          matchedArea = "Vĩnh Lộc";
+        } else {
+          matchedArea = "Quý Lộc";
+        }
+        custAreaMap[makh] = matchedArea;
+      }
+    }
+
+    // 2. Cơ cấu dư nợ theo 3 địa bàn xã chính & Cán bộ quản lý phụ trách
+    var areaMap = {
+      "Quý Lộc": {
+        key: "quyloc",
+        name: "Xã Quý Lộc",
+        subText: "Địa bàn trọng điểm (Thôn Đan Nê, Tân Lộc, Tu Mục)",
+        cbqlUser: "qtdyentho.huyennhu",
+        cbqlName: "Trần Như Huyền",
+        countHD: 0,
+        countKH: 0,
+        duNo: 0,
+        khSet: {}
+      },
+      "Yên Trường": {
+        key: "yentruong",
+        name: "Xã Yên Trường",
+        subText: "Địa bàn mở rộng (Thôn Phố Kiểu, Lựu Khê, Thạc Quả)",
+        cbqlUser: "qtdyentho.luudinh",
+        cbqlName: "Lưu Thị Định",
+        countHD: 0,
+        countKH: 0,
+        duNo: 0,
+        khSet: {}
+      },
+      "Vĩnh Lộc": {
+        key: "vinhloc",
+        name: "Xã Vĩnh Lộc",
+        subText: "Địa bàn liên kết (Thôn Kỳ Ngãi, Phi Bình, Yên Lạc, Thọ Vực)",
+        cbqlUser: "qtdyentho.huunhan",
+        cbqlName: "Nguyễn Hữu Nhân",
+        countHD: 0,
+        countKH: 0,
+        duNo: 0,
+        khSet: {}
+      }
+    };
+
+    // 3. Cơ cấu sản phẩm tín dụng theo 3 nhóm chính
+    var loanGroups = {
+      "nong_nghiep": {
+        key: "nong_nghiep",
+        name: "Nông Nghiệp & Phát Triển Nông Thôn",
+        description: "Phục vụ sản xuất nông nghiệp, chăn nuôi, trồng trọt trang trại",
+        count: 0,
+        duNo: 0,
+        subtypes: {}
+      },
+      "sinh_hoat": {
+        key: "sinh_hoat",
+        name: "Tiêu Dùng & Đời Sống Thành Viên",
+        description: "Xây sửa chữa nhà ở, tiêu dùng sinh hoạt thành viên",
+        count: 0,
+        duNo: 0,
+        subtypes: {}
+      },
+      "kinh_doanh": {
+        key: "kinh_doanh",
+        name: "Thương Mại Dịch Vụ & Ngành Nghề",
+        description: "Kinh doanh buôn bán, tiểu thủ công nghiệp và dịch vụ nông thôn",
+        count: 0,
+        duNo: 0,
+        subtypes: {}
+      }
+    };
+
+    if (sHDTD && sHDTD.getLastRow() > 1) {
+      var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, 14).getValues();
+      for (var i = 0; i < hdValues.length; i++) {
+        var makh = String(hdValues[i][1]).replace(/^'/, '').trim();
+        var duNo = Number(hdValues[i][3]) || 0;
+        var laiSuat = Number(hdValues[i][4]) || 0;
+        var maLoaiVay = String(hdValues[i][8] || "").trim();
+        var moTaVay = String(hdValues[i][10] || "").trim();
+        var trangThaiHD = String(hdValues[i][13] || "DANG_VAY").trim();
+
+        if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
+          totalDuNo += duNo;
+          totalHopDong++;
+          totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
+
+          // Phân bổ địa bàn 3 Xã theo khách hàng thực tế
+          var areaKey = custAreaMap[makh] || "Quý Lộc";
+          if (areaMap[areaKey]) {
+            areaMap[areaKey].countHD++;
+            areaMap[areaKey].duNo += duNo;
+            if (!areaMap[areaKey].khSet[makh]) {
+              areaMap[areaKey].khSet[makh] = true;
+              areaMap[areaKey].countKH++;
+            }
+          }
+
+          // Phân loại 3 nhóm sản phẩm cho vay
+          var productName = maLoaiVay || moTaVay || "Cho vay khác";
+          var grpKey = "kinh_doanh";
+          if (productName.indexOf("Sản Xuất NN") > -1 || productName.indexOf("Nông nghiệp") > -1) {
+            grpKey = "nong_nghiep";
+          } else if (productName.indexOf("Sinh hoạt") > -1 || productName.indexOf("Tiêu dùng") > -1) {
+            grpKey = "sinh_hoat";
+          }
+          loanGroups[grpKey].count++;
+          loanGroups[grpKey].duNo += duNo;
+          if (!loanGroups[grpKey].subtypes[productName]) {
+            loanGroups[grpKey].subtypes[productName] = { name: productName, count: 0, duNo: 0 };
+          }
+          loanGroups[grpKey].subtypes[productName].count++;
+          loanGroups[grpKey].subtypes[productName].duNo += duNo;
         }
       }
     }
 
-    // Phân bổ dư nợ ước tính theo tỉ lệ khách hàng từng xã
-    var totalKHCount = 0;
-    for (var aKey in areaMap) totalKHCount += areaMap[aKey].countKH;
-    if (totalKHCount > 0) {
-      for (var aKey2 in areaMap) {
-        areaMap[aKey2].duNo = Math.round((areaMap[aKey2].countKH / totalKHCount) * totalDuNo);
-        areaMap[aKey2].rate = totalDuNo > 0 ? Math.round((areaMap[aKey2].duNo / totalDuNo) * 100) + "%" : "0%";
-      }
+    // Tính tỷ trọng % cho 3 Xã và 3 Nhóm sản phẩm
+    for (var aKey in areaMap) {
+      delete areaMap[aKey].khSet;
+      areaMap[aKey].rate = totalDuNo > 0 ? (Math.round((areaMap[aKey].duNo / totalDuNo) * 1000) / 10) + "%" : "0%";
+    }
+    for (var gKey in loanGroups) {
+      loanGroups[gKey].rate = totalDuNo > 0 ? (Math.round((loanGroups[gKey].duNo / totalDuNo) * 1000) / 10) + "%" : "0%";
+      loanGroups[gKey].subtypes = Object.values(loanGroups[gKey].subtypes);
     }
 
     // Đăng ký trích nợ
@@ -170,7 +256,8 @@ var DashboardController = {
       pendingInspections: pendingInspections,
       recentBatches: recentBatches,
       areaStats: Object.values(areaMap),
-      loanTypes: Object.values(loanTypeMap)
+      loanTypes: Object.values(loanGroups),
+      loanGroups: Object.values(loanGroups)
     };
 
     CacheHelper.setCachedData('dashboard_stats', result, 15);

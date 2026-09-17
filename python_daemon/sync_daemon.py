@@ -698,16 +698,36 @@ def process_sync_request(spreadsheet, sql_cfg):
 
         existing_map = {str(r.get("SoHDTD", "")).strip(): r for r in existing_records if str(r.get("SoHDTD", "")).strip()}
 
-        # Bảo toàn CBTD đã phân công
+        # Tự động gán CBTD theo 3 địa bàn xã chính:
+        # - Xã Quý Lộc: qtdyentho.huyennhu / Trần Như Huyền
+        # - Xã Yên Trường: qtdyentho.luudinh / Lưu Thị Định
+        # - Xã Vĩnh Lộc: qtdyentho.huunhan / Nguyễn Hữu Nhân
+        cust_area_map = {}
+        for k in records_kh:
+            m = str(k.get("MaKH", "")).strip().lstrip("'")
+            kv = (str(k.get("KhuVuc", "")) + " " + str(k.get("DiaChi", ""))).lower()
+            if "quý lộc" in kv or "quy loc" in kv:
+                cust_area_map[m] = ("qtdyentho.huyennhu", "Trần Như Huyền")
+            elif "yên trường" in kv or "yen truong" in kv:
+                cust_area_map[m] = ("qtdyentho.luudinh", "Lưu Thị Định")
+            elif "vĩnh lộc" in kv or "vinh loc" in kv:
+                cust_area_map[m] = ("qtdyentho.huunhan", "Nguyễn Hữu Nhân")
+            else:
+                cust_area_map[m] = ("qtdyentho.huyennhu", "Trần Như Huyền")
+
+        # Bảo toàn CBTD đã phân công hoặc tự động gán theo địa bàn
         for r in records_hdtd:
             so_hd = str(r.get("SoHDTD", "")).strip()
+            makh = str(r.get("MaKH", "")).strip().lstrip("'")
+            def_user, def_name = cust_area_map.get(makh, ("qtdyentho.huyennhu", "Trần Như Huyền"))
             if so_hd in existing_map:
                 prev_cbtd = str(existing_map[so_hd].get("CBTD_PhuTrach", "")).strip()
                 prev_ten = str(existing_map[so_hd].get("Ten_CBTD", "")).strip()
-                if prev_cbtd:
-                    r["CBTD_PhuTrach"] = prev_cbtd
-                if prev_ten:
-                    r["Ten_CBTD"] = prev_ten
+                r["CBTD_PhuTrach"] = prev_cbtd if prev_cbtd else def_user
+                r["Ten_CBTD"] = prev_ten if prev_ten else def_name
+            else:
+                r["CBTD_PhuTrach"] = def_user
+                r["Ten_CBTD"] = def_name
 
         # Nhận diện HĐ tất toán
         active_so_hd_set = {str(r.get("SoHDTD", "")).strip() for r in records_hdtd}

@@ -20,7 +20,8 @@ import {
   ChevronRight,
   ClipboardList,
   AlertTriangle,
-  HelpCircle
+  HelpCircle,
+  User
 } from 'lucide-react';
 import { formatCurrencyVN, formatCurrency, getTodayVN } from '../utils/dateUtils';
 
@@ -312,7 +313,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
       {/* 🗺️ 4. PHÂN TÍCH ĐỊA BÀN 3 XÃ & CƠ CẤU SẢN PHẨM TÍN DỤNG                     */}
       {/* ========================================================================= */}
       <div className="row g-4">
-        {/* Cột trái: Phân bố dư nợ theo 3 Xã */}
+        {/* Cột trái: Phân Bố Dư Nợ Theo 3 Xã */}
         <div className="col-12 col-lg-6">
           <div className="card-modern p-4 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
@@ -321,8 +322,8 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                   <MapPin size={18} />
                 </div>
                 <div>
-                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Phân Bố Dư Nợ Theo Địa Bàn</h5>
-                  <span className="text-muted small">Số liệu thực tế theo 3 xã thuộc địa bàn hoạt động</span>
+                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Phân Bố Dư Nợ Theo 3 Xã</h5>
+                  <span className="text-muted small">Cơ cấu địa bàn phục vụ của QTDND Yên Thọ</span>
                 </div>
               </div>
               <button
@@ -338,22 +339,39 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                 stats.areaStats.map((area, idx) => {
                   const colors = ['bg-success', 'bg-primary', 'bg-info', 'bg-warning'];
                   const colorClass = colors[idx % colors.length];
-                  const percentVal = totalDuNo > 0 ? Math.min(100, Math.round(((area.duNo || 0) / totalDuNo) * 100)) : 0;
+                  const percentVal = totalDuNo > 0 ? (Math.round(((area.duNo || 0) / totalDuNo) * 1000) / 10) : 0;
                   return (
-                    <div key={area.name || idx}>
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <span className="fw-bold text-dark small">{area.name}</span>
-                        <span className="fw-bold text-dark small num-tabular">
+                    <div key={area.name || idx} className="p-2.5 rounded-3 bg-light border border-light-subtle">
+                      <div className="d-flex justify-content-between align-items-center mb-1.5">
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="fw-bold text-dark">{area.name}</span>
+                          {area.subText && (
+                            <span className="text-muted small d-none d-md-inline" style={{ fontSize: '0.72rem' }}>
+                              • {area.subText}
+                            </span>
+                          )}
+                        </div>
+                        <span className="fw-bold text-dark num-tabular">
                           {formatCurrencyVN(area.duNo || 0)}{' '}
-                          <span className="text-muted fw-normal">({area.rate || `${percentVal}%`})</span>
+                          <span className="text-success fw-bold">({area.rate || `${percentVal}%`})</span>
                         </span>
                       </div>
-                      <div className="progress" style={{ height: '8px' }}>
+                      <div className="progress mb-2" style={{ height: '7px' }}>
                         <div className={`progress-bar ${colorClass}`} role="progressbar" style={{ width: `${percentVal}%` }}></div>
                       </div>
-                      <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                        <span>Thành viên: {area.countKH || 0} khách hàng</span>
-                        <span>Tỷ trọng: {percentVal}%</span>
+                      <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.73rem' }}>
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span>Quy mô: <strong className="text-dark">{area.countHD || 0} HĐ</strong></span>
+                          <span>•</span>
+                          <span>Thành viên: <strong className="text-dark">{area.countKH || 0} KH</strong></span>
+                        </div>
+                        {area.cbqlName && (
+                          <div className="d-flex align-items-center gap-1 text-primary fw-medium">
+                            <User size={12} />
+                            <span>CBQL: <strong>{area.cbqlName}</strong></span>
+                            <span className="text-muted d-none d-sm-inline">({area.cbqlUser})</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -365,7 +383,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </div>
         </div>
 
-        {/* Cột phải: Cơ cấu sản phẩm vay */}
+        {/* Cột phải: Cơ Cấu Sản Phẩm Tín Dụng (3 Nhóm chính) */}
         <div className="col-12 col-lg-6">
           <div className="card-modern p-4 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
@@ -374,12 +392,12 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                   <PieChart size={18} />
                 </div>
                 <div>
-                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Cơ Cấu Sản Phẩm Cho Vay</h5>
-                  <span className="text-muted small">Phân loại theo mục đích và sản phẩm tín dụng</span>
+                  <h5 className="fw-bold m-0 text-slate-900 font-heading">Cơ Cấu Sản Phẩm Tín Dụng</h5>
+                  <span className="text-muted small">Phân loại theo mục đích vay vốn</span>
                 </div>
               </div>
               <span className="badge bg-light text-dark border small fw-semibold">
-                {stats?.loanTypes?.length || 0} Sản phẩm
+                3 Nhóm chính
               </span>
             </div>
 
@@ -388,22 +406,24 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                 stats.loanTypes.map((lt, idx) => {
                   const colors = ['bg-success', 'bg-primary', 'bg-warning', 'bg-info', 'bg-secondary'];
                   const colorClass = colors[idx % colors.length];
-                  const percentVal = totalDuNo > 0 ? Math.min(100, Math.round(((lt.duNo || 0) / totalDuNo) * 100)) : 0;
+                  const percentVal = totalDuNo > 0 ? (Math.round(((lt.duNo || 0) / totalDuNo) * 1000) / 10) : 0;
+                  const totalHds = totalHopDong || 1;
+                  const countPercent = Math.round(((lt.count || 0) / totalHds) * 100);
                   return (
-                    <div key={lt.name || idx}>
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <span className="fw-bold text-dark small">{lt.name}</span>
-                        <span className="fw-bold text-dark small num-tabular">
+                    <div key={lt.name || idx} className="p-2.5 rounded-3 bg-light border border-light-subtle">
+                      <div className="d-flex justify-content-between align-items-center mb-1.5">
+                        <span className="fw-bold text-dark">{lt.name}</span>
+                        <span className="fw-bold text-dark num-tabular">
                           {formatCurrencyVN(lt.duNo || 0)}{' '}
-                          <span className="text-muted fw-normal">({percentVal}%)</span>
+                          <span className="text-primary fw-bold">({lt.rate || `${percentVal}%`})</span>
                         </span>
                       </div>
-                      <div className="progress" style={{ height: '8px' }}>
-                        <div className={`progress-bar ${colorClass}`} style={{ width: `${percentVal}%` }}></div>
+                      <div className="progress mb-2" style={{ height: '7px' }}>
+                        <div className={`progress-bar ${colorClass}`} role="progressbar" style={{ width: `${percentVal}%` }}></div>
                       </div>
-                      <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.72rem' }}>
-                        <span>Quy mô: {lt.count || 0} hợp đồng</span>
-                        <span>Chiếm {percentVal}% tổng dư nợ</span>
+                      <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.73rem' }}>
+                        <span>{lt.description || 'Mục đích vay vốn theo quy chế tín dụng'}</span>
+                        <span>Quy mô: <strong className="text-dark">{lt.count || 0} HĐ</strong> ({countPercent}%)</span>
                       </div>
                     </div>
                   );
