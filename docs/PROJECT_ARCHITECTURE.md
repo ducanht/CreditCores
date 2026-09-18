@@ -106,3 +106,20 @@ Mọi thay đổi cấu trúc dữ liệu trên Google Sheets hoặc nghiệp v�
 3. **Frontend API Client**: Khai báo phương thức rõ ràng trong `src/services/api.js`, xử lý lỗi mạng minh bạch (Zero Mock).
 4. **Validation & Dual-Deployment**: Build Vite sạch 0 lỗi (`npm run build`), push Clasp dual-script (`gas_sync_dual.ps1`) và kiểm tra live API.
 5. **Documentation & Memory**: Cập nhật `DATA_SCHEMA.md`, `SPECIFICATIONS_AND_LESSONS_LEARNED.md`, `AGENTS.md`, `GEMINI.md`.
+
+---
+
+## ⚡ 4. Chiến Lược Tiền Xử Lý Bằng Python & Kiến Trúc CSDL Tối Ưu Đọc (Data Mart)
+
+Nhằm triệt tiêu gánh nặng tính toán trên Google Apps Script và tối ưu hóa tốc độ tải trang về mức **dưới 150ms**, kiến trúc hệ thống áp dụng mô hình **Read-Optimized Data Store**:
+- **Chi tiết đặc tả**: Xem tài liệu chuyên sâu tại [docs/DATABASE_SCHEMA_AND_OPTIMIZATION.md](file:///d:/Antigravity%20Projects/CreditCores/docs/DATABASE_SCHEMA_AND_OPTIMIZATION.md).
+- **8 Nội dung Python Daemon xử lý trước khi đẩy lên Google Sheets**:
+  1. *Chuẩn hóa Địa bàn 3 Xã & 12 Thôn*: Tách chuỗi địa chỉ thành 2 trường chuẩn hóa `KvXa` và `KvThon`.
+  2. *Phân loại Nhóm Sản Phẩm*: Ánh xạ tự động tên sản phẩm Core sang `Nông nghiệp`, `Tiêu dùng - Đời sống`, `Thương mại - Dịch vụ`.
+  3. *Tính sẵn Chỉ số Khách hàng 360*: Tính `TongDuNoHienTai`, `SoLuongHDVay`, `TrangThaiVay` ghi trực tiếp vào `KH_CORE`.
+  4. *Sinh Bảng Snapshot Điều Hành (`DASHBOARD_SNAPSHOT`)*: Bảng siêu nhẹ **16 dòng** tổng hợp sẵn số liệu toàn Quỹ, 3 Xã và 12 Thôn. Dashboard chỉ cần đọc bảng này (<4KB) trong 30ms.
+  5. *Sinh Sẵn 2 Bảng Báo Cáo*: `BC_DOANH_SO_TD` và `TOP_DU_NO_BINH_QUAN` (Top 20 KH, tỷ trọng %, huy hiệu xếp hạng).
+  6. *Bảo toàn phân công CBTD*: Đọc `existing_map` bảo toàn 100% cột `CBTD_PhuTrach` và `Ten_CBTD` đã gán trên WebApp.
+  7. *Bảo toàn lịch sử tất toán*: Cập nhật `DuNo = 0`, `TrangThaiHD = 'DA_TAT_TOAN'` khi khách hàng trả hết nợ (Zero-Record-Loss).
+  8. *Chuẩn hóa kiểu dữ liệu & Bảo mật*: Thêm nháy đơn `'` chống nuốt số 0, chống Formula Injection (CWE-1236), định dạng ngày GMT+7.
+
