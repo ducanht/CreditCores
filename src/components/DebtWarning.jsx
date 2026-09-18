@@ -3,6 +3,7 @@ import { AlertTriangle, PhoneCall, CheckCircle2, Search, ArrowRight, ShieldAlert
 import { api } from '../services/api';
 import { formatCurrencyVN } from '../utils/dateUtils';
 import Pagination from './Pagination';
+import { StatusBadge, EmptyState } from './shared';
 
 export default function DebtWarning({ onOpenCustomerQuickView }) {
   const [warnings, setWarnings] = useState([]);
@@ -150,7 +151,7 @@ export default function DebtWarning({ onOpenCustomerQuickView }) {
                       <span className="badge bg-secondary-subtle text-secondary">{w.kyPhatSinh}</span>
                     </td>
                     <td className="text-center">
-                      <span className="badge-status badge-danger-soft">{w.trangThai}</span>
+                      <StatusBadge status={w.trangThai || 'QUA_HAN'} />
                     </td>
                     <td className="text-center">
                       <button
@@ -165,8 +166,15 @@ export default function DebtWarning({ onOpenCustomerQuickView }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center text-muted py-4">
-                    {loading ? 'Đang tải danh sách nợ tồn đọng...' : 'Không có khoản nợ tồn đọng nào phù hợp.'}
+                  <td colSpan="8" className="text-center py-4">
+                    <EmptyState
+                      title="Không có nợ tồn đọng"
+                      description={
+                        loading
+                          ? 'Đang tải danh sách nợ tồn đọng...'
+                          : 'Không có khoản nợ tồn đọng nào cần xử lý với bộ lọc này.'
+                      }
+                    />
                   </td>
                 </tr>
               )}

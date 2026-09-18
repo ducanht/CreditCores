@@ -4,26 +4,17 @@ import {
   Zap,
   Plus,
   Play,
-  FileSpreadsheet,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Filter,
-  Edit3,
-  Trash2,
-  ToggleLeft,
-  ToggleRight,
   RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api';
-import { formatDateVN, formatDateTimeVN, formatCurrencyVN } from '../utils/dateUtils';
-import Pagination from './Pagination';
+import { SegControl } from './shared';
+import { DebitRegisterTable, DebitBatchTable } from './debit';
 import DebitBatchCreateModal from './modals/DebitBatchCreateModal';
 import DebitRegisterModal from './modals/DebitRegisterModal';
 import DebitBatchDetailModal from './modals/DebitBatchDetailModal';
 
 export default function DebitManager({ initialSubTab = 'register', prefilledCustomer, onOpenCustomerQuickView }) {
-  const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'register'); // 'register' | 'batch'
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'register');
   const [registrations, setRegistrations] = useState([]);
   const [batches, setBatches] = useState([]);
   const [allCustomers, setAllCustomers] = useState([]);
@@ -213,53 +204,45 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
   });
 
   const paginatedRegs = filteredRegs.slice((regPage - 1) * regPageSize, regPage * regPageSize);
-
-  // Paginated Batches
   const paginatedBatches = batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize);
 
-  return (
-    <div className="d-flex flex-column gap-4">
-      {/* Sub-tab Switcher & Actions */}
-      <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="btn-group p-1 bg-light rounded-3 border">
-          <button
-            type="button"
-            className={`btn btn-sm ${activeSubTab === 'register' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
-            onClick={() => setActiveSubTab('register')}
-          >
-            <UserCheck size={14} className="me-1" /> Danh Sách Đăng Ký Trích Nợ ({registrations.length})
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${activeSubTab === 'batch' ? 'btn-brand fw-bold shadow-sm' : 'btn-light text-muted'}`}
-            onClick={() => setActiveSubTab('batch')}
-          >
-            <Zap size={14} className="me-1" /> Quản Lý Đợt Trích Nợ Định Kỳ ({batches.length})
-          </button>
-        </div>
+  const subTabOptions = [
+    { id: 'register', label: 'Danh Sách Đăng Ký Trích Nợ', icon: UserCheck, count: registrations.length },
+    { id: 'batch', label: 'Quản Lý Đợt Trích Nợ Định Kỳ', icon: Zap, count: batches.length }
+  ];
 
-        <div className="d-flex gap-2">
+  return (
+    <div className="d-flex flex-column gap-3">
+      {/* Sub-tab Switcher & Actions Header */}
+      <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <SegControl
+          options={subTabOptions}
+          value={activeSubTab}
+          onChange={setActiveSubTab}
+        />
+
+        <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm"
+            onClick={fetchData}
+            disabled={loading}
+            title="Tải lại dữ liệu từ Google Sheets"
+          >
+            <RefreshCw size={13} className={loading ? 'fa-spin' : ''} />
+            <span className="d-none d-sm-inline">Tải lại</span>
+          </button>
+
           {activeSubTab === 'register' ? (
-            <div className="d-flex gap-2">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm"
-                onClick={fetchData}
-                disabled={loading}
-                title="Tải lại danh sách"
-              >
-                <RefreshCw size={13} className={loading ? 'fa-spin' : ''} />
-              </button>
-              <button
-                className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
-                onClick={() => {
-                  setEditingRegistration(null);
-                  setShowRegModal(true);
-                }}
-              >
-                <Plus size={15} /> Đăng Ký Mới
-              </button>
-            </div>
+            <button
+              className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
+              onClick={() => {
+                setEditingRegistration(null);
+                setShowRegModal(true);
+              }}
+            >
+              <Plus size={15} /> Đăng Ký Mới
+            </button>
           ) : (
             <button
               className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
@@ -273,268 +256,45 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
 
       {/* SUB-TAB 1: DANH SÁCH ĐĂNG KÝ TRÍCH NỢ */}
       {activeSubTab === 'register' && (
-        <div className="card-modern p-4">
-          {/* KHỐI THỐNG KÊ KPI ĐĂNG KÝ TRÍCH NỢ */}
-          <div className="row g-3 mb-3">
-            <div className="col-6 col-md-3">
-              <div className="p-3 bg-light rounded-3 border h-100">
-                <div className="text-muted small fw-medium">Tổng Thỏa Thuận</div>
-                <div className="fs-4 fw-bold text-slate-800">{registrations.length}</div>
-                <div className="text-xs text-muted mt-1">Ủy quyền trích CASA</div>
-              </div>
-            </div>
-            <div className="col-6 col-md-3">
-              <div className="p-3 bg-success-subtle rounded-3 border border-success-subtle h-100">
-                <div className="text-success small fw-medium">Đang Hiệu Lực</div>
-                <div className="fs-4 fw-bold text-success">
-                  {registrations.filter(r => r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc').length}
-                </div>
-                <div className="text-xs text-success mt-1">Sẵn sàng trích nợ</div>
-              </div>
-            </div>
-            <div className="col-6 col-md-3">
-              <div className="p-3 bg-warning-subtle rounded-3 border border-warning-subtle h-100">
-                <div className="text-warning-emphasis small fw-medium">Tạm Ngưng</div>
-                <div className="fs-4 fw-bold text-warning-emphasis">
-                  {registrations.filter(r => r.trangThai === 'Tạm ngưng' || r.trangThai === 'Tam ngung').length}
-                </div>
-                <div className="text-xs text-muted mt-1">Đang tạm hoãn trích</div>
-              </div>
-            </div>
-            <div className="col-6 col-md-3">
-              <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle h-100">
-                <div className="text-primary small fw-medium">Phân Bổ Theo Kỳ</div>
-                <div className="d-flex gap-1.5 align-items-center mt-1 font-monospace fw-bold flex-wrap">
-                  <span className="badge bg-primary">K1 (05): {registrations.filter(r => Number(r.kyTrich) === 1).length}</span>
-                  <span className="badge bg-info text-dark">K2 (15): {registrations.filter(r => Number(r.kyTrich) === 2).length}</span>
-                  <span className="badge bg-secondary">K3 (25): {registrations.filter(r => Number(r.kyTrich) === 3).length}</span>
-                </div>
-                <div className="text-xs text-muted mt-1">3 kỳ trích nợ định kỳ</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h6 className="fw-bold text-slate-800 m-0 font-heading">
-              Danh Sách Khách Hàng Ủy Quyền Trích Nợ Tự Động ({filteredRegs.length})
-            </h6>
-
-            <div className="d-flex align-items-center flex-wrap gap-2">
-              <select
-                className="form-select form-select-sm"
-                style={{ width: 140 }}
-                value={filterKyTrich}
-                onChange={(e) => {
-                  setFilterKyTrich(e.target.value);
-                  setRegPage(1);
-                }}
-              >
-                <option value="ALL">Tất cả Kỳ</option>
-                <option value="1">Kỳ 1 (Ngày 05)</option>
-                <option value="2">Kỳ 2 (Ngày 15)</option>
-                <option value="3">Kỳ 3 (Ngày 25)</option>
-              </select>
-
-              <select
-                className="form-select form-select-sm"
-                style={{ width: 150 }}
-                value={filterTrangThai}
-                onChange={(e) => {
-                  setFilterTrangThai(e.target.value);
-                  setRegPage(1);
-                }}
-              >
-                <option value="ALL">Tất cả Trạng thái</option>
-                <option value="Hiệu lực">Hiệu lực</option>
-                <option value="Tạm ngưng">Tạm ngưng</option>
-              </select>
-
-              <div className="input-group input-group-sm" style={{ width: 220 }}>
-                <span className="input-group-text bg-white border-end-0 text-muted">
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  className="form-control border-start-0"
-                  placeholder="Tìm Tên, Mã KH, Số TK..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setRegPage(1);
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="table-responsive">
-            <table className="table table-custom align-middle">
-              <thead>
-                <tr>
-                  <th>Mã Khách Hàng</th>
-                  <th>Họ Và Tên</th>
-                  <th>Số CCCD</th>
-                  <th>Số TK CASA</th>
-                  <th>Địa Chỉ</th>
-                  <th className="text-center">Kỳ Trích</th>
-                  <th>Ngày Đăng Ký</th>
-                  <th className="text-center">Trạng Thái</th>
-                  <th className="text-center" style={{ width: 110 }}>Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedRegs.length > 0 ? (
-                  paginatedRegs.map((r, idx) => (
-                    <tr key={idx}>
-                      <td>
-                        <div
-                          className="customer-click-link font-monospace fw-bold"
-                          onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView(r)}
-                          title="Xem chi tiết khách hàng"
-                        >
-                          {r.maKH}
-                        </div>
-                      </td>
-                      <td className="fw-semibold text-dark">{r.hoTen}</td>
-                      <td className="font-monospace text-muted">{r.gttt}</td>
-                      <td className="font-monospace fw-semibold text-success">{r.soTK}</td>
-                      <td className="small text-muted">{r.diaChi}</td>
-                      <td className="text-center">
-                        <span className="badge bg-primary-subtle text-primary fw-bold">Kỳ {r.kyTrich}</span>
-                      </td>
-                      <td className="small text-muted">{r.ngayTao ? formatDateVN(r.ngayTao) : '---'}</td>
-                      <td className="text-center">
-                        <span className={`badge-status ${r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? 'badge-success-soft' : 'badge-warning-soft'}`}>
-                          {r.trangThai}
-                        </span>
-                      </td>
-                      <td className="text-center">
-                        <div className="d-flex justify-content-center align-items-center gap-1">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary py-1 px-1.5"
-                            title="Chỉnh sửa thỏa thuận"
-                            onClick={() => {
-                              setEditingRegistration(r);
-                              setShowRegModal(true);
-                            }}
-                          >
-                            <Edit3 size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-sm py-1 px-1.5 ${r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                            title={r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? 'Tạm ngưng trích nợ' : 'Kích hoạt lại'}
-                            disabled={actionLoading}
-                            onClick={() => handleToggleStatus(r)}
-                          >
-                            {r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger py-1 px-1.5"
-                            title="Xóa thỏa thuận"
-                            disabled={actionLoading}
-                            onClick={() => handleDeleteRegister(r)}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" className="text-center text-muted py-4">
-                      {loading ? 'Đang tải dữ liệu...' : 'Không có dữ liệu đăng ký trích nợ phù hợp.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            currentPage={regPage}
-            totalItems={filteredRegs.length}
-            pageSize={regPageSize}
-            onPageChange={setRegPage}
-            onPageSizeChange={setRegPageSize}
-          />
-        </div>
+        <DebitRegisterTable
+          registrations={registrations}
+          filteredRegs={filteredRegs}
+          paginatedRegs={paginatedRegs}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filterKyTrich={filterKyTrich}
+          setFilterKyTrich={setFilterKyTrich}
+          filterTrangThai={filterTrangThai}
+          setFilterTrangThai={setFilterTrangThai}
+          regPage={regPage}
+          setRegPage={setRegPage}
+          regPageSize={regPageSize}
+          setRegPageSize={setRegPageSize}
+          actionLoading={actionLoading}
+          loading={loading}
+          onOpenCustomerQuickView={onOpenCustomerQuickView}
+          onEditRegistration={(r) => {
+            setEditingRegistration(r);
+            setShowRegModal(true);
+          }}
+          onToggleStatus={handleToggleStatus}
+          onDeleteRegistration={handleDeleteRegister}
+        />
       )}
 
       {/* SUB-TAB 2: QUẢN LÝ ĐỢT TRÍCH NỢ ĐỊNH KỲ */}
       {activeSubTab === 'batch' && (
-        <div className="card-modern p-4">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h6 className="fw-bold text-slate-800 m-0 font-heading">
-              Sổ Theo Dõi Các Đợt Trích Nợ Định Kỳ ({batches.length})
-            </h6>
-          </div>
-
-          <div className="table-responsive">
-            <table className="table table-custom align-middle">
-              <thead>
-                <tr>
-                  <th>Mã Đợt Trích Nợ</th>
-                  <th>Tháng / Năm</th>
-                  <th className="text-center">Kỳ Trích</th>
-                  <th className="text-end">Phải Thu</th>
-                  <th className="text-end">Đã Trích</th>
-                  <th className="text-end">Còn Nợ</th>
-                  <th className="text-center">Trạng Thái</th>
-                  <th>Thời Gian Tạo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedBatches.length > 0 ? (
-                  paginatedBatches.map((b, idx) => (
-                    <tr key={idx} style={{ cursor: 'pointer' }} onClick={() => setSelectedBatchDetail(b)}>
-                      <td className="fw-bold font-monospace">
-                        <button
-                          type="button"
-                          className="btn btn-link p-0 fw-bold font-monospace text-decoration-none text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedBatchDetail(b);
-                          }}
-                        >
-                          {b.maDot}
-                        </button>
-                      </td>
-                      <td>{b.thangNam}</td>
-                      <td className="text-center">
-                        <span className="badge bg-secondary-subtle text-secondary">Kỳ {b.kyTrich}</span>
-                      </td>
-                      <td className="text-end fw-semibold num-tabular">{formatCurrencyVN(b.tongPhaiThu)}</td>
-                      <td className="text-end text-success fw-bold num-tabular">{formatCurrencyVN(b.tongDaTrich)}</td>
-                      <td className="text-end text-danger fw-bold num-tabular">{formatCurrencyVN(b.tongConNo)}</td>
-                      <td className="text-center">
-                        <span className="badge-status badge-success-soft">{b.trangThai}</span>
-                      </td>
-                      <td className="small text-muted">{b.ngayTao || '---'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="text-center text-muted py-4">
-                      {loading ? 'Đang tải dữ liệu...' : 'Chưa có đợt trích nợ nào được khởi tạo.'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            currentPage={batchPage}
-            totalItems={batches.length}
-            pageSize={batchPageSize}
-            onPageChange={setBatchPage}
-            onPageSizeChange={setBatchPageSize}
-          />
-        </div>
+        <DebitBatchTable
+          batches={batches}
+          paginatedBatches={paginatedBatches}
+          batchPage={batchPage}
+          setBatchPage={setBatchPage}
+          batchPageSize={batchPageSize}
+          setBatchPageSize={setBatchPageSize}
+          loading={loading}
+          onSelectBatchDetail={setSelectedBatchDetail}
+          onOpenCreateBatch={() => setShowBatchModal(true)}
+        />
       )}
 
       {/* EXTRACTED MODALS */}

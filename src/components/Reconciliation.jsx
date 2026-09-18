@@ -19,6 +19,7 @@ import {
 import { api } from '../services/api';
 import { formatCurrencyVN, formatDateVN, getTodayVN } from '../utils/dateUtils';
 import Pagination from './Pagination';
+import { SegControl, StatusBadge, EmptyState } from './shared';
 
 export default function Reconciliation({ onOpenCustomerQuickView }) {
   const [selectedBatch, setSelectedBatch] = useState('');
@@ -484,36 +485,19 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           {/* Sub-tab pills */}
-          <div className="btn-group btn-group-sm p-0.5 bg-light rounded-2 border" role="group">
-            <button
-              type="button"
-              className={`btn btn-sm ${activeFilter === 'ALL' ? 'btn-brand fw-medium text-white' : 'btn-light text-muted'}`}
-              onClick={() => { setActiveFilter('ALL'); setPage(1); }}
-            >
-              Tất Cả ({items.length})
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${activeFilter === 'THANH_CONG' ? 'btn-brand fw-medium text-white' : 'btn-light text-muted'}`}
-              onClick={() => { setActiveFilter('THANH_CONG'); setPage(1); }}
-            >
-              Đã Trích Đủ ({successCount})
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${activeFilter === 'TRICH_MOT_PHAN' ? 'btn-brand fw-medium text-white' : 'btn-light text-muted'}`}
-              onClick={() => { setActiveFilter('TRICH_MOT_PHAN'); setPage(1); }}
-            >
-              Trích 1 Phần ({partialCount})
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${activeFilter === 'THAT_BAI' ? 'btn-brand fw-medium text-white' : 'btn-light text-muted'}`}
-              onClick={() => { setActiveFilter('THAT_BAI'); setPage(1); }}
-            >
-              Thất Bại ({failedCount})
-            </button>
-          </div>
+          <SegControl
+            options={[
+              { id: 'ALL', label: 'Tất Cả', count: items.length },
+              { id: 'THANH_CONG', label: 'Đã Trích Đủ', count: successCount },
+              { id: 'TRICH_MOT_PHAN', label: 'Trích 1 Phần', count: partialCount },
+              { id: 'THAT_BAI', label: 'Thất Bại', count: failedCount }
+            ]}
+            value={activeFilter}
+            onChange={(val) => {
+              setActiveFilter(val);
+              setPage(1);
+            }}
+          />
 
           {/* Search bar */}
           <div className="input-group input-group-sm" style={{ maxWidth: 260 }}>
@@ -522,21 +506,24 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
             </span>
             <input
               type="text"
-              className="form-control border-start-0"
-              placeholder="Tìm khách hàng, số HĐTD..."
+              className="form-control bg-light border-start-0"
+              placeholder="Tìm Tên, Mã KH, HĐ, STK..."
               value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
         </div>
 
-        {/* Data Table */}
+        {/* Table list */}
         <div className="table-responsive">
-          <table className="table table-custom align-middle small">
+          <table className="table table-custom align-middle">
             <thead>
               <tr>
                 <th>Mã KH</th>
-                <th>Số Khế Ước</th>
+                <th>Số HĐTD</th>
                 <th>Khách Hàng</th>
                 <th>Số TK CASA</th>
                 <th className="text-end">Phải Thu</th>
@@ -568,13 +555,7 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
                       <td className="text-end num-tabular text-success fw-medium">{formatCurrencyVN(it.daTrich)}</td>
                       <td className="text-end num-tabular text-danger fw-medium">{formatCurrencyVN(conNo)}</td>
                       <td className="text-center">
-                        {it.ketQua === 'THANH_CONG' ? (
-                          <span className="badge bg-success-subtle text-success">Đã trích đủ</span>
-                        ) : it.ketQua === 'TRICH_MOT_PHAN' ? (
-                          <span className="badge bg-warning-subtle text-warning">Trích 1 phần</span>
-                        ) : (
-                          <span className="badge bg-danger-subtle text-danger">Thất bại</span>
-                        )}
+                        <StatusBadge status={it.ketQua} />
                       </td>
                       <td className="text-muted" style={{ fontSize: '0.78rem' }}>
                         {it.lyDoLoi || 'Hoàn tất'}

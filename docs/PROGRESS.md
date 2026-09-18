@@ -1,8 +1,8 @@
 # 📊 CREDITCORES — BÁO CÁO TIẾN ĐỘ DỰ ÁN
 # Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
 
-> **Cập nhật lần cuối**: 18/09/2026 10:15 GMT+7
-> **Phiên bản hệ thống**: v1.4.0 (Đã tối ưu GAS Performance, UI/UX Redesign & Reports Live Data)
+> **Cập nhật lần cuối**: 18/09/2026 10:38 GMT+7
+> **Phiên bản hệ thống**: v1.4.1 (Hoàn thành Giai đoạn 1: Phân rã Shared Components & Tái cấu trúc Module Auto-Debit)
 > **Branch**: `main`
 
 ---
@@ -10,13 +10,13 @@
 ## 🏆 TỔNG TIẾN ĐỘ TOÀN DỰ ÁN
 
 ```
-Frontend SPA        █████████████████████  98%  (Build 0 errors, Zero Mock)
+Frontend SPA        █████████████████████  98%  (Build 0 errors, Zero Mock, Modular)
 GAS Backend         ███████████████████░░  95%  (Singleton SS, Write Lock, CacheHelper, Live Reports)
 CSDL Google Sheets  ████████████████████░  98%  (14 Bảng chuẩn hóa, TT 14/2017)
 Python Daemon       ████████████░░░░░░░░░  65%  (Chạy 24/7 trên máy chủ SQL Server Production)
-UI/UX Design System ████████████████████░  95%  (Brand #9ACD32, Dark/Light đồng nhất, Skeleton, SegControl)
+UI/UX Design System ████████████████████░  96%  (Shared Catalog: SegControl, StatusBadge, EmptyState)
 Performance GAS     ██████████████████░░░  90%  (Batch reads, In-Memory Singleton, Fast Routing)
-TỔNG THỂ            ██████████████████░░░  90%
+TỔNG THỂ            ██████████████████░░░  92%  (Đã phân rã Shared Catalog & Auto-Debit)
 ```
 
 ---
@@ -71,29 +71,32 @@ TỔNG THỂ            ██████████████████�
 | Nhắc nhở chu kỳ 30 ngày | 🔲 Todo | Kế hoạch Q4/2026 |
 
 ### 5. Đăng Ký Thỏa Thuận Trích Nợ Tự Động
-**Mức hoàn thành: 96%**
+**Mức hoàn thành: 98%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
+| Phân rã Component `DebitRegisterTable` | ✅ Done | Tách riêng bảng dữ liệu, KPI cards, bộ lọc kỳ & trạng thái |
 | CRUD đầy đủ (Thêm/Sửa/Xóa/Tạm ngưng) | ✅ Done | Lưu tức thì vào sheet `DANG_KY_TRICH_NO` |
 | Batch selection nhiều hợp đồng | ✅ Done | Chọn nhanh nhiều HĐ cùng khách hàng |
 | In văn bản thỏa thuận ủy quyền | ✅ Done | Biểu mẫu thỏa thuận trích nợ tự động |
 
 ### 6. Khởi Tạo & Quản Lý Đợt Trích Nợ
-**Mức hoàn thành: 92%**
+**Mức hoàn thành: 95%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
+| Phân rã Component `DebitBatchTable` | ✅ Done | Tách riêng sổ theo dõi các đợt trích nợ & phân trang |
 | Engine tính lãi thực tế TT 14/2017 | ✅ Done | Tính ngày đầu bỏ ngày cuối, mẫu số 36500 |
 | Snapshot bất biến Master-Detail | ✅ Done | `DOT_TRICH_NO` + `CT_DOT_TRICH_NO` |
 | LockService chống race condition | ✅ Done | Khóa an toàn 15s cho giao dịch ghi |
 | Export Excel danh sách đợt | 🔲 Todo | Roadmap Q4/2026 |
 
 ### 7. Đối Soát & Phân Loại Kết Quả
-**Mức hoàn thành: 85%**
+**Mức hoàn thành: 88%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
+| Chuẩn hóa SegControl & StatusBadge | ✅ Done | Thay thế button group thô, đồng bộ màu tương phản cao |
 | Phân loại 4 trạng thái kết quả | ✅ Done | Đã trích đủ, 1 phần, Thất bại, Chờ |
 | Upload tệp CSV kết quả CoreBanking | ✅ Done | Đối soát tự động mã giao dịch |
 | Chốt sổ kỳ → HOAN_TAT | ✅ Done | Ghi nhận nợ tồn vào sổ theo dõi |
@@ -187,8 +190,8 @@ TỔNG THỂ            ██████████████████�
 ## ✅ CHANGELOG
 
 | Ngày | Version | Chi Tiết |
-|:---|:---:|:---|
-| **18/09/2026** | **v1.4.0** | **Tối ưu toàn diện GAS Performance (Singleton SS, Write Lock, Cache 60s), UI/UX Redesign (TopHeader breadcrumbs & bell, Skeleton loader, SegControl), nâng cấp Reports Live Data 100%** |
+| **18/09/2026** | **v1.4.1** | **Hoàn thành Giai đoạn 1: Phân rã Shared Catalog (SegControl, StatusBadge, EmptyState, ActionToolbar), tách sub-modules DebitRegisterTable & DebitBatchTable, nâng cấp Reconciliation & DebtWarning** |
+| 18/09/2026 | v1.4.0 | Tối ưu toàn diện GAS Performance (Singleton SS, Write Lock, Cache 60s), UI/UX Redesign (TopHeader breadcrumbs & bell, Skeleton loader, SegControl), nâng cấp Reports Live Data 100% |
 | 17/09/2026 | v1.3.1 | Batch contract selection workflow |
 | 16/09/2026 | v1.3.0 | DebitRegister CRUD hoàn chỉnh |
 | 19/08/2026 | v1.3.0 | Engine tính lãi TT 14/2017, 14 bảng CSDL |
