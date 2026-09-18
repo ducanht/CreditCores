@@ -34,6 +34,8 @@ import {
   BarChart3
 } from 'lucide-react';
 import { formatCurrencyVN, formatCurrency, getTodayVN } from '../utils/dateUtils';
+import CommuneComparisonChart from './dashboard/CommuneComparisonChart';
+import LoanProductDonutChart from './dashboard/LoanProductDonutChart';
 
 // Helper rút gọn tiền tệ sang Tỷ / Triệu hiển thị trực quan
 const formatCompactVN = (amount) => {
@@ -537,6 +539,26 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
       {/* ========================================================================= */}
       {activeSubView === 'communes' && (
         <div className="d-flex flex-column gap-4">
+          {/* 📊 KHỐI BIỂU ĐỒ SO SÁNH DƯ NỢ 3 XÃ/THÔN & TỶ TRỌNG SẢN PHẨM VAY */}
+          <div className="row g-3">
+            <div className="col-12 col-xl-7">
+              <CommuneComparisonChart
+                areaStats={areaStats}
+                totalDuNo={totalDuNo}
+                selectedCommune={selectedCommuneFilter}
+                onSelectCommune={(val) => setSelectedCommuneFilter(val)}
+              />
+            </div>
+            <div className="col-12 col-xl-5">
+              <LoanProductDonutChart
+                areaStats={areaStats}
+                totalDuNo={totalDuNo}
+                selectedCommune={selectedCommuneFilter}
+                onSelectCommune={(val) => setSelectedCommuneFilter(val)}
+              />
+            </div>
+          </div>
+
           {/* Thanh Tóm Tắt Tỷ Trọng 3 Xã */}
           <div className="row g-3">
             {areaStats.map((area, idx) => {

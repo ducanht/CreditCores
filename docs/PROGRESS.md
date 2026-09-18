@@ -1,8 +1,8 @@
 # 📊 CREDITCORES — BÁO CÁO TIẾN ĐỘ DỰ ÁN
 # Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
 
-> **Cập nhật lần cuối**: 18/09/2026 10:45 GMT+7
-> **Phiên bản hệ thống**: v1.4.2 (Hoàn thành sâu Giai đoạn 1: In Thỏa Thuận A4/Word, Xuất Lệnh CoreBanking, Tách Sub-modules Auto-Debit)
+> **Cập nhật lần cuối**: 18/09/2026 10:55 GMT+7
+> **Phiên bản hệ thống**: v1.4.3 (Hoàn thành Giai đoạn 2: Biểu Đồ So Sánh 3 Xã / 12 Thôn, Donut Tỷ Trọng Sản Phẩm Vay & Nâng Cấp Toàn Diện Customer 360°)
 > **Branch**: `main`
 
 ---
@@ -10,13 +10,13 @@
 ## 🏆 TỔNG TIẾN ĐỘ TOÀN DỰ ÁN
 
 ```
-Frontend SPA        █████████████████████  99%  (Build 0 errors, Zero Mock, Modular)
+Frontend SPA        █████████████████████ 100%  (Build 0 errors, Zero Mock, Modular, Clean Charts)
 GAS Backend         ███████████████████░░  95%  (Singleton SS, Write Lock, CacheHelper, Live Reports)
 CSDL Google Sheets  ████████████████████░  98%  (14 Bảng chuẩn hóa, TT 14/2017)
 Python Daemon       ████████████░░░░░░░░░  65%  (Chạy 24/7 trên máy chủ SQL Server Production)
-UI/UX Design System ████████████████████░  97%  (Shared Catalog: SegControl, StatusBadge, EmptyState, Print A4)
+UI/UX Design System █████████████████████ 100%  (Bento Cards, SegControl, StatusBadge, Donut SVG, Print A4)
 Performance GAS     ██████████████████░░░  90%  (Batch reads, In-Memory Singleton, Fast Routing)
-TỔNG THỂ            ███████████████████░░  94%  (Hoàn thành sâu Shared Catalog & Auto-Debit)
+TỔNG THỂ            ███████████████████░░  97%  (Hoàn thành Giai đoạn 1 & Giai đoạn 2)
 ```
 
 ---
@@ -24,29 +24,31 @@ TỔNG THỂ            ██████████████████�
 ## 📋 CHI TIẾT TỪNG PHÂN HỆ NGHIỆP VỤ
 
 ### 1. Dashboard Tổng Quan Quản Trị
-**Mức hoàn thành: 96%**
+**Mức hoàn thành: 100%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
-| KPI Cards (Tổng dư nợ, Số KH, Dư nợ BQ) | ✅ Done | Live từ GAS backend |
-| Drilldown 3 Xã / 12 Thôn | ✅ Done | Accordion mượt mà, đầy đủ số liệu |
+| KPI Bento Cards (Tổng dư nợ, Số KH, Dư nợ BQ) | ✅ Done | Live từ GAS backend |
+| Biểu đồ so sánh dư nợ 3 Xã / 12 Thôn | ✅ Done | `CommuneComparisonChart` đa chiều (Dư nợ, Số HĐ, Dư nợ BQ) + Drilldown thôn |
+| Biểu đồ Donut tỷ trọng sản phẩm vay | ✅ Done | `LoanProductDonutChart` (Nông nghiệp, Tiêu dùng, Thương mại) theo Xã / Toàn Quỹ |
+| Drilldown 3 Xã / 12 Thôn | ✅ Done | Accordion & Card mượt mà, đầy đủ số liệu |
 | CBTD Portfolio Analytics | ✅ Done | 3 Cán bộ tín dụng phân công rõ ràng |
 | Sync Monitor Status | ✅ Done | Giám sát trạng thái SQL Server Core |
 | Skeleton loader khi loading | ✅ Done | `DashboardSkeleton` hiển thị tức thì, 0 giật lag |
 | Segmented Control Period Filter | ✅ Done | `.seg-control` chuẩn chỉnh: Tháng / Quý / Năm |
-| KPI Bento Cards cao cấp | ✅ Done | Hover lift & typography chuẩn `tabular-nums` |
 
 ### 2. Tra Cứu Khách Hàng & Hợp Đồng 360°
-**Mức hoàn thành: 96%**
+**Mức hoàn thành: 100%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
+| Thẻ Hồ Sơ Sức Khỏe Tín Dụng | ✅ Done | `CustomerFinancialCard` (Hạn mức, Dư nợ, Thành viên QTD, Cổ phần, CASA) |
+| Timeline & Horizon Tiến Độ Hợp Đồng Vay | ✅ Done | `ContractTimelineList` (Thanh tiến độ thời hạn vay, đếm ngược ngày đến hạn) |
+| Cảnh báo rủi ro thời hạn vay trực quan | ✅ Done | Phân biệt màu sắc: Bình thường (xanh), Sắp đến hạn <30 ngày (vàng), Quá hạn (đỏ) |
 | Tìm kiếm đa tiêu chí (7 trường) | ✅ Done | O(1) Hash Map tối ưu 5.175+ KH |
 | In-Memory & Script Cache 60s | ✅ Done | Khóa `cust360_default` nạp tức thì < 100ms |
-| Hồ sơ pháp lý + Thành viên QTDND | ✅ Done | Số TV, Số Sổ CP, Ngày vào, Cổ phần |
-| Danh sách HĐ (đang vay / tất toán) | ✅ Done | Lịch sử vay mượn đầy đủ |
-| Phân công CBTD | ✅ Done | Ghi nhận phân công trực tiếp vào Core Sheets |
-| Tìm kiếm không dấu tiếng Việt | ✅ Done | Chuẩn hóa regex tìm kiếm mượt mà |
+| Phân công CBTD & Chuyển giao hợp đồng | ✅ Done | Modal gán CBTD trực tiếp vào Core Sheets |
+| Thao tác nhanh 1-chạm | ✅ Done | KT Vốn sau giải ngân, Ủy quyền CASA, Lập thẩm định vay |
 
 ### 3. Thẩm Định Tín Dụng & TSĐB
 **Mức hoàn thành: 88%**
@@ -193,7 +195,8 @@ TỔNG THỂ            ██████████████████�
 ## ✅ CHANGELOG
 
 | Ngày | Version | Chi Tiết |
-| **18/09/2026** | **v1.4.2** | **Hoàn thành sâu Giai đoạn 1: Biểu mẫu in Giấy Thỏa Thuận Trích Nợ A4 & Xuất Word (.doc) `DebitAgreementPrintModal`, 1-click in ấn trên bảng & modal, nâng cấp xuất file lệnh CoreBanking / Co-opBank và Bảng kê A4 có 3 khối ký duyệt** |
+| **18/09/2026** | **v1.4.3** | **Hoàn thành Giai đoạn 2: Tích hợp Biểu đồ So Sánh Dư Nợ 3 Xã/12 Thôn `CommuneComparisonChart`, Donut Tỷ Trọng Sản Phẩm Vay `LoanProductDonutChart` & Nâng cấp toàn diện Customer 360° (`CustomerFinancialCard`, `ContractTimelineList`)** |
+| 18/09/2026 | v1.4.2 | Hoàn thành sâu Giai đoạn 1: Biểu mẫu in Giấy Thỏa Thuận Trích Nợ A4 & Xuất Word (.doc) `DebitAgreementPrintModal`, 1-click in ấn trên bảng & modal, nâng cấp xuất file lệnh CoreBanking / Co-opBank và Bảng kê A4 có 3 khối ký duyệt |
 | 18/09/2026 | v1.4.1 | Hoàn thành Giai đoạn 1: Phân rã Shared Catalog (SegControl, StatusBadge, EmptyState, ActionToolbar), tách sub-modules DebitRegisterTable & DebitBatchTable, nâng cấp Reconciliation & DebtWarning |
 | 18/09/2026 | v1.4.0 | Tối ưu toàn diện GAS Performance (Singleton SS, Write Lock, Cache 60s), UI/UX Redesign (TopHeader breadcrumbs & bell, Skeleton loader, SegControl), nâng cấp Reports Live Data 100% |
 | 17/09/2026 | v1.3.1 | Batch contract selection workflow |

@@ -17,6 +17,8 @@ import { MapPin, Search,
   Calendar } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatCurrencyVN } from '../utils/dateUtils';
+import CustomerFinancialCard from './customer/CustomerFinancialCard';
+import ContractTimelineList from './customer/ContractTimelineList';
 
 export default function Customer360({
   currentUser,
@@ -418,208 +420,22 @@ export default function Customer360({
         <div className="col-lg-8">
           {selectedCustomer ? (
             <div className="d-flex flex-column gap-3">
-              {/* Profile Card */}
-              <div className="card-modern p-4">
-                <div className="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3 flex-wrap gap-2">
-                  <div>
-                    <h4 className="fw-bold text-primary m-0 d-flex align-items-center gap-2">
-                      <User size={24} /> {selectedCustomer.hoTen}
-                    </h4>
-                    <div className="d-flex align-items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-muted small">
-                        Mã KH: <strong>{selectedCustomer.maKH}</strong> | Khu vực: {selectedCustomer.khuVuc}
-                      </span>
-                      <span className="badge bg-info-soft text-dark small">
-                        <UserCheck size={14} className="me-1 text-primary" /> CBTD: {selectedCustomer.tenCBTD || 'Lê Văn Tín (CBTD)'}
-                      </span>
-                    </div>
-                  </div>
+              {/* Financial Health Profile Card */}
+              <CustomerFinancialCard
+                customer={selectedCustomer}
+                onOpenAssignModal={handleOpenAssignModal}
+                onNavigateToAppraisal={onNavigateToAppraisal}
+                onNavigateToDebit={onNavigateToDebit}
+              />
 
-                  {/* Action Buttons */}
-                  <div className="d-flex gap-2 flex-wrap">
-                    <button
-                      className="btn btn-sm btn-outline-info fw-semibold"
-                      onClick={() => handleOpenAssignModal(null, selectedCustomer)}
-                      title="Gán hoặc đổi Cán bộ Tín dụng quản lý khách hàng này"
-                    >
-                      <UserCog size={14} className="me-1" /> Phân Công CBTD
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-success fw-semibold"
-                      onClick={() => onNavigateToAppraisal && onNavigateToAppraisal(selectedCustomer)}
-                    >
-                      <FileText size={14} className="me-1" /> Lập Thẩm Định
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-primary fw-semibold"
-                      onClick={() => onNavigateToDebit && onNavigateToDebit(selectedCustomer)}
-                    >
-                      <CreditCard size={14} className="me-1" /> Đăng Ký Trích Nợ
-                    </button>
-                  </div>
-                </div>
-
-                {/* Info Grid */}
-                <div className="row g-3">
-                  <div className="col-md-4">
-                    <div className="p-3 bg-light rounded-3">
-                      <span className="text-muted small d-block">Số CCCD / Ngày Cấp</span>
-                      <span className="fw-bold text-dark">
-                        {selectedCustomer.cccd} ({formatDateVN(selectedCustomer.ngayCap)})
-                      </span>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="p-3 bg-light rounded-3">
-                      <span className="text-muted small d-block">Số Điện Thoại</span>
-                      <span className="fw-bold text-dark">
-                        {selectedCustomer.dienThoaiDD || selectedCustomer.dienThoai || '---'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="p-3 bg-light rounded-3">
-                      <span className="text-muted small d-block">Tài Khoản CASA Co-op</span>
-                      <span className="fw-bold text-primary">{selectedCustomer.soTK || 'Chưa đăng ký'}</span>
-                    </div>
-                  </div>
-
-                  {/* Member info */}
-                  <div className="col-md-4">
-                    <div className="p-3 bg-light rounded-3">
-                      <span className="text-muted small d-block">Số Thành Viên (QTDND)</span>
-                      <span className="fw-bold text-dark">{selectedCustomer.soTV || 'Chưa vào TV'}</span>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="p-3 bg-light rounded-3">
-                      <span className="text-muted small d-block">Số Sổ Cổ Phần / Ngày Vào</span>
-                      <span className="fw-bold text-dark">
-                        {selectedCustomer.soSoCP || '---'} ({formatDateVN(selectedCustomer.ngayVaoTV)})
-                      </span>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="p-3 bg-light rounded-3">
-                      <span className="text-muted small d-block">Tổng Vốn Góp Cổ Phần</span>
-                      <span className="fw-bold text-success num-tabular">
-                        {formatCurrencyVN(selectedCustomer.tongTienCP)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Loan Contracts Portfolio Table */}
-              <div className="card-modern p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                  <h5 className="fw-bold m-0 text-slate-800 d-flex align-items-center gap-2">
-                    <Landmark size={20} className="text-primary" />
-                    Danh Mục Hợp Đồng & Khế Ước Tín Dụng ({selectedCustomer.contracts?.length || 0})
-                  </h5>
-                  <span className="small text-muted">
-                    Tự động đối soát tất toán với dữ liệu Core SQL Server
-                  </span>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="table table-custom align-middle">
-                    <thead>
-                      <tr>
-                        <th>Số Khế Ước</th>
-                        <th>Trạng Thái</th>
-                        <th>CBTD Phụ Trách</th>
-                        <th className="text-end">Tiền Vay</th>
-                        <th className="text-end">Dư Nợ Hiện Tại</th>
-                        <th className="text-center">Lãi Suất & Hạn Vay</th>
-                        <th className="text-center">Thao Tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedCustomer.contracts && selectedCustomer.contracts.length > 0 ? (
-                        selectedCustomer.contracts.map((c) => {
-                          const isSettled = c.trangThaiHD === 'DA_TAT_TOAN' || Number(c.duNo || 0) === 0;
-
-                          return (
-                            <tr key={c.soHDTD} className={isSettled ? 'table-light opacity-75' : ''}>
-                              <td>
-                                <span className="fw-bold text-primary font-monospace">{c.soHDTD}</span>
-                                <div className="text-muted small">{c.moTaVay}</div>
-                              </td>
-                              <td>
-                                {isSettled ? (
-                                  <div>
-                                    <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-semibold">
-                                      <CheckCircle2 size={12} className="me-1 inline" /> ĐÃ TẤT TOÁN
-                                    </span>
-                                    {c.ngayTatToan && (
-                                      <div className="text-muted small mt-1" style={{ fontSize: '0.7rem' }}>
-                                        Ngày: {formatDateVN(c.ngayTatToan)}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="badge bg-success-subtle text-success border border-success-subtle fw-semibold">
-                                    <Clock size={12} className="me-1 inline" /> ĐANG VAY
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                <span className="small fw-semibold text-dark d-block">
-                                  {c.tenCBTD || 'Lê Văn Tín (CBTD)'}
-                                </span>
-                                <span className="text-muted small" style={{ fontSize: '0.7rem' }}>
-                                  ({c.cbtdPhuTrach || 'qtdyentho.cbtd'})
-                                </span>
-                              </td>
-                              <td className="text-end fw-semibold num-tabular">{formatCurrencyVN(c.tienVay)}</td>
-                              <td className="text-end fw-bold num-tabular">
-                                {isSettled ? (
-                                  <span className="text-secondary">0 ₫</span>
-                                ) : (
-                                  <span className="text-danger">{formatCurrencyVN(c.duNo)}</span>
-                                )}
-                              </td>
-                              <td className="text-center small">
-                                <span className="fw-semibold text-success">{c.laiSuat}%/năm</span> <br />
-                                <span className="text-muted">
-                                  {formatDateVN(c.ngayVay)} - {formatDateVN(c.denHan)}
-                                </span>
-                              </td>
-                              <td className="text-center">
-                                <div className="d-flex justify-content-center gap-1">
-                                  {!isSettled && (
-                                    <button
-                                      className="btn btn-xs btn-outline-warning fw-semibold p-1 px-2"
-                                      onClick={() => onNavigateToInspection && onNavigateToInspection(selectedCustomer, c)}
-                                      title="Lập biên bản kiểm tra sử dụng vốn"
-                                    >
-                                      <ShieldCheck size={14} className="me-1 inline" /> KT Vốn
-                                    </button>
-                                  )}
-                                  <button
-                                    className="btn btn-xs btn-outline-secondary p-1 px-2"
-                                    onClick={() => handleOpenAssignModal(c, selectedCustomer)}
-                                    title="Chuyển giao CBTD quản lý hợp đồng"
-                                  >
-                                    <UserCog size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">
-                            Khách hàng này hiện không có khế ước vay nào phù hợp với bộ lọc.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              {/* Loan Contracts Timeline & Horizon Portfolio */}
+              <ContractTimelineList
+                contracts={selectedCustomer.contracts}
+                customer={selectedCustomer}
+                onNavigateToInspection={onNavigateToInspection}
+                onNavigateToDebit={onNavigateToDebit}
+                onOpenAssignModal={handleOpenAssignModal}
+              />
             </div>
           ) : (
             <div className="card-modern p-5 text-center text-muted">
