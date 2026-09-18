@@ -98,33 +98,53 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var lock = LockService.getScriptLock();
+  var payload = {};
+  if (e && e.postData && e.postData.contents) {
+    try {
+      payload = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      payload = e.parameter || {};
+    }
+  } else if (e && e.parameter) {
+    payload = e.parameter;
+  }
+
+  var action = payload.action || (e && e.parameter && e.parameter.action);
+  var data = payload.data || payload;
+
+  // Chỉ khóa giao dịch LockService cho các thao tác GHI/ĐỔI CSDL (Write mutations)
+  var WRITE_ACTIONS = [
+    "saveRolePermissions", "saveUser", "changePassword", "resetPassword",
+    "saveAppraisalReport", "addApprovalOpinion", "saveLoanInspection",
+    "saveDebitRegister", "saveBatchDebitRegister", "updateDebitRegister",
+    "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch",
+    "reconcileUpload", "assignContractCBTD", "initDatabase",
+    "saveTemplate", "deleteTemplate", "saveDriveSettings",
+    "saveCollateral", "deleteCollateral"
+  ];
+
+  var needsLock = WRITE_ACTIONS.indexOf(action) !== -1;
+  var lock = null;
   var isLocked = false;
+
+  if (needsLock) {
+    lock = LockService.getScriptLock();
+    try {
+      isLocked = lock.tryLock(15000);
+      if (!isLocked) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: "error",
+          message: "Hệ thống CSDL đang bận xử lý giao dịch ghi khác. Vui lòng thử lại sau 3 giây."
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    } catch (lockErr) {
+      Logger.log("Lock acquisition error: " + lockErr);
+    }
+  }
+
   var ss = getSpreadsheetInstance();
 
   try {
-    isLocked = lock.tryLock(10000);
-    if (!isLocked) {
-      return ContentService.createTextOutput(JSON.stringify({
-        status: "error",
-        message: "Hệ thống CSDL đang bận xử lý giao dịch khác. Vui lòng thử lại sau 3 giây."
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    var payload = {};
-    if (e && e.postData && e.postData.contents) {
-      try {
-        payload = JSON.parse(e.postData.contents);
-      } catch (parseErr) {
-        payload = e.parameter || {};
-      }
-    } else if (e && e.parameter) {
-      payload = e.parameter;
-    }
-
-    var action = payload.action || (e && e.parameter && e.parameter.action);
-    var data = payload.data || payload;
-
     var result;
     switch (action) {
       case "login":
@@ -223,7 +243,7 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } finally {
-    if (isLocked) {
+    if (lock && isLocked) {
       try {
         lock.releaseLock();
       } catch (releaseErr) {}

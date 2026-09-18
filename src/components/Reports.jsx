@@ -20,25 +20,80 @@ import {
   Calendar,
   Filter,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertTriangle,
+  BarChart3,
+  Activity
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrencyVN, getTodayVN } from '../utils/dateUtils';
 
+// --- Skeleton Loader cho Reports ---
+function ReportsSkeleton() {
+  return (
+    <div className="d-flex flex-column gap-3 content-fade-in">
+      {/* Toolbar skeleton */}
+      <div className="action-toolbar">
+        <span className="skeleton skeleton-text" style={{ width: 220, height: 28 }} />
+        <div className="d-flex gap-2">
+          <span className="skeleton skeleton-btn" style={{ width: 32, height: 32 }} />
+          <span className="skeleton skeleton-btn" style={{ width: 32, height: 32 }} />
+          <span className="skeleton skeleton-btn" style={{ width: 32, height: 32 }} />
+        </div>
+      </div>
+      {/* KPI skeleton */}
+      <div className="row g-3">
+        {[1, 2, 3, 4].map(i => (
+          <div className="col-12 col-sm-6 col-xl-3" key={i}>
+            <div className="skeleton-card">
+              <span className="skeleton skeleton-text sm" style={{ width: '55%' }} />
+              <span className="skeleton skeleton-stat mt-2" />
+              <div className="d-flex justify-content-between mt-3 pt-2 border-top">
+                <span className="skeleton skeleton-text sm" style={{ width: '40%' }} />
+                <span className="skeleton skeleton-badge" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Chart blocks skeleton */}
+      <div className="row g-3">
+        {[1, 2].map(i => (
+          <div className="col-12 col-lg-6" key={i}>
+            <div className="skeleton-card" style={{ minHeight: 240 }}>
+              <span className="skeleton skeleton-title" />
+              <span className="skeleton skeleton-text" style={{ width: '80%' }} />
+              <span className="skeleton skeleton-text" style={{ width: '65%' }} />
+              <span className="skeleton skeleton-text" style={{ width: '72%' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 export default function Reports() {
   const [reportsData, setReportsData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState('2026_Q3'); // '2026_ALL', '2026_Q3', '2026_M08'
+  const [fetchError, setFetchError] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'area' | 'loan_type'
+  const [timeFilter, setTimeFilter] = useState('2026_Q3');
 
   const fetchReports = async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const res = await api.getReportsData();
       if (res.status === 'success' && res.data) {
         setReportsData(res.data);
+      } else {
+        setFetchError(true);
       }
     } catch (e) {
       console.error('Lỗi nạp báo cáo:', e);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -48,33 +103,34 @@ export default function Reports() {
     fetchReports();
   }, []);
 
+  // Zero Mock Policy: không fallback sang data giả
   const areaData = useMemo(() => {
-    if (reportsData?.areaData?.length > 0) return reportsData.areaData;
-    return [
-      { area: 'Xã Yên Thọ (Thôn 1, 2, 3, 4)', countKH: 142, duNo: 22500000000, rate: '46.4%', color: 'bg-primary' },
-      { area: 'Xã Yên Trường (Thôn 1, 2, 3)', countKH: 110, duNo: 16800000000, rate: '34.6%', color: 'bg-success' },
-      { area: 'Xã Yên Bái / Quý Lộc', countKH: 68, duNo: 9200000000, rate: '19.0%', color: 'bg-warning' }
-    ];
+    return reportsData?.areaData || [];
   }, [reportsData]);
 
   const loanTypes = useMemo(() => {
-    if (reportsData?.loanTypes?.length > 0) return reportsData.loanTypes;
-    return [
-      { type: 'Nông nghiệp & Chăn nuôi', count: 184, amount: 26000000000, rate: '53.6%', color: '#16a34a' },
-      { type: 'Thương mại & Dịch vụ', count: 98, amount: 14500000000, rate: '29.9%', color: '#0284c7' },
-      { type: 'Tiêu dùng & Đời sống', count: 60, amount: 8000000000, rate: '16.5%', color: '#eab308' }
-    ];
+    return reportsData?.loanTypes || [];
+  }, [reportsData]);
+
+  const kpiMetrics = useMemo(() => {
+    return reportsData?.kpiMetrics || {};
   }, [reportsData]);
 
   const totalDuNo = useMemo(() => {
-    return areaData.reduce((acc, curr) => acc + (Number(curr.duNo) || 0), 0) || 48500000000;
-  }, [areaData]);
+    if (reportsData?.summary?.totalDuNo) return Number(reportsData.summary.totalDuNo);
+    return areaData.reduce((acc, curr) => acc + (Number(curr.duNo) || 0), 0);
+  }, [areaData, reportsData]);
 
   const totalMembers = useMemo(() => {
-    return areaData.reduce((acc, curr) => acc + (Number(curr.countKH) || 0), 0) || 320;
-  }, [areaData]);
+    if (reportsData?.summary?.totalKH) return Number(reportsData.summary.totalKH);
+    return areaData.reduce((acc, curr) => acc + (Number(curr.countKH) || 0), 0);
+  }, [areaData, reportsData]);
 
-  const avgLoanSize = totalMembers > 0 ? Math.round(totalDuNo / totalMembers) : 0;
+  const casaCoverage = kpiMetrics.casaCoverage ?? reportsData?.summary?.casaCoverage ?? null;
+  const nplRate = kpiMetrics.nplRate ?? reportsData?.summary?.nplRate ?? null;
+  const inspectionRate = kpiMetrics.inspectionRate ?? reportsData?.summary?.inspectionRate ?? null;
+  const ltvAvg = kpiMetrics.ltvAvg ?? reportsData?.summary?.ltvAvg ?? null;
+  const avgLoanSize = totalMembers > 0 && totalDuNo > 0 ? Math.round(totalDuNo / totalMembers) : 0;
 
   // Xuất file CSV báo cáo quản trị
   const handleExportCSV = () => {
@@ -237,377 +293,453 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   };
 
+
+  if (loading) return <ReportsSkeleton />;
+
   return (
-    <div className="d-flex flex-column gap-3">
-      {/* 1. Filter & Actions Toolbar */}
-      <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div className="d-flex align-items-center gap-2">
-          <span className="small fw-medium text-muted d-flex align-items-center gap-1.5" style={{ fontSize: '0.78rem' }}>
-            <Calendar size={14} className="text-primary" /> Chu kỳ:
-          </span>
-          <select
-            className="form-select form-select-sm fw-medium"
-            style={{ width: 160, height: '32px' }}
-            value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value)}
-          >
-            <option value="2026_Q3">Quý 3/2026</option>
-            <option value="2026_M08">Tháng 08/2026</option>
-            <option value="2026_M07">Tháng 07/2026</option>
-            <option value="2026_ALL">Cả Năm 2026</option>
-          </select>
+    <div className="d-flex flex-column gap-3 content-fade-in">
+      {/* Error Banner */}
+      {fetchError && (
+        <div className="alert-inline alert-inline-danger">
+          <AlertTriangle size={16} />
+          <span>Không thể tải số liệu từ máy chủ. Kiểm tra kết nối GAS và thử lại.</span>
+          <button
+            className="btn btn-sm btn-danger ms-auto"
+            style={{ fontSize: '0.78rem', padding: '0.2rem 0.6rem' }}
+            onClick={fetchReports}
+          >Thử Lại</button>
+        </div>
+      )}
+
+      {/* Data Warning Banner — khi GAS đã kết nối nhưng chưa trả data */}
+      {!fetchError && !reportsData && (
+        <div className="alert-inline alert-inline-warning">
+          <AlertCircle size={16} />
+          <span>Chưa có dữ liệu báo cáo từ máy chủ. GAS cần được triển khai handler <code>getReportsData</code>.</span>
+        </div>
+      )}
+
+      {/* 1. Toolbar */}
+      <div className="action-toolbar">
+        <div className="d-flex align-items-center gap-3 flex-wrap">
+          {/* Period Filter */}
+          <div className="d-flex align-items-center gap-2">
+            <Calendar size={14} className="text-muted" />
+            <select
+              className="form-select form-select-sm fw-medium"
+              style={{ width: 155, height: '32px' }}
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+            >
+              <option value="2026_Q3">Quý 3/2026</option>
+              <option value="2026_M08">Tháng 08/2026</option>
+              <option value="2026_M07">Tháng 07/2026</option>
+              <option value="2026_ALL">Cả Năm 2026</option>
+            </select>
+          </div>
+
+          {/* Segmented Tab Control */}
+          <div className="seg-control" style={{ minWidth: 280 }}>
+            <button
+              className={`seg-item ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              <Activity size={13} /> Tổng Quan
+            </button>
+            <button
+              className={`seg-item ${activeTab === 'area' ? 'active' : ''}`}
+              onClick={() => setActiveTab('area')}
+            >
+              <MapPin size={13} /> Địa Bàn
+            </button>
+            <button
+              className={`seg-item ${activeTab === 'loan_type' ? 'active' : ''}`}
+              onClick={() => setActiveTab('loan_type')}
+            >
+              <PieChart size={13} /> Cơ Cấu Vay
+            </button>
+          </div>
         </div>
 
-        {/* Compact Icon Action Group */}
-        <div className="d-flex align-items-center gap-1.5">
-          {/* Nút Xuất Excel (.csv / .xlsx) */}
+        {/* Action Buttons */}
+        <div className="d-flex align-items-center gap-1">
           <button
             type="button"
-            className="btn btn-sm btn-outline-success p-1.5 rounded-2 d-flex align-items-center justify-content-center"
-            style={{ width: '32px', height: '32px' }}
+            className="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px', padding: 0 }}
             onClick={handleExportCSV}
             title="Xuất bảng tính Excel (.csv)"
           >
             <FileSpreadsheet size={15} />
           </button>
-
-          {/* Nút Xuất Word (.doc / .docx) */}
           <button
             type="button"
-            className="btn btn-sm btn-outline-primary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
-            style={{ width: '32px', height: '32px' }}
+            className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px', padding: 0 }}
             onClick={handleExportWord}
             title="Xuất báo cáo Word (.doc)"
           >
             <FileText size={15} />
           </button>
-
-          {/* Nút In / PDF */}
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
-            style={{ width: '32px', height: '32px' }}
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px', padding: 0 }}
             onClick={() => window.print()}
-            title="In / Xuất file PDF chuẩn A4"
+            title="In / Xuất PDF A4"
           >
             <Printer size={15} />
           </button>
-
-          {/* Nút Làm mới */}
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
-            style={{ width: '32px', height: '32px' }}
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px', padding: 0 }}
             onClick={fetchReports}
             disabled={loading}
-            title="Tải lại số liệu báo cáo"
+            title="Tải lại số liệu"
           >
             <RefreshCw size={14} className={loading ? 'fa-spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* 2. Executive KPI Bento Cards Row */}
+      {/* 2. KPI Cards Row — Gradient Premium */}
       <div className="row g-3">
         {/* KPI 1: Tổng Dư Nợ */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+          <div className="kpi-card-brand p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
                   Tổng Dư Nợ Tín Dụng
                 </span>
-                <h3 className="fw-semibold text-slate-900 m-0 mt-1 num-tabular font-heading fs-4">
-                  {formatCurrencyVN(totalDuNo)}
+                <h3 className="fw-semibold m-0 mt-1 num-tabular font-heading fs-4" style={{ color: '#fff' }}>
+                  {totalDuNo > 0 ? formatCurrencyVN(totalDuNo) : <span className="skeleton skeleton-stat d-inline-block" style={{ width: 110, height: 28 }} />}
                 </h3>
               </div>
-              <div className="p-2 rounded-2 bg-primary-subtle text-primary">
-                <Landmark size={18} />
+              <div className="p-2 rounded-2" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <Landmark size={18} color="#fff" />
               </div>
             </div>
             <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
-              <span className="text-success fw-medium d-flex align-items-center gap-1">
-                <ArrowUpRight size={13} /> +4.8% tăng trưởng
+              <span className="d-flex align-items-center gap-1" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                <ArrowUpRight size={13} />
+                {reportsData?.summary?.growthRate ? `+${reportsData.summary.growthRate}% tăng trưởng` : 'Số liệu thực tế'}
               </span>
-              <span>Kế hoạch: 52 Tỷ</span>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>KH: 52 Tỷ</span>
             </div>
           </div>
         </div>
 
-        {/* KPI 2: Thành Viên Vay Vốn */}
+        {/* KPI 2: Số Thành Viên */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+          <div className="kpi-card-emerald p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
                   Thành Viên Vay Vốn
                 </span>
-                <h3 className="fw-semibold text-primary m-0 mt-1 num-tabular font-heading fs-4">
-                  {totalMembers} Thành Viên
+                <h3 className="fw-semibold m-0 mt-1 num-tabular font-heading fs-4" style={{ color: '#fff' }}>
+                  {totalMembers > 0 ? `${totalMembers.toLocaleString('vi-VN')} Thành Viên` : '—'}
                 </h3>
               </div>
-              <div className="p-2 rounded-2 bg-info-subtle text-info">
-                <Users size={18} />
+              <div className="p-2 rounded-2" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <Users size={18} color="#fff" />
               </div>
             </div>
             <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
-              <span>Dư nợ BQ/món:</span>
-              <strong className="text-dark num-tabular">{formatCurrencyVN(avgLoanSize)}</strong>
+              <span style={{ color: 'rgba(255,255,255,0.75)' }}>Dư nợ BQ/món:</span>
+              <strong className="num-tabular" style={{ color: '#fff' }}>
+                {avgLoanSize > 0 ? formatCurrencyVN(avgLoanSize) : '—'}
+              </strong>
             </div>
           </div>
         </div>
 
-        {/* KPI 3: Tỷ Lệ Thu Hồi Trích Nợ */}
+        {/* KPI 3: Thu Hồi Trích Nợ CASA */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+          <div className="kpi-card-navy p-3 h-100 d-flex flex-column justify-content-between">
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
-                  Thu Hồi Trích Nợ CASA
+                  Bao Phủ Trích Nợ CASA
                 </span>
-                <h3 className="fw-semibold text-success m-0 mt-1 num-tabular font-heading fs-4">
-                  96.8%
+                <h3 className="fw-semibold m-0 mt-1 num-tabular font-heading fs-4" style={{ color: '#fff' }}>
+                  {casaCoverage !== null ? `${Number(casaCoverage).toFixed(1)}%` : '—'}
                 </h3>
               </div>
-              <div className="p-2 rounded-2 bg-success-subtle text-success">
-                <Zap size={18} />
+              <div className="p-2 rounded-2" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <Zap size={18} color="#fff" />
               </div>
             </div>
             <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
-              <span className="text-success fw-medium d-flex align-items-center gap-1">
-                <CheckCircle2 size={12} /> Tự động hóa đạt chuẩn
-              </span>
-              <span>Kỳ 1, 2, 3</span>
+              <span style={{ color: 'rgba(255,255,255,0.75)' }}>Tự động định kỳ</span>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>Kỳ 1, 2, 3</span>
             </div>
           </div>
         </div>
 
-        {/* KPI 4: Nợ Xấu & An Toàn Vốn */}
+        {/* KPI 4: Tỷ Lệ Nợ Xấu */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card-modern p-3 h-100 d-flex flex-column justify-content-between">
+          <div className={`p-3 h-100 d-flex flex-column justify-content-between ${nplRate !== null && Number(nplRate) <= 1.5 ? 'kpi-card-emerald' : 'kpi-card-gold'}`}>
             <div className="d-flex justify-content-between align-items-start">
               <div>
                 <span className="text-muted small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
                   Tỷ Lệ Nợ Xấu (N3-N5)
                 </span>
-                <h3 className="fw-semibold text-slate-900 m-0 mt-1 num-tabular font-heading fs-4 text-success">
-                  0.82%
+                <h3 className="fw-semibold m-0 mt-1 num-tabular font-heading fs-4" style={{ color: '#fff' }}>
+                  {nplRate !== null ? `${Number(nplRate).toFixed(2)}%` : '—'}
                 </h3>
               </div>
-              <div className="p-2 rounded-2 bg-success-subtle text-success">
-                <ShieldCheck size={18} />
+              <div className="p-2 rounded-2" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <ShieldCheck size={18} color="#fff" />
               </div>
             </div>
             <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top" style={{ fontSize: '0.75rem' }}>
-              <span className="text-success fw-medium">Ngưỡng an toàn (≤1.5%)</span>
-              <span className="badge bg-success-subtle text-success px-1.5 py-0.5">Tốt</span>
+              <span style={{ color: 'rgba(255,255,255,0.75)' }}>
+                {nplRate !== null ? (Number(nplRate) <= 1.5 ? 'An toàn (≤1.5%)' : 'Cần theo dõi') : 'Ngưỡng ≤1.5%'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Main Analytics Grid: 2 Visual Interactive Dashboard Cards */}
-      <div className="row g-4">
-        {/* Dashboard Block 1: Phân Bổ Dư Nợ Theo Địa Bàn 3 Xã */}
-        <div className="col-12 col-lg-6">
-          <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
-            <div>
+      {/* 3. Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="row g-3 report-tab-panel">
+          {/* Phân Bổ Địa Bàn */}
+          <div className="col-12 col-lg-6">
+            <div className="card-modern p-4 h-100">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h6 className="fw-semibold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-                  <MapPin size={17} className="text-primary" /> Phân Bổ Dư Nợ Theo Địa Bàn (3 Xã)
+                <h6 className="fw-semibold m-0 font-heading d-flex align-items-center gap-2">
+                  <MapPin size={16} className="text-primary" /> Phân Bổ Dư Nợ Theo Địa Bàn
                 </h6>
-                <span className="badge bg-light text-muted border small">
-                  {areaData.length} địa bàn
-                </span>
+                <span className="badge badge-brand-soft">{areaData.length} xã</span>
               </div>
-
-              {/* Multi-Segment Visual Progress Bar */}
-              <div className="progress mb-3" style={{ height: 10, borderRadius: 6, backgroundColor: '#f1f5f9' }}>
-                {areaData.map((a, idx) => {
-                  const numRate = parseFloat(a.rate) || 0;
-                  const bgClass = idx === 0 ? 'bg-primary' : idx === 1 ? 'bg-success' : 'bg-warning';
-                  return (
-                    <div
-                      key={idx}
-                      className={`progress-bar ${bgClass}`}
-                      style={{ width: `${numRate}%` }}
-                      title={`${a.area}: ${a.rate}`}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Detailed Breakdown List */}
-              <div className="table-responsive">
-                <table className="table table-custom align-middle small">
-                  <thead>
-                    <tr>
-                      <th>Địa Bàn / Xã</th>
-                      <th className="text-center">Số KH</th>
-                      <th className="text-end">Dư Nợ (VNĐ)</th>
-                      <th className="text-end">Tỷ Trọng</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              {areaData.length === 0 ? (
+                <div className="empty-state py-4">
+                  <div className="empty-state-icon mx-auto"><MapPin size={22} /></div>
+                  <p className="small text-muted mb-0">Dữ liệu sẽ hiển thị sau khi GAS được cập nhật</p>
+                </div>
+              ) : (
+                <>
+                  <div className="progress mb-3" style={{ height: 8, borderRadius: 6, backgroundColor: 'var(--bg-surface-soft)' }}>
                     {areaData.map((a, idx) => {
-                      const dotColor = idx === 0 ? '#3b82f6' : idx === 1 ? '#22c55e' : '#f59e0b';
+                      const numRate = parseFloat(a.rate) || 0;
+                      const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
                       return (
-                        <tr key={idx}>
-                          <td>
-                            <div className="d-flex align-items-center gap-2">
-                              <span className="p-1 rounded-circle" style={{ backgroundColor: dotColor }}></span>
-                              <span className="fw-medium text-dark">{a.area}</span>
-                            </div>
-                          </td>
-                          <td className="text-center num-tabular">{a.countKH}</td>
-                          <td className="text-end fw-medium text-primary num-tabular">
-                            {formatCurrencyVN(a.duNo)}
-                          </td>
-                          <td className="text-end fw-medium text-success num-tabular">
-                            <span className="badge bg-light text-dark border font-monospace">
-                              {a.rate}
-                            </span>
-                          </td>
-                        </tr>
+                        <div key={idx} className="progress-bar" style={{ width: `${numRate}%`, backgroundColor: colors[idx % colors.length] }} title={`${a.area}: ${a.rate}`} />
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between text-muted small" style={{ fontSize: '0.75rem' }}>
-              <span>Trọng tâm tăng trưởng: Xã Yên Thọ</span>
-              <span>Tổng địa bàn: 3 Xã trọng điểm</span>
+                  </div>
+                  <div className="table-responsive">
+                    <table className="table table-custom align-middle small">
+                      <thead>
+                        <tr>
+                          <th>Địa Bàn / Xã</th>
+                          <th className="text-center">Số KH</th>
+                          <th className="text-end">Dư Nợ (VNĐ)</th>
+                          <th className="text-end">Tỷ Trọng</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {areaData.map((a, idx) => {
+                          const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
+                          return (
+                            <tr key={idx}>
+                              <td>
+                                <div className="d-flex align-items-center gap-2">
+                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors[idx % colors.length], display: 'inline-block', flexShrink: 0 }} />
+                                  <span className="fw-medium">{a.area}</span>
+                                </div>
+                              </td>
+                              <td className="text-center num-tabular">{a.countKH}</td>
+                              <td className="text-end fw-medium text-primary num-tabular">{formatCurrencyVN(a.duNo)}</td>
+                              <td className="text-end">
+                                <span className="badge badge-brand-soft font-monospace">{a.rate}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Dashboard Block 2: Cơ Cấu Sản Phẩm Tín Dụng */}
-        <div className="col-12 col-lg-6">
-          <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
-            <div>
+          {/* Cơ Cấu Sản Phẩm */}
+          <div className="col-12 col-lg-6">
+            <div className="card-modern p-4 h-100">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h6 className="fw-semibold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-                  <PieChart size={17} className="text-success" /> Cơ Cấu Sản Phẩm Vay Vốn
+                <h6 className="fw-semibold m-0 font-heading d-flex align-items-center gap-2">
+                  <PieChart size={16} className="text-success" /> Cơ Cấu Sản Phẩm Vay Vốn
                 </h6>
-                <span className="badge bg-light text-muted border small">
-                  {loanTypes.length} nhóm sản phẩm
-                </span>
+                <span className="badge badge-success-soft">{loanTypes.length} nhóm</span>
               </div>
-
-              {/* Multi-Segment Visual Progress Bar */}
-              <div className="progress mb-3" style={{ height: 10, borderRadius: 6, backgroundColor: '#f1f5f9' }}>
-                {loanTypes.map((lt, idx) => {
-                  const numRate = parseFloat(lt.rate) || 0;
-                  return (
-                    <div
-                      key={idx}
-                      className="progress-bar"
-                      style={{ width: `${numRate}%`, backgroundColor: lt.color }}
-                      title={`${lt.type}: ${lt.rate}`}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Detailed Breakdown List */}
-              <div className="table-responsive">
-                <table className="table table-custom align-middle small">
-                  <thead>
-                    <tr>
-                      <th>Sản Phẩm Vay</th>
-                      <th className="text-center">Số Món</th>
-                      <th className="text-end">Tổng Dư Nợ (VNĐ)</th>
-                      <th className="text-end">Tỷ Trọng</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              {loanTypes.length === 0 ? (
+                <div className="empty-state py-4">
+                  <div className="empty-state-icon mx-auto"><PieChart size={22} /></div>
+                  <p className="small text-muted mb-0">Dữ liệu sẽ hiển thị sau khi GAS được cập nhật</p>
+                </div>
+              ) : (
+                <>
+                  <div className="progress mb-3" style={{ height: 8, borderRadius: 6, backgroundColor: 'var(--bg-surface-soft)' }}>
                     {loanTypes.map((lt, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="p-1 rounded-circle" style={{ backgroundColor: lt.color }}></span>
-                            <span className="fw-medium text-dark">{lt.type}</span>
-                          </div>
-                        </td>
-                        <td className="text-center num-tabular">{lt.count}</td>
-                        <td className="text-end fw-medium text-success num-tabular">
-                          {formatCurrencyVN(lt.amount)}
-                        </td>
-                        <td className="text-end fw-medium num-tabular">
-                          <span className="badge bg-light text-dark border font-monospace">
-                            {lt.rate}
-                          </span>
-                        </td>
-                      </tr>
+                      <div key={idx} className="progress-bar" style={{ width: `${parseFloat(lt.rate) || 0}%`, backgroundColor: lt.color }} title={`${lt.type}: ${lt.rate}`} />
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between text-muted small" style={{ fontSize: '0.75rem' }}>
-              <span>Cho vay nông nghiệp chiếm tỷ trọng cao nhất (53.6%)</span>
-              <span>Định hướng: Tiếp tục mở rộng</span>
+                  </div>
+                  <div className="table-responsive">
+                    <table className="table table-custom align-middle small">
+                      <thead>
+                        <tr>
+                          <th>Sản Phẩm Vay</th>
+                          <th className="text-center">Số Món</th>
+                          <th className="text-end">Tổng Dư Nợ</th>
+                          <th className="text-end">Tỷ Trọng</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loanTypes.map((lt, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <div className="d-flex align-items-center gap-2">
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: lt.color, display: 'inline-block', flexShrink: 0 }} />
+                                <span className="fw-medium">{lt.type}</span>
+                              </div>
+                            </td>
+                            <td className="text-center num-tabular">{lt.count}</td>
+                            <td className="text-end fw-medium text-success num-tabular">{formatCurrencyVN(lt.amount)}</td>
+                            <td className="text-end"><span className="badge badge-success-soft font-monospace">{lt.rate}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* 4. Risk & Supervision Quality Indicators Row */}
+      {activeTab === 'area' && (
+        <div className="card-modern p-4 report-tab-panel">
+          <h6 className="fw-semibold mb-3 font-heading d-flex align-items-center gap-2">
+            <MapPin size={17} className="text-primary" /> Chi Tiết Phân Bổ Dư Nợ Theo 3 Xã
+          </h6>
+          {areaData.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon"><MapPin size={26} /></div>
+              <h6 className="fw-semibold mt-2">Chưa có dữ liệu địa bàn</h6>
+              <p className="small text-muted">Dữ liệu sẽ được tải khi GAS handler <code>getReportsData</code> trả về <code>areaData</code></p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-custom">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Địa Bàn / Xã</th>
+                    <th className="text-center">Số Thành Viên</th>
+                    <th className="text-end">Tổng Dư Nợ (VNĐ)</th>
+                    <th className="text-end">Tỷ Trọng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {areaData.map((a, idx) => (
+                    <tr key={idx}>
+                      <td className="text-muted">{idx + 1}</td>
+                      <td className="fw-medium">{a.area}</td>
+                      <td className="text-center num-tabular">{a.countKH}</td>
+                      <td className="text-end fw-semibold num-tabular">{formatCurrencyVN(a.duNo)}</td>
+                      <td className="text-end"><span className="badge badge-brand-soft">{a.rate}</span></td>
+                    </tr>
+                  ))}
+                  <tr className="fw-bold">
+                    <td colSpan={2} className="text-center">TỔNG CỘNG</td>
+                    <td className="text-center num-tabular">{totalMembers}</td>
+                    <td className="text-end num-tabular">{formatCurrencyVN(totalDuNo)}</td>
+                    <td className="text-end"><span className="badge badge-brand-soft">100%</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'loan_type' && (
+        <div className="card-modern p-4 report-tab-panel">
+          <h6 className="fw-semibold mb-3 font-heading d-flex align-items-center gap-2">
+            <PieChart size={17} className="text-success" /> Cơ Cấu Sản Phẩm Cho Vay
+          </h6>
+          {loanTypes.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon"><PieChart size={26} /></div>
+              <h6 className="fw-semibold mt-2">Chưa có dữ liệu cơ cấu vay</h6>
+              <p className="small text-muted">Dữ liệu sẽ được tải khi GAS handler <code>getReportsData</code> trả về <code>loanTypes</code></p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-custom">
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Sản Phẩm Tín Dụng</th>
+                    <th className="text-center">Số Món Vay</th>
+                    <th className="text-end">Tổng Dư Nợ (VNĐ)</th>
+                    <th className="text-end">Tỷ Trọng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loanTypes.map((lt, idx) => (
+                    <tr key={idx}>
+                      <td className="text-muted">{idx + 1}</td>
+                      <td><div className="d-flex align-items-center gap-2"><span style={{ width: 10, height: 10, borderRadius: '50%', background: lt.color, flexShrink: 0, display: 'inline-block' }} /><span className="fw-medium">{lt.type}</span></div></td>
+                      <td className="text-center num-tabular">{lt.count}</td>
+                      <td className="text-end fw-semibold num-tabular">{formatCurrencyVN(lt.amount)}</td>
+                      <td className="text-end"><span className="badge badge-success-soft">{lt.rate}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. Bộ Chỉ Số Giám Sát An Toàn */}
       <div className="card-modern p-4">
-        <h6 className="fw-semibold mb-3 text-slate-900 font-heading d-flex align-items-center gap-2">
-          <ShieldCheck size={18} className="text-primary" /> Bộ Chỉ Số Giám Sát An Toàn & Chất Lượng Danh Mục Tín Dụng
+        <h6 className="fw-semibold mb-3 font-heading d-flex align-items-center gap-2">
+          <ShieldCheck size={18} className="text-primary" /> Bộ Chỉ Số Giám Sát An Toàn &amp; Chất Lượng Danh Mục
         </h6>
-
         <div className="row g-3">
-          <div className="col-12 col-md-4">
-            <div className="p-3 bg-light-subtle rounded-3 border">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="small fw-medium text-dark">Tỷ Lệ Bảo Đảm TSĐB (LTV Bình Quân)</span>
-                <span className="badge bg-success-subtle text-success fw-medium">42.5%</span>
-              </div>
-              <div className="progress mt-2" style={{ height: 6, borderRadius: 99 }}>
-                <div className="progress-bar bg-success" style={{ width: '42.5%' }}></div>
-              </div>
-              <div className="small text-muted mt-2" style={{ fontSize: '0.72rem' }}>
-                Hệ số an toàn cao, giá trị TSĐB vượt 2.3 lần tổng dư nợ
-              </div>
-            </div>
-          </div>
-
-          <div className="col-12 col-md-4">
-            <div className="p-3 bg-light-subtle rounded-3 border">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="small fw-medium text-dark">Tiến Độ Kiểm Tra Vốn Sau Vay</span>
-                <span className="badge bg-primary-subtle text-primary fw-medium">94.2%</span>
-              </div>
-              <div className="progress mt-2" style={{ height: 6, borderRadius: 99 }}>
-                <div className="progress-bar bg-primary" style={{ width: '94.2%' }}></div>
-              </div>
-              <div className="small text-muted mt-2" style={{ fontSize: '0.72rem' }}>
-                Đã hoàn thành lập biên bản thực địa định kỳ cho 302/320 món
+          {[
+            { label: 'Tỷ Lệ Bảo Đảm TSĐB (LTV Bình Quân)', value: ltvAvg, suffix: '%', color: 'brand', note: 'Giá trị TSĐB bảo đảm an toàn' },
+            { label: 'Tiến Độ Kiểm Tra Vốn Sau Vay', value: inspectionRate, suffix: '%', color: 'primary', note: 'Biên bản kiểm tra thực địa định kỳ' },
+            { label: 'Bao Phủ Trích Nợ Tự Động CASA', value: casaCoverage, suffix: '%', color: 'info', note: 'Khách hàng ủy quyền trích nợ qua TK' }
+          ].map(({ label, value, suffix, color, note }) => (
+            <div className="col-12 col-md-4" key={label}>
+              <div className="p-3 rounded-3" style={{ background: 'var(--bg-surface-soft)', border: '1px solid var(--border-subtle)' }}>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="small fw-medium" style={{ fontSize: '0.82rem' }}>{label}</span>
+                  <span className={`badge badge-${color === 'brand' ? 'brand' : color === 'primary' ? 'brand' : 'success'}-soft fw-semibold`}>
+                    {value !== null ? `${Number(value).toFixed(1)}${suffix}` : '—'}
+                  </span>
+                </div>
+                <div className="stat-bar-wrap">
+                  <div className="stat-bar-fill" style={{ width: value !== null ? `${Math.min(Number(value), 100)}%` : '0%' }} />
+                </div>
+                <div className="small text-muted mt-2" style={{ fontSize: '0.72rem' }}>{note}</div>
               </div>
             </div>
-          </div>
-
-          <div className="col-12 col-md-4">
-            <div className="p-3 bg-light-subtle rounded-3 border">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="small fw-medium text-dark">Bao Phủ Trích Nợ Tự Động CASA</span>
-                <span className="badge bg-info-subtle text-info fw-medium">85.4%</span>
-              </div>
-              <div className="progress mt-2" style={{ height: 6, borderRadius: 99 }}>
-                <div className="progress-bar bg-info" style={{ width: '85.4%' }}></div>
-              </div>
-              <div className="small text-muted mt-2" style={{ fontSize: '0.72rem' }}>
-                273 khách hàng đã ủy quyền trích nợ qua tài khoản thanh toán
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
+
+

@@ -21,6 +21,13 @@ var Customer360Controller = {
     var cbtdFilter = (data.cbtdUsername || "").toLowerCase().trim();
     var statusFilter = (data.status || "").toUpperCase().trim(); // 'ALL' | 'DANG_VAY' | 'DA_TAT_TOAN'
     var maxLimit = data.limit ? Number(data.limit) : 250;
+    var isDefaultSearch = (!query && (!cbtdFilter || cbtdFilter === "all") && (!statusFilter || statusFilter === "ALL"));
+    if (isDefaultSearch) {
+      var cachedDefault = (typeof CacheHelper !== 'undefined') ? CacheHelper.getCachedData('cust360_default') : null;
+      if (cachedDefault) {
+        return { status: "success", data: cachedDefault, total: cachedDefault.length, isFiltered: false };
+      }
+    }
 
     var sKH = ss.getSheetByName("KH_CORE");
     var sHDTD = ss.getSheetByName("HDTD_CORE");
@@ -152,6 +159,9 @@ var Customer360Controller = {
         }
       }
 
+      if (isDefaultSearch && typeof CacheHelper !== 'undefined') {
+        CacheHelper.setCachedData('cust360_default', results, 60);
+      }
       return { status: "success", data: results, total: results.length, isFiltered: false };
     }
 

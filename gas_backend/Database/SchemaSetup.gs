@@ -12,15 +12,21 @@
 
 var DB_SPREADSHEET_ID = typeof DB_SPREADSHEET_ID !== 'undefined' ? DB_SPREADSHEET_ID : "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
 
+var _SS_CACHE = null;
 function getSpreadsheetInstance(ss) {
   if (ss) return ss;
+  if (_SS_CACHE) return _SS_CACHE;
   try {
     var active = SpreadsheetApp.getActiveSpreadsheet();
-    if (active) return active;
+    if (active) {
+      _SS_CACHE = active;
+      return _SS_CACHE;
+    }
   } catch (e) {}
   if (DB_SPREADSHEET_ID && DB_SPREADSHEET_ID.length > 10) {
     try {
-      return SpreadsheetApp.openById(DB_SPREADSHEET_ID);
+      _SS_CACHE = SpreadsheetApp.openById(DB_SPREADSHEET_ID);
+      return _SS_CACHE;
     } catch (e) {
       Logger.log("Không thể mở Spreadsheet ID: " + DB_SPREADSHEET_ID + " - " + e.toString());
     }

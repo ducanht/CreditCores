@@ -49,13 +49,55 @@ const formatCompactVN = (amount) => {
   return num.toLocaleString('vi-VN') + ' đ';
 };
 
-// Helper tính phần trăm an toàn
-const calcPercentNum = (part, total) => {
-  if (!total || total <= 0) return 0;
-  return Math.round(((Number(part) || 0) / total) * 1000) / 10;
-};
+// --- Skeleton Loader cho Dashboard ---
+function DashboardSkeleton() {
+  return (
+    <div className="dashboard-container d-flex flex-column gap-4 pb-4 content-fade-in">
+      <div className="card-modern p-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span className="skeleton skeleton-text" style={{ width: 280, height: 24 }} />
+          <span className="skeleton skeleton-btn" style={{ width: 220, height: 32 }} />
+        </div>
+      </div>
+      <div className="row g-3">
+        {[1, 2, 3, 4].map(i => (
+          <div className="col-12 col-sm-6 col-xl-3" key={i}>
+            <div className="skeleton-card" style={{ minHeight: 120 }}>
+              <span className="skeleton skeleton-text sm" style={{ width: '60%' }} />
+              <span className="skeleton skeleton-stat mt-2" style={{ width: '80%' }} />
+              <div className="d-flex justify-content-between mt-3 pt-2 border-top">
+                <span className="skeleton skeleton-text sm" style={{ width: '45%' }} />
+                <span className="skeleton skeleton-badge" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="card-modern p-3">
+        <div className="row g-3">
+          <div className="col-12 col-lg-8">
+            <span className="skeleton skeleton-title mb-3" />
+            <div className="d-flex flex-column gap-2">
+              <span className="skeleton skeleton-card" style={{ height: 68 }} />
+              <span className="skeleton skeleton-card" style={{ height: 68 }} />
+              <span className="skeleton skeleton-card" style={{ height: 68 }} />
+            </div>
+          </div>
+          <div className="col-12 col-lg-4">
+            <span className="skeleton skeleton-title mb-3" />
+            <span className="skeleton skeleton-card" style={{ height: 220 }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, currentUser, onOpenCustomerQuickView }) {
+  if (!stats) {
+    return <DashboardSkeleton />;
+  }
+
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -211,24 +253,24 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
 
           <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
             {/* Bộ chọn chu kỳ */}
-            <div className="btn-group btn-group-sm p-0.5 bg-light rounded-2 border" role="group">
+            <div className="seg-control" role="tablist">
               <button
                 type="button"
-                className={`btn btn-sm ${selectedPeriod === 'month' ? 'btn-brand fw-semibold text-white' : 'btn-light text-muted'}`}
+                className={`seg-item ${selectedPeriod === 'month' ? 'active' : ''}`}
                 onClick={() => setSelectedPeriod('month')}
               >
                 Tháng Này
               </button>
               <button
                 type="button"
-                className={`btn btn-sm ${selectedPeriod === 'quarter' ? 'btn-brand fw-semibold text-white' : 'btn-light text-muted'}`}
+                className={`seg-item ${selectedPeriod === 'quarter' ? 'active' : ''}`}
                 onClick={() => setSelectedPeriod('quarter')}
               >
                 Quý Này
               </button>
               <button
                 type="button"
-                className={`btn btn-sm ${selectedPeriod === 'year' ? 'btn-brand fw-semibold text-white' : 'btn-light text-muted'}`}
+                className={`seg-item ${selectedPeriod === 'year' ? 'active' : ''}`}
                 onClick={() => setSelectedPeriod('year')}
               >
                 Năm 2026

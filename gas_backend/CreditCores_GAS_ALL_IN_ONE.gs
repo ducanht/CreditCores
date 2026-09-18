@@ -179,12 +179,12 @@ var CacheHelper = {
 
   invalidateModuleCache: function(module) {
     var keyMap = {
-      dashboard: ['dashboard_stats', 'reports_data'],
-      customer: ['dashboard_stats', 'reports_data'],
+      dashboard: ['dashboard_stats', 'reports_data', 'reports_data_v2'],
+      customer: ['dashboard_stats', 'reports_data', 'reports_data_v2', 'cust360_default'],
       appraisal: ['appraisals_list', 'dashboard_stats'],
       inspection: ['inspections_list'],
-      debit: ['debit_registrations', 'debit_batches', 'dashboard_stats', 'debt_warnings'],
-      reconciliation: ['debit_batches', 'debt_warnings', 'dashboard_stats'],
+      debit: ['debit_registrations', 'debit_batches', 'dashboard_stats', 'debt_warnings', 'reports_data_v2', 'cust360_default'],
+      reconciliation: ['debit_batches', 'debt_warnings', 'dashboard_stats', 'reports_data_v2'],
       auth: ['users_list', 'roles_permissions']
     };
     var keys = keyMap[module] || ['dashboard_stats'];
@@ -211,15 +211,21 @@ var CacheHelper = {
 
 var DB_SPREADSHEET_ID = typeof DB_SPREADSHEET_ID !== 'undefined' ? DB_SPREADSHEET_ID : "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
 
+var _SS_CACHE = null;
 function getSpreadsheetInstance(ss) {
   if (ss) return ss;
+  if (_SS_CACHE) return _SS_CACHE;
   try {
     var active = SpreadsheetApp.getActiveSpreadsheet();
-    if (active) return active;
+    if (active) {
+      _SS_CACHE = active;
+      return _SS_CACHE;
+    }
   } catch (e) {}
   if (DB_SPREADSHEET_ID && DB_SPREADSHEET_ID.length > 10) {
     try {
-      return SpreadsheetApp.openById(DB_SPREADSHEET_ID);
+      _SS_CACHE = SpreadsheetApp.openById(DB_SPREADSHEET_ID);
+      return _SS_CACHE;
     } catch (e) {
       Logger.log("Không thể mở Spreadsheet ID: " + DB_SPREADSHEET_ID + " - " + e.toString());
     }
@@ -1062,7 +1068,13 @@ var Customer360Controller = {
     var query = (data.query || "").toLowerCase().trim();
     var cbtdFilter = (data.cbtdUsername || "").toLowerCase().trim();
     var statusFilter = (data.status || "").toUpperCase().trim(); // 'ALL' | 'DANG_VAY' | 'DA_TAT_TOAN'
-    var maxLimit = data.limit ? Number(data.limit) : 250;
+    var isDefaultSearch = (!query && (!cbtdFilter || cbtdFilter === "all") && (!statusFilter || statusFilter === "ALL"));
+    if (isDefaultSearch) {
+      var cachedDefault = CacheHelper.getCachedData('cust360_default');
+      if (cachedDefault) {
+        return { status: "success", data: cachedDefault, total: cachedDefault.length, isFiltered: false };
+      }
+    }
 
     var sKH = ss.getSheetByName("KH_CORE");
     var sHDTD = ss.getSheetByName("HDTD_CORE");
@@ -1194,6 +1206,9 @@ var Customer360Controller = {
         }
       }
 
+      if (isDefaultSearch) {
+        CacheHelper.setCachedData('cust360_default', results, 60);
+      }
       return { status: "success", data: results, total: results.length, isFiltered: false };
     }
 
@@ -2515,7 +2530,7 @@ var ReconciliationController = {
 
 var ReportController = {
   handleGetReportsData: function(ss) {
-    var cached = CacheHelper.getCachedData('reports_data');
+    var cached = CacheHelper.getCachedData('reports_data_v2');
     if (cached) return { status: "success", data: cached };
 
     var sKH = ss.getSheetByName("KH_CORE");
@@ -2527,73 +2542,98 @@ var ReportController = {
         data: {
           areaData: [],
           loanTypes: [],
-          totalDuNo: 0
+          kpiMetrics: {},
+          summary: { totalDuNo: 0, totalKH: 0 }
         }
       };
     }
 
+    // --- Build KH area map (1 batch read) ---
     var khMap = {};
     if (sKH.getLastRow() > 1) {
       var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, 15).getValues();
       for (var i = 0; i < khVals.length; i++) {
-        var mKH = String(khVals[i][0]);
-        var dc = String(khVals[i][2]) + " " + String(khVals[i][10]);
+        var mKH = String(khVals[i][0]).trim();
+        var diaChiKV = String(khVals[i][2]).trim() + " " + String(khVals[i][10]).trim();
         var areaKey = "Khác";
-        if (dc.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
-        else if (dc.indexOf("Yên Trường") > -1 || dc.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
-        else if (dc.indexOf("Yên Bái") > -1 || dc.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
-
-        khMap[mKH] = {
-          area: areaKey
-        };
+        if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+        else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
+        else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        khMap[mKH] = { area: areaKey };
       }
     }
 
     var areaStats = {
-      "Xã Yên Thọ (Thôn 1, 2, 3, 4)": { countKH: new Set(), countLoans: 0, duNo: 0 },
-      "Xã Yên Trường / Vĩnh Lộc": { countKH: new Set(), countLoans: 0, duNo: 0 },
-      "Xã Quý Lộc / Yên Bái": { countKH: new Set(), countLoans: 0, duNo: 0 }
+      "Xã Yên Thọ (Thôn 1, 2, 3, 4)": { countKH: new Set(), duNo: 0 },
+      "Xã Yên Trường / Vĩnh Lộc":      { countKH: new Set(), duNo: 0 },
+      "Xã Quý Lộc / Yên Bái":           { countKH: new Set(), duNo: 0 }
     };
 
     var loanTypeStats = {
-      "Nông nghiệp & Chăn nuôi": { count: 0, amount: 0, color: "bg-success" },
-      "Thương mại & Dịch vụ": { count: 0, amount: 0, color: "bg-primary" },
-      "Tiêu dùng & Đời sống": { count: 0, amount: 0, color: "bg-warning" }
+      "Nông nghiệp & Chăn nuôi": { count: 0, amount: 0, color: "#16a34a" },
+      "Thương mại & Dịch vụ":    { count: 0, amount: 0, color: "#0284c7" },
+      "Tiêu dùng & Đời sống":    { count: 0, amount: 0, color: "#eab308" }
     };
 
     var totalDuNo = 0;
+    var totalCASA = 0;
+    var countCASA = 0;
+    var countNPL = 0;   // Nợ xấu N3-N5
+    var totalKH = new Set();
 
+    // --- Batch read HDTD_CORE (cols A→O = 1→15) ---
     if (sHDTD.getLastRow() > 1) {
-      var hdVals = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, 11).getValues();
-      for (var j = 0; j < hdVals.length; j++) {
-        var hdMaKH = String(hdVals[j][1]);
-        var hdDuNo = Number(hdVals[j][3]) || 0;
-        var hdMoTa = String(hdVals[j][10]);
-        totalDuNo += hdDuNo;
+      var hdRows = sHDTD.getLastRow() - 1;
+      // Col: A=MaHD, B=MaKH, C=LoaiVay, D=DuNo, E=LanSuatStr, F=KyHan,
+      //      G=NgayGiaiNgan, H=NgayDaoHan, I=NhomNo, J=CBTD, K=MoTa
+      var hdVals = sHDTD.getRange(2, 1, hdRows, 15).getValues();
 
-        // Group by Area
+      for (var j = 0; j < hdVals.length; j++) {
+        var hdMaKH    = String(hdVals[j][1]).trim();
+        var hdDuNo    = Number(hdVals[j][3]) || 0;
+        var hdNhomNo  = Number(hdVals[j][8]) || 1;  // col I (0-indexed = 8)
+        var hdCASA    = Number(hdVals[j][12]) || 0; // col M: so tien da trich
+        var hdMoTa    = String(hdVals[j][10]).toLowerCase().trim();
+        var hdTrangThai = String(hdVals[j][11]).toUpperCase().trim(); // col L: TrangThaiHD
+
+        // Skip đã tất toán
+        if (hdTrangThai === "DA_TAT_TOAN") continue;
+
+        totalDuNo += hdDuNo;
+        totalKH.add(hdMaKH);
+
+        // CASA coverage (có đăng ký trích nợ)
+        if (hdVals[j][12] !== "" && hdVals[j][12] !== null) {
+          countCASA++;
+        }
+
+        // NPL N3-N5
+        if (hdNhomNo >= 3) countNPL++;
+
+        // Area grouping
         var khInfo = khMap[hdMaKH];
         var aKey = khInfo ? khInfo.area : "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
-        if (!areaStats[aKey]) {
-          areaStats[aKey] = { countKH: new Set(), countLoans: 0, duNo: 0 };
-        }
+        if (!areaStats[aKey]) areaStats[aKey] = { countKH: new Set(), duNo: 0 };
         areaStats[aKey].countKH.add(hdMaKH);
-        areaStats[aKey].countLoans++;
         areaStats[aKey].duNo += hdDuNo;
 
-        // Group by Loan Product
+        // Loan product classification
         var prodKey = "Nông nghiệp & Chăn nuôi";
-        if (hdMoTa.indexOf("kinh doanh") > -1 || hdMoTa.indexOf("thương mại") > -1 || hdMoTa.indexOf("xe tải") > -1) {
+        if (hdMoTa.indexOf("kinh doanh") > -1 || hdMoTa.indexOf("thương mại") > -1 || hdMoTa.indexOf("xe tải") > -1 || hdMoTa.indexOf("buôn bán") > -1) {
           prodKey = "Thương mại & Dịch vụ";
-        } else if (hdMoTa.indexOf("tiêu dùng") > -1 || hdMoTa.indexOf("nhà ở") > -1) {
+        } else if (hdMoTa.indexOf("tiêu dùng") > -1 || hdMoTa.indexOf("nhà ở") > -1 || hdMoTa.indexOf("sửa chữa") > -1) {
           prodKey = "Tiêu dùng & Đời sống";
         }
-
         loanTypeStats[prodKey].count++;
         loanTypeStats[prodKey].amount += hdDuNo;
       }
     }
 
+    var totalLoanCount = Object.keys(loanTypeStats).reduce(function(acc, k) {
+      return acc + loanTypeStats[k].count;
+    }, 0);
+
+    // --- Build areaData result ---
     var areaResult = [];
     for (var k in areaStats) {
       var dNo = areaStats[k].duNo;
@@ -2601,32 +2641,50 @@ var ReportController = {
       areaResult.push({
         area: k,
         countKH: areaStats[k].countKH.size,
-        countLoans: areaStats[k].countLoans,
         duNo: dNo,
         rate: rateStr
       });
     }
+    // Sort by duNo desc
+    areaResult.sort(function(a, b) { return b.duNo - a.duNo; });
 
+    // --- Build loanTypes result ---
     var loanTypeResult = [];
     for (var p in loanTypeStats) {
+      var ltRate = totalLoanCount > 0 ? ((loanTypeStats[p].count / totalLoanCount) * 100).toFixed(1) + "%" : "0%";
       loanTypeResult.push({
         type: p,
         count: loanTypeStats[p].count,
         amount: loanTypeStats[p].amount,
+        rate: ltRate,
         color: loanTypeStats[p].color
       });
     }
+    loanTypeResult.sort(function(a, b) { return b.amount - a.amount; });
+
+    var totalKHCount = totalKH.size;
+    var nplRate  = totalLoanCount > 0 ? ((countNPL / totalLoanCount) * 100).toFixed(2) : null;
+    var casaCoverage = totalKHCount > 0 ? ((countCASA / totalLoanCount) * 100).toFixed(1) : null;
 
     var finalResult = {
       areaData: areaResult,
       loanTypes: loanTypeResult,
-      totalDuNo: totalDuNo
+      kpiMetrics: {},
+      summary: {
+        totalDuNo: totalDuNo,
+        totalKH: totalKHCount,
+        nplRate: nplRate,
+        casaCoverage: casaCoverage,
+        inspectionRate: null,  // sẽ tính từ InspectionController khi tích hợp
+        ltvAvg: null           // sẽ tính từ CollateralController khi tích hợp
+      }
     };
 
-    CacheHelper.setCachedData('reports_data', finalResult, 30);
+    CacheHelper.setCachedData('reports_data_v2', finalResult, 30);
     return { status: "success", data: finalResult };
   }
 };
+
 
 
 // ==========================================
@@ -3215,33 +3273,53 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var lock = LockService.getScriptLock();
+  var payload = {};
+  if (e && e.postData && e.postData.contents) {
+    try {
+      payload = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      payload = e.parameter || {};
+    }
+  } else if (e && e.parameter) {
+    payload = e.parameter;
+  }
+
+  var action = payload.action || (e && e.parameter && e.parameter.action);
+  var data = payload.data || payload;
+
+  // Chỉ khóa giao dịch LockService cho các thao tác GHI/ĐỔI CSDL (Write mutations)
+  var WRITE_ACTIONS = [
+    "saveRolePermissions", "saveUser", "changePassword", "resetPassword",
+    "saveAppraisalReport", "addApprovalOpinion", "saveLoanInspection",
+    "saveDebitRegister", "saveBatchDebitRegister", "updateDebitRegister",
+    "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch",
+    "reconcileUpload", "assignContractCBTD", "initDatabase",
+    "saveTemplate", "deleteTemplate", "saveDriveSettings",
+    "saveCollateral", "deleteCollateral"
+  ];
+
+  var needsLock = WRITE_ACTIONS.indexOf(action) !== -1;
+  var lock = null;
   var isLocked = false;
+
+  if (needsLock) {
+    lock = LockService.getScriptLock();
+    try {
+      isLocked = lock.tryLock(15000);
+      if (!isLocked) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: "error",
+          message: "Hệ thống CSDL đang bận xử lý giao dịch ghi khác. Vui lòng thử lại sau 3 giây."
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    } catch (lockErr) {
+      Logger.log("Lock acquisition error: " + lockErr);
+    }
+  }
+
   var ss = getSpreadsheetInstance();
 
   try {
-    isLocked = lock.tryLock(10000);
-    if (!isLocked) {
-      return ContentService.createTextOutput(JSON.stringify({
-        status: "error",
-        message: "Hệ thống CSDL đang bận xử lý giao dịch khác. Vui lòng thử lại sau 3 giây."
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    var payload = {};
-    if (e && e.postData && e.postData.contents) {
-      try {
-        payload = JSON.parse(e.postData.contents);
-      } catch (parseErr) {
-        payload = e.parameter || {};
-      }
-    } else if (e && e.parameter) {
-      payload = e.parameter;
-    }
-
-    var action = payload.action || (e && e.parameter && e.parameter.action);
-    var data = payload.data || payload;
-
     var result;
     switch (action) {
       case "login":
@@ -3328,7 +3406,7 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } finally {
-    if (isLocked) {
+    if (lock && isLocked) {
       try {
         lock.releaseLock();
       } catch (releaseErr) {}
