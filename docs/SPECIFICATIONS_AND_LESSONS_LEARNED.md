@@ -98,32 +98,42 @@ Mọi kỹ sư phần mềm và AI Agent khi làm việc trên dự án này **B
   4. *Nội dung đánh giá*: Mục đích sử dụng vốn thực tế, tiến độ đưa vốn vào dự án, tình trạng máy móc/chuồng trại/vật nuôi, đánh giá mức độ rủi ro (`Bình thường`, `Cần theo dõi`, `Rủi ro cao`).
   5. *Đính kèm tài liệu hiện trường*: Tải ảnh chụp thực địa (qua `ImageUploader` nén tự động) và lưu trữ đường dẫn file scan biên bản kiểm tra ký tay trên Google Drive.
 
-### 1.5. Phân Hệ 5: Đăng Ký Thỏa Thuận Trích Nợ Tự Động (Auto-Debit Agreement) (`DebitManager.jsx`)
-- **Mục tiêu nghiệp vụ**: Quản lý thỏa thuận ủy quyền trích nợ tự động từ tài khoản tiền gửi thanh toán CASA của khách hàng theo chu kỳ định kỳ.
+### 1.5. Phân Hệ 5: Đăng Ký Thỏa Thuận Trích Nợ Tự Động (Auto-Debit Customer Agreement) (`DebitManager.jsx` + `DebitRegisterModal.jsx` + `DebitRegisterTable.jsx` + `DebitAgreementPrintModal.jsx`)
+- **Mục tiêu nghiệp vụ**: Quản lý thỏa thuận ủy quyền trích nợ tự động ở **cấp Khách hàng** trên tài khoản tiền gửi thanh toán CASA (`SoTK`). Khi có phát sinh hoặc thay đổi các hợp đồng tín dụng mới, hệ thống tự động liên kết qua `MaKH` mà không phải đăng ký lại.
 - **Thành phần chức năng chính**:
-  1. *Đăng ký mới*: Nhập Mã KH (hoặc chọn nhanh từ danh bạ), hệ thống tự động điền Họ tên, Số CCCD, Địa chỉ, Số tài khoản CASA liên kết.
-  2. *Lựa chọn Kỳ trích nợ*:
-     - **Kỳ 1 (Ngày 05 hàng tháng)**: Phù hợp khách hàng có lương hưu, trợ cấp hoặc thu nhập đầu tháng.
-     - **Kỳ 2 (Ngày 15 hàng tháng)**: Phù hợp khách hàng lương doanh nghiệp, công chức xã.
-     - **Kỳ 3 (Ngày 25 hàng tháng)**: Phù hợp khách hàng thu nhập kinh doanh tự do cuối tháng.
-  3. *Quản lý trạng thái thỏa thuận*: `Hiệu lực`, `Tạm ngưng`.
-  4. *In văn bản thỏa thuận*: Tự động trộn mẫu văn bản ủy quyền trích nợ (`BM_TN_01`) để khách hàng ký tên lưu hồ sơ tín dụng.
+  1. *Đăng ký mới cấp Khách hàng*:
+     - Tìm kiếm khách hàng đang có dư nợ từ `HDTD_CORE`.
+     - Tự động điền: `MaKH`, `HoTen`, `CCCD`, `NgayCap`, `DienThoai`, `DiaChi`, `SoTK` CASA.
+     - Cho phép xem trước danh sách các Hợp đồng tín dụng hiện hữu của khách hàng.
+     - Lưu trữ vào bảng Google Sheets `DANG_KY_TRICH_NO` (11 cột chuẩn hóa).
+  2. *In Giấy đề nghị ủy quyền trích nợ tự động CASA A4 (`DebitAgreementPrintModal.jsx`)*:
+     - Tự động điền đầy đủ thông tin pháp lý, số tài khoản thanh toán CASA, danh mục HĐTD hiện hữu.
+     - Hỗ trợ in trực tiếp từ trình duyệt và xuất file Microsoft Word (`.doc`) chuẩn văn bản hành chính Quý Lộc, Thanh Hóa có chữ ký khách hàng và người có thẩm quyền.
+  3. *Quản lý trạng thái thỏa thuận*: `Hiệu lực`, `Tạm ngưng`, hỗ trợ lọc nhanh, phân trang và tìm kiếm đa tiêu chí.
 
-### 1.6. Phân Hệ 6: Khởi Tạo & Quản Lý Đợt Trích Nợ Định Kỳ (`DebitManager.jsx` + `DebitBatchCreateModal.jsx` + `DebitBatchDetailModal.jsx`)
-- **Mục tiêu nghiệp vụ**: Tự động tính toán số tiền lãi phát sinh chính xác theo ngày thực tế và số tiền gốc đến hạn của tất cả các món vay đến kỳ thu nợ, tạo bảng kê Master - Detail xuất lệnh sang máy chủ CoreBanking.
+### 1.6. Phân Hệ 6: Cấu Hình Chu Kỳ & Khởi Tạo Đợt Trích Nợ Định Kỳ (`DebitConfigTable.jsx` + `DebitBatchCreateModal.jsx` + `DebitBatchDetailModal.jsx`)
+- **Mục tiêu nghiệp vụ**: Phân loại linh hoạt các hợp đồng vay vào từng đợt thu nợ theo phần ngày của ngày giải ngân `day(NgayVay)`, tự động tính lãi ngày thực tế TT 14/2017/TT-NHNN, gom tổng theo khách hàng và xuất file gửi ngân hàng / in bảng kê A4.
 - **Thành phần chức năng chính**:
-  1. *Khởi tạo Đợt Trích nợ Mới*:
-     - Chọn Tháng/Năm (`yyyyMM`) và Kỳ trích (`1, 2, 3`). Mã đợt tự động sinh: `DOT-202608-K1`.
-     - Hệ thống quét danh sách khách hàng đang có thỏa thuận `Hiệu lực` tại kỳ tương ứng và có khế ước dư nợ > 0 trong `HDTD_CORE`.
-  2. *Engine Tính Lãi Ngày Thực Tế Chuẩn TT 14/2017/TT-NHNN (`interestUtils.js`)*:
-     - Áp dụng nguyên tắc "Tính ngày đầu, bỏ ngày cuối": `Số ngày = Ngày chốt kỳ - Ngày tính lãi bắt đầu`.
-     - Cơ sở năm tài chính: 365 ngày. Mẫu số: 36.500.
-     - Công thức tính lãi khế ước:
-       `Tiền lãi = round((Dư nợ * Lãi suất %/năm * Số ngày thực tế) / 36500)`
-  3. *Cơ chế Lưu Trữ Snapshot Bất Biến (Master - Detail Data Isolation)*:
-     - Lưu 1 dòng tổng hợp vào `DOT_TRICH_NO`: `MaDot`, `ThangNam`, `KyTrich`, `TongPhaiThu`, `TongSoKH`, `TrangThai = 'CHO_TRICH_NO'`.
-     - Lưu chi tiết từng món nợ vào `CHI_TIET_TRICH_NO`: Khóa vĩnh viễn giá trị dư nợ gốc tại thời điểm lập (`DuNoGoc_Snap`), lãi dự kiến (`LaiDuKien`), gốc đến hạn (`GocDuKien`), số tiền trích thực tế (`SoTienTrichThucTe`).
-  4. *Rà soát & Điều chỉnh trước khi trích*: Cho phép Cán bộ Tín dụng/Kế toán điều chỉnh số tiền trích thực tế của từng khách hàng nếu có thỏa thuận riêng hoặc bảo lưu số dư.
+  1. *Cấu hình chu kỳ đợt theo ngày vay trong tháng (`CAU_HINH_DOT_TRICH_NO`)*:
+     - Quản lý các đợt: `MaDotConfig`, `TenDot`, `TuNgayVay`, `DenNgayVay`, `NgayTrichHangThang`, `TrangThai`, `GhiChu`.
+     - Hỗ trợ cả chu kỳ bình thường trong tháng (`5..15` -> trích ngày 15) và chu kỳ vắt qua ranh giới tháng (`26..04` -> trích ngày 05).
+     - Cho phép thêm mới, chỉnh sửa các đợt trích nợ tùy biến theo nhu cầu tác nghiệp thực tế.
+  2. *Khởi tạo Đợt Trích nợ Mới (Quy trình 2 bước chuẩn)*:
+     - **Bước 1**: Chọn Tháng/Năm (`yyyyMM`) và chọn Đợt trích nợ từ danh sách cấu hình động.
+     - **Bước 2**: Hệ thống tự động quét toàn bộ khách hàng đã đăng ký ủy quyền còn hiệu lực:
+       * Đối chiếu `HDTD_CORE` tìm các hợp đồng còn dư nợ `DuNo > 0`.
+       * Lọc chính xác các hợp đồng có `day(NgayVay)` thuộc khoảng ngày của đợt bằng thuật toán `isContractInDebitCycle`.
+       * Tính tiền lãi từng món theo **Thông tư 14/2017/TT-NHNN** ("tính ngày đầu, bỏ ngày cuối", mẫu số 365 ngày) từ `traLaiDenNgay` (hoặc `ngayVay`) đến ngày trích nợ trong tháng.
+       * Cộng dồn nợ tồn đọng kỳ trước từ bảng `NO_TON_DONG` (nếu có).
+  3. *Duyệt & Điều chỉnh danh sách linh hoạt*:
+     - Hiển thị danh sách gom theo Khách Hàng (1 dòng = 1 KH với Số TK CASA và Tổng tiền trích).
+     - Cho phép mở rộng (Accordion) xem chi tiết từng hợp đồng con của khách hàng, tick/bỏ tick từng hợp đồng và tự động cập nhật tổng tiền trích.
+     - Cho phép sửa trực tiếp số tiền trích thực tế nếu có thỏa thuận riêng.
+  4. *Xuất file tác nghiệp chuyên nghiệp*:
+     - **Xuất Excel / CSV lệnh gửi ngân hàng**: Gồm STT, Số tài khoản CASA, Tên chủ tài khoản, Số CCCD/GTTT, Số tiền trích nợ, Nội dung trích nợ.
+     - **Xuất Word (.doc) / In A4 Bảng kê lập đợt**: Mẫu biểu chuẩn kế toán ngân hàng có đầy đủ chữ ký 3 bên: Người lập bảng, Kế toán kiểm soát, Giám đốc Quỹ.
+  5. *Lưu trữ bất biến (Master - Detail Snapshot)*:
+     - Ghi nhận vào `DOT_TRICH_NO` và `CHI_TIET_TRICH_NO` trên Google Sheets, khóa vĩnh viễn số liệu tại thời điểm lập.
 
 ### 1.7. Phân Hệ 7: Đối Soát & Phân Loại Kết Quả Trích Nợ (`Reconciliation.jsx`)
 - **Mục tiêu nghiệp vụ**: Cập nhật kết quả hạch toán thực tế từ CoreBanking vào đợt trích nợ, phân loại chi tiết các khoản nợ thu thành công hoặc thất bại và chốt sổ kỳ thu nợ.

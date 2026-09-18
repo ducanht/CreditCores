@@ -120,6 +120,73 @@ export function getDebitCyclePeriod(thangNamStr, kyTrich) {
 }
 
 /**
+ * Kiểm tra xem một Hợp đồng vay có ngày giải ngân (ngày trong tháng) thuộc khoảng ngày cấu hình của Đợt hay không
+ * Ví dụ:
+ * - Đợt 2 (ngày vay từ 5 đến 15): Ngày vay 08/04/2025 -> ngày 8 -> THUỘC ĐỢT
+ * - Đợt 1 (ngày vay từ 26 đến 04): Ngày vay 29/08/2025 -> ngày 29 -> THUỘC ĐỢT; Ngày vay 02/01/2026 -> ngày 2 -> THUỘC ĐỢT
+ * 
+ * @param {object} contract Hợp đồng tín dụng
+ * @param {number} tuNgayVay Ngày bắt đầu (1 - 31)
+ * @param {number} denNgayVay Ngày kết thúc (1 - 31)
+ * @returns {boolean}
+ */
+export function isContractInDebitCycle(contract, tuNgayVay, denNgayVay) {
+  if (!contract || !contract.ngayVay) return true;
+  const d = parseDateSafe(contract.ngayVay);
+  if (!d) return true;
+
+  const day = d.getDate();
+  const from = Number(tuNgayVay) || 1;
+  const to = Number(denNgayVay) || 31;
+
+  if (from <= to) {
+    return day >= from && day <= to;
+  } else {
+    // Vắt qua ranh giới tháng (ví dụ từ ngày 26 đến ngày 04)
+    return day >= from || day <= to;
+  }
+}
+
+/**
+ * Lấy mốc chu kỳ trích nợ linh hoạt dựa trên ngày trích cấu hình
+ * @param {string} thangNamStr Chuỗi yyyyMM (ví dụ "202609")
+ * @param {number} ngayTrich Ngày trích nợ trong tháng (ví dụ 5, 15, 25 hoặc ngày bất kỳ)
+ * @returns {{ fromDate: Date, toDate: Date, fromDateStr: string, toDateStr: string, standardDays: number }}
+ */
+export function getDebitCyclePeriodFlexible(thangNamStr, ngayTrich = 15) {
+  let year = new Date().getFullYear();
+  let month = new Date().getMonth() + 1;
+
+  if (thangNamStr && typeof thangNamStr === 'string' && thangNamStr.length >= 6) {
+    year = parseInt(thangNamStr.substring(0, 4), 10);
+    month = parseInt(thangNamStr.substring(4, 6), 10);
+  }
+
+  const dayOfMonth = Math.min(Math.max(1, Number(ngayTrich) || 15), 31);
+  const toDate = new Date(year, month - 1, dayOfMonth);
+
+  let prevMonth = month - 1;
+  let prevYear = year;
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear -= 1;
+  }
+  const fromDate = new Date(prevYear, prevMonth - 1, dayOfMonth);
+  const standardDays = calculateActualDays(fromDate, toDate);
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const formatVN = (d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+  return {
+    fromDate,
+    toDate,
+    fromDateStr: formatVN(fromDate),
+    toDateStr: formatVN(toDate),
+    standardDays
+  };
+}
+
+/**
  * Tính số tiền lãi chi tiết cho một Hợp đồng / Khế ước nhận nợ
  * 
  * @param {object} contract Hợp đồng tín dụng (chứa duNo, laiSuat, traLaiDenNgay, ngayVay)

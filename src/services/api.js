@@ -260,6 +260,8 @@ export const api = {
   updateDebitRegister: (data) => sendRequest('updateDebitRegister', data, 'POST'),
   toggleDebitRegisterStatus: (data) => sendRequest('toggleDebitRegisterStatus', data, 'POST'),
   deleteDebitRegister: (data) => sendRequest('deleteDebitRegister', data, 'POST'),
+  getDebitConfigs: (forceFresh = false) => sendRequest('getDebitConfigs', null, 'GET', !forceFresh),
+  saveDebitConfig: (data) => sendRequest('saveDebitConfig', data, 'POST'),
   getDebitBatches: (forceFresh = false) => sendRequest('getDebitBatches', null, 'GET', !forceFresh),
   createDebitBatch: (data) => sendRequest('createDebitBatch', data, 'POST'),
   getDebtWarnings: (forceFresh = false) => sendRequest('getDebtWarnings', null, 'GET', !forceFresh),

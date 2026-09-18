@@ -77,12 +77,18 @@ ALL_SCHEMAS = {
     },
     "DANG_KY_TRICH_NO": {
         "headers": [
-            "SoHDTD", "MaKH", "TenKH", "SoTK",
-            "NgayVay", "TraLaiDenNgay", "LaiSuat",
-            "SoTienLai", "SoTienNo", "SoGoc", "TongTien",
-            "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
+            "MaKH", "HoTen", "CCCD", "NgayCap", "DienThoai", "DiaChi", "SoTK", "KyTrichMacDinh", "TrangThai", "GhiChu", "NgayTao"
         ],
         "color": {"red": 0.06, "green": 0.32, "blue": 0.20}
+    },
+    "CAU_HINH_DOT_TRICH_NO": {
+        "headers": ["MaDotConfig", "TenDot", "TuNgayVay", "DenNgayVay", "NgayTrichHangThang", "TrangThai", "GhiChu"],
+        "color": {"red": 0.01, "green": 0.52, "blue": 0.78},
+        "defaultData": [
+            ["DOT_01", "Đợt 1 - Kỳ ngày 05", 26, 4, 5, "ACTIVE", "Áp dụng cho HĐTD giải ngân ngày 26 đến ngày 04"],
+            ["DOT_02", "Đợt 2 - Kỳ ngày 15", 5, 15, 15, "ACTIVE", "Áp dụng cho HĐTD giải ngân ngày 05 đến ngày 15"],
+            ["DOT_03", "Đợt 3 - Kỳ ngày 25", 16, 25, 25, "ACTIVE", "Áp dụng cho HĐTD giải ngân ngày 16 đến ngày 25"]
+        ]
     },
     "LICH_SU_TRICH_NO": {
         "headers": [

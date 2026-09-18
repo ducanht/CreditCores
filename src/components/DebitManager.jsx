@@ -4,11 +4,12 @@ import {
   Zap,
   Plus,
   Play,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 import { api } from '../services/api';
 import { SegControl } from './shared';
-import { DebitRegisterTable, DebitBatchTable } from './debit';
+import { DebitRegisterTable, DebitBatchTable, DebitConfigTable } from './debit';
 import DebitBatchCreateModal from './modals/DebitBatchCreateModal';
 import DebitRegisterModal from './modals/DebitRegisterModal';
 import DebitBatchDetailModal from './modals/DebitBatchDetailModal';
@@ -18,6 +19,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'register');
   const [registrations, setRegistrations] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [debitConfigs, setDebitConfigs] = useState([]);
   const [allCustomers, setAllCustomers] = useState([]);
   const [allContracts, setAllContracts] = useState([]);
   const [debtWarnings, setDebtWarnings] = useState([]);
@@ -51,15 +53,18 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resReg, resBatch, resCust, resWarn] = await Promise.all([
+      const [resReg, resBatch, resCfg, resCust, resWarn] = await Promise.all([
         api.getDebitRegistrations(true),
         api.getDebitBatches(true),
+        api.getDebitConfigs(true),
         api.searchCustomer360({ query: '', limit: 1000 }),
         api.getDebtWarnings()
       ]);
 
       if (resReg.status === 'success' && resReg.data) setRegistrations(resReg.data);
       if (resBatch.status === 'success' && resBatch.data) setBatches(resBatch.data);
+      if (resCfg.status === 'success' && resCfg.data) setDebitConfigs(resCfg.data);
+      
       if (resCust.status === 'success' && resCust.data) {
         const custList = Array.isArray(resCust.data) ? resCust.data : (resCust.data.customers || []);
         const contractsList = [];
@@ -81,7 +86,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
       }
       if (resWarn.status === 'success' && resWarn.data) setDebtWarnings(resWarn.data);
     } catch (e) {
-      console.error('Lỗi nạp dữ liệu trích nợ:', e);
+      console.error('Lỗi nạp dữ liệu module trích nợ:', e);
     } finally {
       setLoading(false);
     }
@@ -136,7 +141,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
   };
 
   const handleToggleStatus = async (r) => {
-    const isCurrentActive = r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc';
+    const isCurrentActive = r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' || r.trangThai === 'ACTIVE' || !r.trangThai;
     const nextStatus = isCurrentActive ? 'Tạm ngưng' : 'Hiệu lực';
     if (!window.confirm(`Xác nhận chuyển trạng thái thỏa thuận của khách hàng "${r.hoTen}" sang "${nextStatus}"?`)) {
       return;
@@ -191,6 +196,21 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
     }
   };
 
+  // Lưu cấu hình đợt trích nợ theo ngày vay
+  const handleSaveConfig = async (configPayload) => {
+    try {
+      const res = await api.saveDebitConfig(configPayload);
+      if (res.status === 'success') {
+        alert(res.message || 'Lưu cấu hình đợt trích nợ thành công!');
+        fetchData();
+      } else {
+        alert('Lỗi: ' + res.message);
+      }
+    } catch (err) {
+      alert('Lỗi hệ thống: ' + err.message);
+    }
+  };
+
   // Filtered & Paginated Registrations
   const filteredRegs = registrations.filter((r) => {
     const matchSearch =
@@ -198,9 +218,11 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
       r.hoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.maKH?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.soTK?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.gttt?.toLowerCase().includes(searchTerm.toLowerCase());
+      (r.cccd && r.cccd.includes(searchTerm)) ||
+      (r.gttt && r.gttt.includes(searchTerm));
 
-    const matchKy = filterKyTrich === 'ALL' || Number(r.kyTrich) === Number(filterKyTrich);
+    const ky = Number(r.kyTrichMacDinh || r.kyTrich);
+    const matchKy = filterKyTrich === 'ALL' || ky === Number(filterKyTrich);
     const matchStatus = filterTrangThai === 'ALL' || r.trangThai === filterTrangThai;
     return matchSearch && matchKy && matchStatus;
   });
@@ -209,8 +231,9 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
   const paginatedBatches = batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize);
 
   const subTabOptions = [
-    { id: 'register', label: 'Danh Sách Đăng Ký Trích Nợ', icon: UserCheck, count: registrations.length },
-    { id: 'batch', label: 'Quản Lý Đợt Trích Nợ Định Kỳ', icon: Zap, count: batches.length }
+    { id: 'register', label: '1. Khách Hàng Đăng Ký Trích Nợ', icon: UserCheck, count: registrations.length },
+    { id: 'batch', label: '2. Đợt Trích Nợ Định Kỳ', icon: Zap, count: batches.length },
+    { id: 'config', label: '3. Cấu Hình Chu Kỳ Đợt', icon: Settings, count: debitConfigs.length }
   ];
 
   return (
@@ -235,7 +258,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
             <span className="d-none d-sm-inline">Tải lại</span>
           </button>
 
-          {activeSubTab === 'register' ? (
+          {activeSubTab === 'register' && (
             <button
               className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
               onClick={() => {
@@ -245,7 +268,9 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
             >
               <Plus size={15} /> Đăng Ký Mới
             </button>
-          ) : (
+          )}
+
+          {activeSubTab === 'batch' && (
             <button
               className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
               onClick={() => setShowBatchModal(true)}
@@ -300,6 +325,15 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         />
       )}
 
+      {/* SUB-TAB 3: CẤU HÌNH ĐỢT TRÍCH NỢ THEO NGÀY VAY */}
+      {activeSubTab === 'config' && (
+        <DebitConfigTable
+          configs={debitConfigs}
+          onSaveConfig={handleSaveConfig}
+          loading={loading}
+        />
+      )}
+
       {/* EXTRACTED MODALS */}
       <DebitRegisterModal
         show={showRegModal}
@@ -324,6 +358,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         registrations={registrations}
         contracts={allContracts}
         debtWarnings={debtWarnings}
+        debitConfigs={debitConfigs}
       />
 
       <DebitBatchDetailModal

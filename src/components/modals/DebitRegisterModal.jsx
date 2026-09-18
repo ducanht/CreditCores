@@ -4,23 +4,24 @@ import {
   Edit3,
   AlertCircle,
   Search,
-  CheckSquare,
-  Square,
   CheckCircle2,
   Calendar,
-  Filter,
   FileText,
   CreditCard,
-  Printer
+  Printer,
+  X,
+  Phone,
+  MapPin,
+  ShieldCheck,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
-import { isValidCCCD } from '../../utils/validators';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
 export default function DebitRegisterModal({
   show,
   onClose,
   onSubmit,
-  onBatchSubmit,
   editingItem = null,
   prefilledCustomer = null,
   allCustomers = [],
@@ -28,658 +29,488 @@ export default function DebitRegisterModal({
   registrations = [],
   onPrintAgreement
 }) {
+  if (!show) return null;
+
   const isEdit = Boolean(editingItem);
 
-  // --- 1. STATE CHO CHẾ ĐỘ CHỈNH SỬA (SINGLE EDIT) ---
-  const [editFormData, setEditFormData] = useState({
+  // --- STATE FORM ĐĂNG KÝ ---
+  const [formData, setFormData] = useState({
     maKH: '',
     hoTen: '',
-    gttt: '',
-    soTK: '',
+    cccd: '',
+    ngayCap: '',
+    dienThoai: '',
     diaChi: '',
-    kyTrich: 1,
+    soTK: '',
+    kyTrichMacDinh: 0, // 0: Linh hoạt theo ngày vay của HĐTD
     trangThai: 'Hiệu lực',
-    ghiChu: ''
+    ghiChu: 'Ủy quyền trích nợ tự động tài khoản thanh toán CASA'
   });
 
-  // --- 2. STATE CHO CHẾ ĐỘ ĐĂNG KÝ MỚI THEO HĐTD (BATCH SELECTION) ---
-  const [selectedKyTrich, setSelectedKyTrich] = useState(1);
-  const [batchTrangThai, setBatchTrangThai] = useState('Hiệu lực');
-  const [batchGhiChu, setBatchGhiChu] = useState('Ủy quyền trích nợ tự động CASA');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRegStatus, setFilterRegStatus] = useState('ALL'); // 'ALL' | 'UNREGISTERED' | 'REGISTERED'
-  const [selectedHDTDMaps, setSelectedHDTDMaps] = useState({});
-  const [customSoTKMaps, setCustomSoTKMaps] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Map tra cứu nhanh trạng thái đăng ký của khách hàng từ danh sách registrations
-  const regMap = useMemo(() => {
+  // Map danh sách đăng ký hiện có theo cleanMaKH
+  const existingRegMap = useMemo(() => {
     const map = {};
-    (registrations || []).forEach((r) => {
-      const cleanMa = String(r.maKH || '').replace(/^'/, '').trim();
-      if (cleanMa) {
-        map[cleanMa] = r;
-      }
+    (registrations || []).forEach(r => {
+      const clean = String(r.maKH || '').replace(/^'/, '').trim();
+      if (clean) map[clean] = r;
     });
     return map;
   }, [registrations]);
 
-  // Map tra cứu thông tin khách hàng từ KH_CORE
-  const customerMap = useMemo(() => {
-    const map = {};
-    (allCustomers || []).forEach((c) => {
-      const cleanMa = String(c.maKH || '').replace(/^'/, '').trim();
-      if (cleanMa) {
-        map[cleanMa] = c;
-      }
+  // Danh sách khách hàng đang có dư nợ hoặc đang có hợp đồng vay
+  const candidateCustomers = useMemo(() => {
+    const term = customerSearchTerm.toLowerCase().trim();
+    return (allCustomers || [])
+      .filter(c => {
+        if (!term) return true;
+        const ma = String(c.maKH || '').toLowerCase();
+        const ten = String(c.hoTen || '').toLowerCase();
+        const cccd = String(c.cccd || c.gttt || '').toLowerCase();
+        const sdt = String(c.dienThoai || c.dienThoaiDD || '').toLowerCase();
+        return ma.includes(term) || ten.includes(term) || cccd.includes(term) || sdt.includes(term);
+      })
+      .slice(0, 30); // Giới hạn 30 kết quả cho nhanh
+  }, [allCustomers, customerSearchTerm]);
+
+  // Các hợp đồng vay của khách hàng đang chọn
+  const selectedCustContracts = useMemo(() => {
+    if (!formData.maKH) return [];
+    const clean = String(formData.maKH).replace(/^'/, '').trim();
+    return (allContracts || []).filter(c => {
+      const cMa = String(c.maKH || '').replace(/^'/, '').trim();
+      return cMa === clean && (Number(c.duNo) > 0 || c.trangThaiHD === 'DANG_VAY');
     });
-    return map;
-  }, [allCustomers]);
+  }, [formData.maKH, allContracts]);
 
-  // Danh sách HĐTD hợp lệ đang vay (dư nợ > 0 hoặc trạng thái DANG_VAY)
-  const enrichedContracts = useMemo(() => {
-    return (allContracts || [])
-      .filter((c) => (c.duNo > 0 || c.trangThaiHD === 'DANG_VAY' || c.trangThai !== 'Đã tất toán'))
-      .map((c) => {
-        const cleanMa = String(c.maKH || '').replace(/^'/, '').trim();
-        const cust = customerMap[cleanMa] || {};
-        const reg = regMap[cleanMa];
-        return {
-          ...c,
-          cleanMaKH: cleanMa,
-          hoTen: c.hoTen || cust.hoTen || 'Khách hàng',
-          cccd: c.cccd || cust.cccd || cust.gttt || '',
-          soTK: c.soTK || cust.soTK || '',
-          diaChi: c.diaChi || cust.diaChi || '',
-          isRegistered: Boolean(reg),
-          existingReg: reg || null
-        };
-      });
-  }, [allContracts, customerMap, regMap]);
-
-  // Lọc HĐTD theo từ khóa tìm kiếm và bộ lọc trạng thái đăng ký
-  const filteredContracts = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    return enrichedContracts.filter((c) => {
-      const matchSearch =
-        !term ||
-        c.hoTen?.toLowerCase().includes(term) ||
-        c.soHDTD?.toLowerCase().includes(term) ||
-        c.cleanMaKH?.toLowerCase().includes(term) ||
-        c.cccd?.toLowerCase().includes(term) ||
-        c.soTK?.toLowerCase().includes(term);
-
-      const matchReg =
-        filterRegStatus === 'ALL' ||
-        (filterRegStatus === 'UNREGISTERED' && !c.isRegistered) ||
-        (filterRegStatus === 'REGISTERED' && c.isRegistered);
-
-      return matchSearch && matchReg;
-    });
-  }, [enrichedContracts, searchTerm, filterRegStatus]);
-
-  // Reset form khi mở modal
+  // Khởi tạo form khi mở modal
   useEffect(() => {
-    if (!show) return;
-
     if (editingItem) {
-      setEditFormData({
-        maKH: editingItem.maKH || '',
-        hoTen: editingItem.hoTen || '',
-        gttt: editingItem.gttt || '',
-        soTK: editingItem.soTK || '',
+      setFormData({
+        maKH: String(editingItem.maKH || '').replace(/^'/, ''),
+        hoTen: editingItem.hoTen || editingItem.tenKH || '',
+        cccd: String(editingItem.cccd || editingItem.gttt || '').replace(/^'/, ''),
+        ngayCap: editingItem.ngayCap || '',
+        dienThoai: String(editingItem.dienThoai || '').replace(/^'/, ''),
         diaChi: editingItem.diaChi || '',
-        kyTrich: Number(editingItem.kyTrich) || 1,
+        soTK: String(editingItem.soTK || '').replace(/^'/, ''),
+        kyTrichMacDinh: Number(editingItem.kyTrichMacDinh || editingItem.kyTrich || 0),
         trangThai: editingItem.trangThai || 'Hiệu lực',
-        ghiChu: editingItem.ghiChu || ''
+        ghiChu: editingItem.ghiChu || 'Ủy quyền trích nợ tự động tài khoản thanh toán CASA'
       });
       setFormError('');
+    } else if (prefilledCustomer) {
+      handleSelectCustomer(prefilledCustomer);
     } else {
-      setSelectedKyTrich(1);
-      setBatchTrangThai('Hiệu lực');
-      setBatchGhiChu('Ủy quyền trích nợ tự động CASA');
-      setSearchTerm('');
-      setFilterRegStatus('ALL');
-      setSelectedHDTDMaps({});
-      setCustomSoTKMaps({});
+      setFormData({
+        maKH: '',
+        hoTen: '',
+        cccd: '',
+        ngayCap: '',
+        dienThoai: '',
+        diaChi: '',
+        soTK: '',
+        kyTrichMacDinh: 0,
+        trangThai: 'Hiệu lực',
+        ghiChu: 'Ủy quyền trích nợ tự động tài khoản thanh toán CASA'
+      });
+      setCustomerSearchTerm('');
       setFormError('');
-
-      // Nếu có prefilledCustomer từ trang chi tiết
-      if (prefilledCustomer) {
-        const cleanMa = String(prefilledCustomer.maKH || '').replace(/^'/, '').trim();
-        const initialMap = {};
-        enrichedContracts.forEach((c) => {
-          if (c.cleanMaKH === cleanMa) {
-            initialMap[c.soHDTD] = true;
-          }
-        });
-        setSelectedHDTDMaps(initialMap);
-      }
     }
   }, [editingItem, prefilledCustomer, show]);
 
-  // Xử lý tick chọn từng HĐTD
-  const handleToggleHDTD = (soHDTD) => {
-    setSelectedHDTDMaps((prev) => ({
+  const handleSelectCustomer = (cust) => {
+    const cleanMa = String(cust.maKH || '').replace(/^'/, '').trim();
+    const cleanCCCD = String(cust.cccd || cust.gttt || '').replace(/^'/, '').trim();
+    const cleanSoTK = String(cust.soTK || '').replace(/^'/, '').trim();
+    const cleanSDT = String(cust.dienThoai || cust.dienThoaiDD || '').replace(/^'/, '').trim();
+
+    setFormData(prev => ({
       ...prev,
-      [soHDTD]: !prev[soHDTD]
+      maKH: cleanMa,
+      hoTen: cust.hoTen || '',
+      cccd: cleanCCCD,
+      ngayCap: cust.ngayCap || '',
+      dienThoai: cleanSDT,
+      diaChi: cust.diaChi || cust.khuVuc || '',
+      soTK: cleanSoTK || prev.soTK,
+      ghiChu: prev.ghiChu || 'Ủy quyền trích nợ tự động tài khoản thanh toán CASA'
     }));
+
+    setShowCustomerDropdown(false);
+    setFormError('');
   };
 
-  // Xử lý Chọn tất cả / Bỏ chọn tất cả các HĐTD đang hiển thị
-  const isAllFilteredSelected = useMemo(() => {
-    if (filteredContracts.length === 0) return false;
-    return filteredContracts.every((c) => selectedHDTDMaps[c.soHDTD]);
-  }, [filteredContracts, selectedHDTDMaps]);
-
-  const handleToggleSelectAll = () => {
-    const nextState = !isAllFilteredSelected;
-    const newSelected = { ...selectedHDTDMaps };
-    filteredContracts.forEach((c) => {
-      newSelected[c.soHDTD] = nextState;
-    });
-    setSelectedHDTDMaps(newSelected);
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (formError) setFormError('');
   };
 
-  // Đếm số lượng HĐTD và số lượng Khách hàng đã chọn
-  const { selectedCount, selectedCustCount, selectedContractList } = useMemo(() => {
-    const list = enrichedContracts.filter((c) => selectedHDTDMaps[c.soHDTD]);
-    const uniqueCust = new Set(list.map((c) => c.cleanMaKH));
-    return {
-      selectedCount: list.length,
-      selectedCustCount: uniqueCust.size,
-      selectedContractList: list
-    };
-  }, [enrichedContracts, selectedHDTDMaps]);
-
-  // Xử lý submit ở chế độ chỉnh sửa đơn lẻ
-  const handleSingleEditSubmit = (e) => {
-    e.preventDefault();
-    if (!editFormData.maKH || !editFormData.hoTen || !editFormData.soTK) {
-      setFormError('Vui lòng điền đầy đủ Mã KH, Họ tên và Số tài khoản CASA.');
+  const handleSubmit = async (andPrint = false) => {
+    if (!formData.maKH) {
+      setFormError('Vui lòng chọn khách hàng cần đăng ký thỏa thuận trích nợ!');
       return;
     }
-    if (editFormData.gttt && !isValidCCCD(editFormData.gttt)) {
-      setFormError('Số CCCD không hợp lệ (Phải đúng 12 chữ số bắt đầu bằng số 0).');
+    if (!formData.soTK) {
+      setFormError('Số tài khoản tiền gửi thanh toán (CASA) không được để trống!');
       return;
     }
-    if (onSubmit) {
-      onSubmit(editFormData);
-    }
-  };
-
-  // Xử lý submit ở chế độ thêm đăng ký hàng loạt theo HĐTD
-  const handleBatchRegisterSubmit = async (e) => {
-    e.preventDefault();
-    if (selectedCount === 0) {
-      setFormError('Vui lòng tick chọn ít nhất một Hợp đồng tín dụng để thêm đăng ký trích nợ!');
-      return;
-    }
-
-    // Nhóm các HĐTD theo khách hàng (MaKH) để tránh trùng lặp bản ghi đăng ký
-    const custMap = {};
-    selectedContractList.forEach((c) => {
-      const maKH = c.cleanMaKH;
-      const soTK = customSoTKMaps[c.soHDTD] || c.soTK || '';
-      if (!custMap[maKH]) {
-        custMap[maKH] = {
-          maKH: maKH,
-          hoTen: c.hoTen,
-          gttt: c.cccd,
-          soTK: soTK,
-          diaChi: c.diaChi,
-          kyTrich: Number(selectedKyTrich),
-          trangThai: batchTrangThai,
-          ghiChu: batchGhiChu ? `${batchGhiChu} (HĐ: ${c.soHDTD})` : `HĐ: ${c.soHDTD}`,
-          hdList: [c.soHDTD]
-        };
-      } else {
-        custMap[maKH].hdList.push(c.soHDTD);
-        custMap[maKH].ghiChu = `${batchGhiChu} (HĐ: ${custMap[maKH].hdList.join(', ')})`;
-        if (!custMap[maKH].soTK && soTK) {
-          custMap[maKH].soTK = soTK;
-        }
-      }
-    });
-
-    const payloadItems = Object.values(custMap);
 
     setIsSubmitting(true);
     setFormError('');
+
     try {
-      if (onBatchSubmit) {
-        await onBatchSubmit({
-          kyTrich: Number(selectedKyTrich),
-          trangThai: batchTrangThai,
-          ghiChu: batchGhiChu,
-          items: payloadItems
-        });
-      } else if (onSubmit) {
-        // Fallback gọi onSubmit cho từng item nếu onBatchSubmit không truyền
-        for (const item of payloadItems) {
-          await onSubmit(item);
-        }
+      await onSubmit(formData);
+      if (andPrint && onPrintAgreement) {
+        onPrintAgreement(formData);
       }
-    } catch (err) {
-      setFormError('Lỗi xử lý đăng ký: ' + err.message);
+    } catch (e) {
+      setFormError(e.message || 'Lỗi lưu thỏa thuận trích nợ!');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!show) return null;
-
-  // =========================================================================
-  // VIEW 1: CHỈNH SỬA THỎA THUẬN CÓ SẴN (SINGLE EDIT)
-  // =========================================================================
-  if (isEdit) {
-    return (
-      <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-          <div className="modal-content card-modern p-4">
-            <div className="modal-header border-0 pb-0">
-              <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-                <Edit3 size={20} className="text-primary" /> Chỉnh Sửa Thỏa Thuận Trích Nợ Tự Động CASA
-              </h5>
-              <button type="button" className="btn-close" onClick={onClose} />
-            </div>
-
-            <form onSubmit={handleSingleEditSubmit}>
-              <div className="modal-body py-3">
-                {formError && (
-                  <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mb-3">
-                    <AlertCircle size={16} />
-                    <div>{formError}</div>
-                  </div>
-                )}
-
-                <div className="row g-3">
-                  <div className="col-12 col-md-4">
-                    <label className="form-label small fw-bold text-dark">Mã Khách Hàng</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm font-monospace fw-bold bg-light"
-                      value={editFormData.maKH}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="col-12 col-md-8">
-                    <label className="form-label small fw-bold text-dark">Họ Và Tên Khách Hàng</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm fw-bold bg-light"
-                      value={editFormData.hoTen}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <label className="form-label small fw-bold text-dark">Số CCCD (12 chữ số)</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm font-monospace bg-light"
-                      maxLength={12}
-                      value={editFormData.gttt}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <label className="form-label small fw-bold text-dark">Số Tài Khoản CASA</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm font-monospace fw-bold text-success"
-                      placeholder="010000001888"
-                      value={editFormData.soTK}
-                      onChange={(e) => setEditFormData({ ...editFormData, soTK: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="col-12">
-                    <label className="form-label small fw-bold text-dark">Địa Chỉ Thường Trú</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm bg-light"
-                      value={editFormData.diaChi}
-                      readOnly
-                    />
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <label className="form-label small fw-bold text-dark">Kỳ Trích Nợ Đăng Ký</label>
-                    <select
-                      className="form-select form-select-sm fw-bold"
-                      value={editFormData.kyTrich}
-                      onChange={(e) => setEditFormData({ ...editFormData, kyTrich: Number(e.target.value) })}
-                    >
-                      <option value={1}>Kỳ 1 (Ngày 05 hàng tháng)</option>
-                      <option value={2}>Kỳ 2 (Ngày 15 hàng tháng)</option>
-                      <option value={3}>Kỳ 3 (Ngày 25 hàng tháng)</option>
-                    </select>
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <label className="form-label small fw-bold text-dark">Trạng Thái Thỏa Thuận</label>
-                    <select
-                      className="form-select form-select-sm"
-                      value={editFormData.trangThai}
-                      onChange={(e) => setEditFormData({ ...editFormData, trangThai: e.target.value })}
-                    >
-                      <option value="Hiệu lực">Hiệu lực</option>
-                      <option value="Tạm ngưng">Tạm ngưng</option>
-                      <option value="Hủy">Hủy đăng ký</option>
-                    </select>
-                  </div>
-
-                  <div className="col-12">
-                    <label className="form-label small fw-bold text-dark">Ghi Chú Nghiệp Vụ</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="Ghi chú chi tiết hoặc thỏa thuận riêng..."
-                      value={editFormData.ghiChu}
-                      onChange={(e) => setEditFormData({ ...editFormData, ghiChu: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="modal-footer border-0 pt-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                  {onPrintAgreement && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-info btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
-                      onClick={() => onPrintAgreement(editFormData)}
-                      title="Xem trước và in Giấy thỏa thuận ủy quyền trích nợ A4"
-                    >
-                      <Printer size={15} /> In Thỏa Thuận A4
-                    </button>
-                  )}
-                </div>
-                <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-light btn-sm" onClick={onClose}>
-                    Đóng
-                  </button>
-                  <button type="submit" className="btn btn-brand btn-sm fw-bold shadow-sm">
-                    Cập Nhật Thỏa Thuận
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // VIEW 2: ĐĂNG KÝ TRÍCH NỢ MỚI THEO HỢP ĐỒNG TÍN DỤNG (BATCH ENROLLMENT)
-  // =========================================================================
   return (
-    <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1050 }}>
-      <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: '95%' }}>
-        <div className="modal-content card-modern p-3 p-md-4">
-          {/* HEADER MODAL */}
-          <div className="modal-header border-0 pb-2">
-            <div>
-              <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-                <UserCheck size={22} className="text-primary" /> Đăng Ký Thỏa Thuận Trích Nợ Tự Động CASA
-              </h5>
-              <p className="text-muted small m-0 mt-0.5">
-                Chọn đợt trích nợ định kỳ, tra cứu các hợp đồng tín dụng và tick chọn khách hàng ủy quyền trích nợ tự động.
-              </p>
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 1050 }}>
+      <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-content shadow-lg border-0 rounded-3">
+          {/* Header */}
+          <div className="modal-header bg-gradient bg-primary text-white py-3 px-4">
+            <div className="d-flex align-items-center gap-2">
+              <div className="p-2 bg-white bg-opacity-20 rounded-circle text-white">
+                {isEdit ? <Edit3 size={20} /> : <UserCheck size={20} />}
+              </div>
+              <div>
+                <h5 className="modal-title fw-bold mb-0">
+                  {isEdit ? 'Cập Nhật Thỏa Thuận Trích Nợ' : 'Đăng Ký Trích Nợ Tự Động CASA'}
+                </h5>
+                <small className="text-white-50">
+                  Ủy quyền trích nợ tự động tài khoản tiền gửi thanh toán phục vụ thu nợ vay
+                </small>
+              </div>
             </div>
-            <button type="button" className="btn-close" onClick={onClose} />
+            <button type="button" className="btn-close btn-close-white" onClick={onClose} disabled={isSubmitting}></button>
           </div>
 
-          <form onSubmit={handleBatchRegisterSubmit} className="d-flex flex-column" style={{ minHeight: 0 }}>
-            {/* THÔNG BÁO LỖI NẾU CÓ */}
+          {/* Body */}
+          <div className="modal-body p-4">
             {formError && (
-              <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mx-3 mb-2">
-                <AlertCircle size={16} className="flex-shrink-0" />
-                <div>{formError}</div>
+              <div className="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3 shadow-sm border-0">
+                <AlertCircle size={18} className="text-danger flex-shrink-0" />
+                <span className="small">{formError}</span>
               </div>
             )}
 
-            {/* BƯỚC 1: KHỐI CHỌN ĐỢT TRÍCH NỢ & CẤU HÌNH */}
-            <div className="p-3 bg-light rounded-3 border mx-3 mb-3">
-              <div className="row g-3 align-items-center">
-                <div className="col-12 col-md-4">
-                  <label className="form-label small fw-bold text-primary mb-1 d-flex align-items-center gap-1">
-                    <Calendar size={14} /> Chọn Kỳ / Đợt Trích Nợ Định Kỳ:
-                  </label>
-                  <select
-                    className="form-select form-select-sm fw-bold border-primary"
-                    value={selectedKyTrich}
-                    onChange={(e) => setSelectedKyTrich(Number(e.target.value))}
-                  >
-                    <option value={1}>Kỳ 1 (Ngày 05 hàng tháng)</option>
-                    <option value={2}>Kỳ 2 (Ngày 15 hàng tháng)</option>
-                    <option value={3}>Kỳ 3 (Ngày 25 hàng tháng)</option>
-                  </select>
-                </div>
-
-                <div className="col-12 col-md-3">
-                  <label className="form-label small fw-bold text-dark mb-1">Trạng Thái Áp Dụng:</label>
-                  <select
-                    className="form-select form-select-sm"
-                    value={batchTrangThai}
-                    onChange={(e) => setBatchTrangThai(e.target.value)}
-                  >
-                    <option value="Hiệu lực">Hiệu lực (Kích hoạt ngay)</option>
-                    <option value="Tạm ngưng">Tạm ngưng (Tạm hoãn trích)</option>
-                  </select>
-                </div>
-
-                <div className="col-12 col-md-5">
-                  <label className="form-label small fw-bold text-dark mb-1">Ghi Chú Nghiệp Vụ:</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="Ghi chú đợt đăng ký hoặc số quyết định..."
-                    value={batchGhiChu}
-                    onChange={(e) => setBatchGhiChu(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* BƯỚC 2: THANH TÌM KIẾM & BỘ LỌC HĐTD */}
-            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 mb-2">
-              <div className="d-flex align-items-center gap-2 flex-wrap flex-grow-1">
-                <div className="input-group input-group-sm" style={{ minWidth: 260, maxWidth: 360 }}>
-                  <span className="input-group-text bg-white border-end-0 text-muted">
-                    <Search size={14} />
+            {/* BƯỚC 1: TÌM KIẾM KHÁCH HÀNG (Nếu là thêm mới) */}
+            {!isEdit && (
+              <div className="mb-3 position-relative">
+                <label className="form-label fw-bold small text-muted text-uppercase mb-1">
+                  1. Tìm Kiếm Khách Hàng Đang Có Dư Nợ
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0 text-muted">
+                    <Search size={16} />
                   </span>
                   <input
                     type="text"
-                    className="form-control border-start-0"
-                    placeholder="Tìm tên KH, số HĐTD, mã KH, CCCD..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="form-control border-start-0 ps-0"
+                    placeholder="Nhập tên, số CCCD hoặc Mã KH để tìm nhanh..."
+                    value={customerSearchTerm}
+                    onChange={(e) => {
+                      setCustomerSearchTerm(e.target.value);
+                      setShowCustomerDropdown(true);
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                  />
+                  {customerSearchTerm && (
+                    <button
+                      className="btn btn-outline-secondary border"
+                      type="button"
+                      onClick={() => {
+                        setCustomerSearchTerm('');
+                        setShowCustomerDropdown(false);
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown gợi ý khách hàng */}
+                {showCustomerDropdown && candidateCustomers.length > 0 && (
+                  <div
+                    className="dropdown-menu show w-100 shadow border-0 mt-1 py-1 overflow-auto"
+                    style={{ maxHeight: '240px', zIndex: 1060 }}
+                  >
+                    <div className="dropdown-header small text-uppercase fw-bold text-primary">
+                      Gợi ý khách hàng ({candidateCustomers.length})
+                    </div>
+                    {candidateCustomers.map((cust) => {
+                      const cMa = String(cust.maKH || '').replace(/^'/, '');
+                      const isReg = Boolean(existingRegMap[cMa]);
+                      return (
+                        <button
+                          key={cMa}
+                          type="button"
+                          className="dropdown-item py-2 px-3 d-flex justify-content-between align-items-center border-bottom border-light"
+                          onClick={() => handleSelectCustomer(cust)}
+                        >
+                          <div>
+                            <div className="fw-bold text-dark d-flex align-items-center gap-2">
+                              <span>{cust.hoTen}</span>
+                              <span className="badge bg-light text-secondary border font-monospace small">
+                                {cMa}
+                              </span>
+                              {isReg && (
+                                <span className="badge bg-success-subtle text-success border border-success-subtle small">
+                                  Đã đăng ký
+                                </span>
+                              )}
+                            </div>
+                            <div className="small text-muted d-flex gap-3 mt-1">
+                              <span>CCCD: {cust.cccd || cust.gttt || '---'}</span>
+                              <span>SĐT: {cust.dienThoai || cust.dienThoaiDD || '---'}</span>
+                              <span>STK CASA: <strong>{cust.soTK || 'Chưa có'}</strong></span>
+                            </div>
+                          </div>
+                          <div className="text-end">
+                            <div className="small fw-bold text-danger">
+                              {Number(cust.tongDuNoHienTai || 0).toLocaleString('vi-VN')} đ
+                            </div>
+                            <small className="text-muted">{cust.soLuongHDVay || 0} món vay</small>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* BƯỚC 2: THÔNG TIN KHÁCH HÀNG & THỎA THUẬN */}
+            <div className="card-modern p-3 mb-3 bg-light bg-opacity-50">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <label className="form-label small fw-bold text-muted mb-1">Mã Khách Hàng</label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace bg-white fw-bold"
+                    value={formData.maKH}
+                    readOnly
+                    placeholder="Chưa chọn KH"
                   />
                 </div>
 
-                <div className="btn-group btn-group-sm">
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${filterRegStatus === 'ALL' ? 'btn-secondary fw-bold' : 'btn-outline-secondary'}`}
-                    onClick={() => setFilterRegStatus('ALL')}
+                <div className="col-md-8">
+                  <label className="form-label small fw-bold text-muted mb-1">Họ và Tên Khách Hàng *</label>
+                  <input
+                    type="text"
+                    className="form-control fw-bold bg-white"
+                    value={formData.hoTen}
+                    onChange={(e) => handleInputChange('hoTen', e.target.value)}
+                    placeholder="Họ và tên khách hàng"
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label small fw-bold text-muted mb-1">Số CCCD / GTTT</label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace bg-white"
+                    value={formData.cccd}
+                    onChange={(e) => handleInputChange('cccd', e.target.value)}
+                    placeholder="Số CCCD 12 số"
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label small fw-bold text-muted mb-1">Ngày Cấp GTTT</label>
+                  <input
+                    type="text"
+                    className="form-control bg-white"
+                    value={formData.ngayCap}
+                    onChange={(e) => handleInputChange('ngayCap', e.target.value)}
+                    placeholder="dd/MM/yyyy"
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label small fw-bold text-muted mb-1">Số Điện Thoại</label>
+                  <input
+                    type="text"
+                    className="form-control bg-white"
+                    value={formData.dienThoai}
+                    onChange={(e) => handleInputChange('dienThoai', e.target.value)}
+                    placeholder="Số điện thoại liên hệ"
+                  />
+                </div>
+
+                <div className="col-md-8">
+                  <label className="form-label small fw-bold text-muted mb-1">Địa Chỉ Thường Trú</label>
+                  <input
+                    type="text"
+                    className="form-control bg-white"
+                    value={formData.diaChi}
+                    onChange={(e) => handleInputChange('diaChi', e.target.value)}
+                    placeholder="Thôn, xã, huyện..."
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label small fw-bold text-primary mb-1">
+                    <CreditCard size={14} className="me-1 inline" />
+                    Số Tài Khoản CASA (Trích nợ) *
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control font-monospace fw-bold text-primary border-primary bg-white"
+                    value={formData.soTK}
+                    onChange={(e) => handleInputChange('soTK', e.target.value)}
+                    placeholder="Số TK tiền gửi thanh toán"
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label small fw-bold text-muted mb-1">
+                    <Calendar size={14} className="me-1 inline" />
+                    Kỳ Trích Nợ Định Kỳ
+                  </label>
+                  <select
+                    className="form-select bg-white"
+                    value={formData.kyTrichMacDinh}
+                    onChange={(e) => handleInputChange('kyTrichMacDinh', Number(e.target.value))}
                   >
-                    Tất cả HĐ ({enrichedContracts.length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${filterRegStatus === 'UNREGISTERED' ? 'btn-primary fw-bold' : 'btn-outline-primary'}`}
-                    onClick={() => setFilterRegStatus('UNREGISTERED')}
+                    <option value={0}>✨ Linh hoạt theo Ngày vay của từng HĐTD (Khuyên dùng)</option>
+                    <option value={1}>Đợt 1 (Ngày 05 hàng tháng - Cho HĐ vay ngày 26 đến 04)</option>
+                    <option value={2}>Đợt 2 (Ngày 15 hàng tháng - Cho HĐ vay ngày 05 đến 15)</option>
+                    <option value={3}>Đợt 3 (Ngày 25 hàng tháng - Cho HĐ vay ngày 16 đến 25)</option>
+                  </select>
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label small fw-bold text-muted mb-1">Trạng Thái Thỏa Thuận</label>
+                  <select
+                    className="form-select bg-white"
+                    value={formData.trangThai}
+                    onChange={(e) => handleInputChange('trangThai', e.target.value)}
                   >
-                    Chưa ĐK ({enrichedContracts.filter((c) => !c.isRegistered).length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${filterRegStatus === 'REGISTERED' ? 'btn-success fw-bold' : 'btn-outline-success'}`}
-                    onClick={() => setFilterRegStatus('REGISTERED')}
-                  >
-                    Đã ĐK ({enrichedContracts.filter((c) => c.isRegistered).length})
-                  </button>
+                    <option value="Hiệu lực">Hiệu lực (Đang hoạt động trích nợ)</option>
+                    <option value="Tạm ngưng">Tạm ngưng (Tạm dừng trích kỳ này)</option>
+                  </select>
+                </div>
+
+                <div className="col-12">
+                  <label className="form-label small fw-bold text-muted mb-1">Ghi Chú Ủy Quyền</label>
+                  <input
+                    type="text"
+                    className="form-control bg-white"
+                    value={formData.ghiChu}
+                    onChange={(e) => handleInputChange('ghiChu', e.target.value)}
+                    placeholder="Nội dung ghi chú hoặc số thỏa thuận ủy quyền..."
+                  />
                 </div>
               </div>
+            </div>
 
-              <div className="d-flex align-items-center gap-2">
+            {/* BƯỚC 3: XEM TRƯỚC CÁC HỢP ĐỒNG ĐANG VAY CỦA KHÁCH HÀNG NÀY */}
+            {formData.maKH && (
+              <div>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <label className="form-label fw-bold small text-muted text-uppercase mb-0">
+                    Các Hợp Đồng Vay Của Khách Hàng Này ({selectedCustContracts.length})
+                  </label>
+                  <small className="text-muted">
+                    Hệ thống sẽ tự động liên kết các HĐ này khi đến đợt trích nợ
+                  </small>
+                </div>
+
+                {selectedCustContracts.length === 0 ? (
+                  <div className="alert alert-warning py-2 small mb-0">
+                    Khách hàng hiện không có hợp đồng vay nào đang có dư nợ. Bạn vẫn có thể lưu thỏa thuận để áp dụng khi giải ngân món mới.
+                  </div>
+                ) : (
+                  <div className="table-responsive border rounded bg-white" style={{ maxHeight: '180px' }}>
+                    <table className="table table-sm table-hover mb-0 align-middle">
+                      <thead className="table-light small">
+                        <tr>
+                          <th>Số HĐTD</th>
+                          <th>Ngày Vay</th>
+                          <th>Đến Hạn</th>
+                          <th>Trả Lãi Đến</th>
+                          <th className="text-end">Dư Nợ</th>
+                          <th className="text-end">Lãi Suất</th>
+                          <th>Đợt Tương Ứng</th>
+                        </tr>
+                      </thead>
+                      <tbody className="small">
+                        {selectedCustContracts.map(ct => {
+                          const dayVay = ct.ngayVay ? parseInt(String(ct.ngayVay).split('/')[0], 10) : 0;
+                          let suggestedDot = 'Đợt 2 (15)';
+                          if (dayVay >= 26 || (dayVay >= 1 && dayVay <= 4)) suggestedDot = 'Đợt 1 (05)';
+                          else if (dayVay >= 5 && dayVay <= 15) suggestedDot = 'Đợt 2 (15)';
+                          else if (dayVay >= 16 && dayVay <= 25) suggestedDot = 'Đợt 3 (25)';
+
+                          return (
+                            <tr key={ct.soHDTD}>
+                              <td className="fw-bold font-monospace text-primary">{ct.soHDTD}</td>
+                              <td>{ct.ngayVay || '---'}</td>
+                              <td>{ct.denHan || '---'}</td>
+                              <td>{ct.traLaiDenNgay || '---'}</td>
+                              <td className="text-end fw-bold text-danger">
+                                {Number(ct.duNo || 0).toLocaleString('vi-VN')} đ
+                              </td>
+                              <td className="text-end">{ct.laiSuat || 9.5}%</td>
+                              <td>
+                                <span className="badge bg-primary-subtle text-primary small">
+                                  {suggestedDot}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={onClose} disabled={isSubmitting}>
+              Đóng
+            </button>
+            <div className="d-flex gap-2">
+              {formData.maKH && onPrintAgreement && (
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-primary fw-medium d-flex align-items-center gap-1"
-                  onClick={handleToggleSelectAll}
+                  className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1 shadow-sm"
+                  onClick={() => handleSubmit(true)}
+                  disabled={isSubmitting}
                 >
-                  {isAllFilteredSelected ? <CheckSquare size={14} /> : <Square size={14} />}
-                  {isAllFilteredSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả đang lọc'}
+                  <Printer size={15} />
+                  <span>Lưu & In Đơn Đề Nghị A4</span>
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                className="btn btn-primary btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm px-3"
+                onClick={() => handleSubmit(false)}
+                disabled={isSubmitting}
+              >
+                <CheckCircle2 size={15} />
+                <span>{isSubmitting ? 'Đang lưu...' : 'Lưu Thỏa Thuận'}</span>
+              </button>
             </div>
-
-            {/* BẢNG DANH SÁCH HỢP ĐỒNG TÍN DỤNG */}
-            <div className="modal-body py-0 px-3 flex-grow-1" style={{ maxHeight: '52vh', overflowY: 'auto' }}>
-              <div className="table-responsive border rounded-3 bg-white">
-                <table className="table table-hover table-sm align-middle m-0" style={{ fontSize: '0.85rem' }}>
-                  <thead className="table-light sticky-top text-nowrap" style={{ zIndex: 10 }}>
-                    <tr>
-                      <th className="text-center" style={{ width: 42 }}>
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          checked={isAllFilteredSelected}
-                          onChange={handleToggleSelectAll}
-                          title="Chọn/Bỏ chọn tất cả"
-                        />
-                      </th>
-                      <th>Số HĐTD (Khế Ước)</th>
-                      <th>Khách Hàng / Mã KH</th>
-                      <th>Số TK CASA</th>
-                      <th className="text-end">Dư Nợ Hiện Tại</th>
-                      <th className="text-center">Lãi Suất</th>
-                      <th className="text-center">Ngày Vay</th>
-                      <th className="text-center">Đến Hạn</th>
-                      <th className="text-center">Trả Lãi Đến</th>
-                      <th className="text-center">Trạng Thái ĐK</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredContracts.length > 0 ? (
-                      filteredContracts.map((c) => {
-                        const isSelected = Boolean(selectedHDTDMaps[c.soHDTD]);
-                        const curSoTK = customSoTKMaps[c.soHDTD] !== undefined ? customSoTKMaps[c.soHDTD] : c.soTK;
-
-                        return (
-                          <tr
-                            key={c.soHDTD}
-                            className={isSelected ? 'table-primary-subtle' : ''}
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => handleToggleHDTD(c.soHDTD)}
-                          >
-                            <td className="text-center" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                className="form-check-input"
-                                checked={isSelected}
-                                onChange={() => handleToggleHDTD(c.soHDTD)}
-                              />
-                            </td>
-                            <td>
-                              <span className="font-monospace fw-bold text-primary">{c.soHDTD}</span>
-                            </td>
-                            <td>
-                              <div className="fw-bold text-dark">{c.hoTen}</div>
-                              <div className="text-muted text-xs font-monospace">
-                                {c.cleanMaKH} {c.cccd ? `• CCCD: ${c.cccd}` : ''}
-                              </div>
-                            </td>
-                            <td onClick={(e) => e.stopPropagation()}>
-                              {curSoTK ? (
-                                <span className="font-monospace fw-semibold text-success">{curSoTK}</span>
-                              ) : (
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm font-monospace text-success py-0 px-1.5"
-                                  style={{ width: 130, height: 26 }}
-                                  placeholder="Nhập số TK..."
-                                  value={curSoTK || ''}
-                                  onChange={(e) => {
-                                    setCustomSoTKMaps({ ...customSoTKMaps, [c.soHDTD]: e.target.value });
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              )}
-                            </td>
-                            <td className="text-end fw-bold num-tabular text-danger">
-                              {formatCurrencyVN(c.duNo)}
-                            </td>
-                            <td className="text-center font-monospace">{c.laiSuat || 10.46}%</td>
-                            <td className="text-center text-muted font-monospace">{c.ngayVay || '---'}</td>
-                            <td className="text-center text-muted font-monospace">{c.denHan || '---'}</td>
-                            <td className="text-center font-monospace fw-semibold text-slate-700">
-                              {c.traLaiDenNgay || '---'}
-                            </td>
-                            <td className="text-center">
-                              {c.isRegistered ? (
-                                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                                  Đã ĐK (Kỳ {c.existingReg?.kyTrich})
-                                </span>
-                              ) : (
-                                <span className="badge bg-light text-muted border px-2 py-1">
-                                  Chưa ĐK
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan="10" className="text-center text-muted py-4">
-                          Không tìm thấy hợp đồng tín dụng nào phù hợp với điều kiện tìm kiếm.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* FOOTER MODAL */}
-            <div className="modal-footer border-0 pt-3 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div className="d-flex align-items-center gap-2">
-                <span className="badge bg-primary fs-6 px-3 py-1.5">
-                  Đã chọn: <strong>{selectedCount}</strong> HĐTD
-                </span>
-                <span className="text-muted small">
-                  ({selectedCustCount} khách hàng riêng biệt)
-                </span>
-              </div>
-
-              <div className="d-flex gap-2">
-                <button type="button" className="btn btn-light" onClick={onClose} disabled={isSubmitting}>
-                  Đóng
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-brand fw-bold d-flex align-items-center gap-1.5 shadow-sm"
-                  disabled={selectedCount === 0 || isSubmitting}
-                >
-                  <CheckCircle2 size={16} />
-                  {isSubmitting
-                    ? 'Đang lưu thỏa thuận...'
-                    : `Thêm Đăng Ký Trích Nợ (${selectedCount} HĐTD)`}
-                </button>
-              </div>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

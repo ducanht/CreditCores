@@ -40,6 +40,9 @@ function doGet(e) {
       case "getDebitRegistrations":
         result = DebitController.handleGetDebitRegistrations(ss);
         break;
+      case "getDebitConfigs":
+        result = DebitController.handleGetDebitConfigs(ss);
+        break;
       case "getDebitBatches":
         result = DebitController.handleGetDebitBatches(ss);
         break;
@@ -117,7 +120,7 @@ function doPost(e) {
     "saveRolePermissions", "saveUser", "changePassword", "resetPassword",
     "saveAppraisalReport", "addApprovalOpinion", "saveLoanInspection",
     "saveDebitRegister", "saveBatchDebitRegister", "updateDebitRegister",
-    "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch",
+    "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch", "saveDebitConfig",
     "reconcileUpload", "assignContractCBTD", "initDatabase",
     "saveTemplate", "deleteTemplate", "saveDriveSettings",
     "saveCollateral", "deleteCollateral"
@@ -172,6 +175,15 @@ function doPost(e) {
         break;
       case "saveLoanInspection":
         result = InspectionController.handleSaveLoanInspection(ss, data);
+        break;
+      case "getDebitRegistrations":
+        result = DebitController.handleGetDebitRegistrations(ss);
+        break;
+      case "getDebitConfigs":
+        result = DebitController.handleGetDebitConfigs(ss);
+        break;
+      case "saveDebitConfig":
+        result = DebitController.handleSaveDebitConfig(ss, data);
         break;
       case "saveDebitRegister":
         result = DebitController.handleSaveDebitRegister(ss, data);

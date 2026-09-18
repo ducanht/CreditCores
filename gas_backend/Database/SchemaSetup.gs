@@ -94,14 +94,22 @@ var SchemaSetup = {
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
       headers: [
-        "SoHDTD", "MaKH", "TenKH", "SoTK",
-        "NgayVay", "TraLaiDenNgay", "LaiSuat",
-        "SoTienLai", "SoTienNo", "SoGoc", "TongTien",
-        "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
+        "MaKH", "HoTen", "CCCD", "NgayCap", "DienThoai", "DiaChi", "SoTK", "KyTrichMacDinh", "TrangThai", "GhiChu", "NgayTao"
       ],
       color: "#0F5132",
-      formats: { "A:D": "@", "E:F": "dd/MM/yyyy", "G:G": "0.00", "H:K": "#,##0", "L:L": "#,##0", "M:N": "@", "O:O": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 140, 5: 110, 6: 120, 7: 90, 8: 120, 9: 120, 10: 120, 11: 140, 12: 90, 13: 120, 14: 200, 15: 160 }
+      formats: { "A:C": "@", "D:D": "dd/MM/yyyy", "E:G": "@", "H:H": "#,##0", "I:J": "@", "K:K": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 100, 2: 180, 3: 130, 4: 110, 5: 120, 6: 220, 7: 140, 8: 120, 9: 120, 10: 200, 11: 160 }
+    },
+    CAU_HINH_DOT_TRICH_NO: {
+      headers: ["MaDotConfig", "TenDot", "TuNgayVay", "DenNgayVay", "NgayTrichHangThang", "TrangThai", "GhiChu"],
+      color: "#0284C7",
+      formats: { "A:B": "@", "C:E": "#,##0", "F:G": "@" },
+      colWidths: { 1: 120, 2: 180, 3: 110, 4: 110, 5: 140, 6: 120, 7: 250 },
+      defaultData: [
+        ["DOT_01", "Đợt 1 - Kỳ ngày 05", 26, 4, 5, "ACTIVE", "Áp dụng cho HĐTD giải ngân ngày 26 đến ngày 04"],
+        ["DOT_02", "Đợt 2 - Kỳ ngày 15", 5, 15, 15, "ACTIVE", "Áp dụng cho HĐTD giải ngân ngày 05 đến ngày 15"],
+        ["DOT_03", "Đợt 3 - Kỳ ngày 25", 16, 25, 25, "ACTIVE", "Áp dụng cho HĐTD giải ngân ngày 16 đến ngày 25"]
+      ]
     },
     LICH_SU_TRICH_NO: {
       aliases: ["CHI_TIET_TRICH_NO", "LICH_SU_GIAO_DICH"],
