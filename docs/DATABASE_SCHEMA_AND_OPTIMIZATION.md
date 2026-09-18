@@ -154,6 +154,80 @@ Headers: [
 
 ---
 
+### 3.5. Cụm CSDL & Quy Trình Lập Đợt Trích Nợ Thực Tế (Lean Auto-Debit Workflow & Schema)
+
+#### A. Định Lượng Quy Mô Nghiệp Vụ Tại QTDND Yên Thọ
+- **Quy mô thực tế**: Tối đa khoảng **~300 hợp đồng đăng ký trích nợ trong một tháng** (chia đều làm 3 đợt: kỳ ngày 05 ~ 100 HĐ, kỳ ngày 15 ~ 100 HĐ, kỳ ngày 25 ~ 100 HĐ).
+- **Khối lượng lưu trữ cả năm**: $300 \times 12 = \mathbf{3.600\text{ dòng giao dịch/năm}}$ trên Google Sheets.
+- **Đánh giá kiến trúc**: Quy mô 3.600 dòng/năm (~350 KB) là **rất nhẹ**, chạy siêu mượt trực tiếp trên Google Sheets. Không cần tách sang Spreadsheet riêng phức tạp, mà chỉ cần chuẩn hóa cấu trúc bảng tinh gọn và quy trình rà soát tự động 2 cấp.
+
+#### B. Đặc Tả Chuẩn 15 Cột Bảng `DANG_KY_TRICH_NO` (Gắn Liền Từng Hợp Đồng)
+*Mỗi bản ghi đại diện cho một hợp đồng vay có thỏa thuận trích nợ tự động qua tài khoản CASA (TUYỆT ĐỐI KHÔNG CÓ CỘT SỐ DƯ CASA DO TÍNH CHẤT BẢO MẬT).*
+
+| STT | Tên Cột | Kiểu Dữ Liệu | Ý Nghĩa Nghiệp Vụ | Nguồn Dữ Liệu |
+|:---:|:---|:---:|:---|:---|
+| 1 | **`SoHDTD`** | String | Số hợp đồng / khế ước tín dụng (Khóa chính) | Từ `HDTD_CORE` |
+| 2 | **`NgayVay`** | Date | Ngày giải ngân hợp đồng vay (dd/MM/yyyy) | Từ `HDTD_CORE` |
+| 3 | **`TraLaiDenNgay`**| Date | Ngày đã thu lãi gần nhất (dd/MM/yyyy) | Từ `HDTD_CORE` |
+| 4 | **`LaiSuat`** | Number | Lãi suất cho vay (%/năm) | Từ `HDTD_CORE` |
+| 5 | **`MaKH`** | String | Mã khách hàng (`'0100012`) | Từ `HDTD_CORE` |
+| 6 | **`TenKH`** | String | Họ và tên khách hàng vay vốn | Từ `HDTD_CORE` |
+| 7 | **`SoTK`** | String | Số tài khoản CASA để trích nợ (`'1028394827`) | Khách hàng đăng ký |
+| 8 | **`SoTienLai`** | Number | Tiền lãi tính đến kỳ trích (Tính theo TT 14/2017) | Engine tính toán tự động |
+| 9 | **`SoTienNo`** | Number | Tiền nợ tồn đọng kỳ trước chuyển sang (nếu có) | Từ sổ nợ tồn |
+| 10 | **`SoGoc`** | Number | Tiền gốc đến hạn phải thu kỳ này (nếu có) | Kế hoạch trả nợ gốc |
+| 11 | **`TongTien`** | Number | **`SoTienLai + SoTienNo + SoGoc`** (Số tiền riêng của HĐ) | Tự động cập nhật |
+| 12 | **`KyTrichNo`** | Number | Kỳ trích: `1` (Ngày 05), `2` (Ngày 15), `3` (Ngày 25) | Cán bộ/KH chọn |
+| 13 | **`TrangThai`** | String | `Hiệu lực` / `Tạm ngưng` / `Đã tất toán` | Tự động đồng bộ |
+| 14 | **`GhiChu`** | String | Ghi chú điều khoản ủy quyền trích nợ | Tùy chọn |
+| 15 | **`NgayTao`** | DateTime | Ngày đăng ký thỏa thuận trích nợ | Timestamp tạo |
+
+#### C. Quy Trình 4 Bước Tác Nghiệp Lập Đợt Trích Nợ Thực Tế
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                 QUY TRÌNH 4 BƯỚC LẬP ĐỢT TRÍCH NỢ THỰC TẾ                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ BƯỚC 1: CHỌN ĐỢT & NẠP DANH SÁCH HỢP ĐỒNG ĐĂNG KÝ TRÍCH NỢ                  │
+│ • Chọn Kỳ trích (Kỳ 1 ngày 05, Kỳ 2 ngày 15, Kỳ 3 ngày 25) và Tháng/Năm.     │
+│ • Hệ thống nạp các HĐ thuộc kỳ đó từ DANG_KY_TRICH_NO (TrangThai = Hiệu lực)│
+├─────────────────────────────────────────────────────────────────────────────┤
+│ BƯỚC 2: RÀ SOÁT TỰ ĐỘNG VỚI HDTD_CORE & TÍNH TIỀN LÃI                       │
+│ • So khớp SoHDTD với dữ liệu HDTD_CORE mới nhất:                            │
+│   - Nếu HĐ đã tất toán (DuNo = 0 hoặc hết nợ): Tự động LOẠI BỎ khỏi đợt.    │
+│   - Nếu HĐ còn nợ (DuNo > 0): Lấy ngày TraLaiDenNgay, tính số ngày thực tế. │
+│   - Áp dụng công thức chuẩn TT 14/2017: (Dư nợ × Lãi suất × Số ngày) / 36500│
+│   - Tự động điền SoTienLai + SoTienNo (nợ tồn) + SoGoc -> TongTien gợi ý.   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ BƯỚC 3: CHO PHÉP CÁN BỘ KIỂM TRA & TRỰC TIẾP SỬA SỐ TIỀN (INLINE EDITABLE)  │
+│ • Cán bộ có quyền:                                                          │
+│   - Tích chọn / bỏ chọn từng hợp đồng đưa vào đợt trích.                    │
+│   - SỬA TRỰC TIẾP số tiền trích trên từng hợp đồng (ví dụ: làm tròn tiền,   │
+│     thêm tiền gốc, điều chỉnh lãi theo thỏa thuận đột xuất của khách hàng). │
+│ • Tổng tiền cả đợt tự động nhảy theo thời gian thực (Live Real-time Total).  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ BƯỚC 4: BẤM "LẬP ĐỢT TRÍCH NỢ" -> LƯU TRỮ VÀ XUẤT LỆNH                      │
+│ • Ghi nhận Snapshot bất biến vào LICH_SU_TRICH_NO và DOT_TRICH_NO.          │
+│ • GỘP THEO KHÁCH HÀNG / SỐ TK CASA:                                         │
+│   Tổng tiền gửi CoreBanking trích = Tổng tiền các HĐ của khách hàng đó.    │
+│ • Sẵn sàng: Xuất file lệnh CoreBanking/Co-opBank & In Bảng kê A4 3 chữ ký. │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### D. Cơ Chế Gộp Số Tiền Khi Gửi Lệnh Trừ Tiền CoreBanking
+- Nếu một khách hàng có **2 hoặc nhiều hợp đồng vay** trong cùng 1 kỳ:
+  - *Cấp Hợp Đồng (`Contract Level`)*:
+    - HĐ 1 (`2026-1-00294`): Cần trích lãi `1.200.000đ`
+    - HĐ 2 (`2026-1-00310`): Cần trích lãi `800.000đ`
+  - *Cấp Khách Hàng / Tài Khoản (`Account Level`)*:
+    - File lệnh gửi sang CoreBanking / Co-opBank trừ tiền trên tài khoản CASA `SoTK`:
+      $$\text{Số tiền gửi Core} = 1.200.000 + 800.000 = \mathbf{2.000.000\text{ VNĐ}}$$
+  - *Khi CoreBanking trả kết quả đối soát*:
+    - Nếu trừ đủ 2.000.000đ: Cả 2 hợp đồng đều thành công.
+    - Nếu trừ thiếu (ví dụ chỉ trừ được 1.200.000đ): Phân bổ đủ 1.200.000đ cho HĐ 1, HĐ 2 bị thiếu 800.000đ $\rightarrow$ Tự động ghi nhận nợ tồn 800.000đ vào `NO_TON_DONG` của HĐ 2 để kỳ sau thu tiếp.
+
+
+---
+
 ## 4. MA TRẬN MA SÁT I/O: ĐO LƯỜNG TRƯỚC & SAU KHI TỐI ƯU
 
 ```
