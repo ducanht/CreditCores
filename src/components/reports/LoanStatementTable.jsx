@@ -17,12 +17,14 @@ import {
   Calendar
 } from 'lucide-react';
 import { formatCurrencyVN, getTodayVN } from '../../utils/dateUtils';
+import { getLoaiHDInfo, MA_LOAI_HD_MAP } from '../../utils/contractUtils';
 
 export default function LoanStatementTable({ statementData = [], loading = false }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [areaFilter, setAreaFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [productFilter, setProductFilter] = useState('ALL');
+  const [securityFilter, setSecurityFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
@@ -62,9 +64,15 @@ export default function LoanStatementTable({ statementData = [], loading = false
         if (productFilter === 'TIEU_DUNG' && !prod.includes('Tiêu dùng') && !prod.includes('Đời sống') && !prod.includes('nhà ở')) return false;
       }
 
+      // Lọc theo hình thức bảo đảm (MaLoaiHD)
+      if (securityFilter !== 'ALL') {
+        const itemCode = String(item.maLoaiHD || '').trim().toUpperCase();
+        if (itemCode !== securityFilter) return false;
+      }
+
       return true;
     });
-  }, [statementData, searchTerm, areaFilter, statusFilter, productFilter]);
+  }, [statementData, searchTerm, areaFilter, statusFilter, productFilter, securityFilter]);
 
   // Tổng hợp sau khi lọc
   const summary = useMemo(() => {
@@ -89,14 +97,15 @@ export default function LoanStatementTable({ statementData = [], loading = false
     csvContent += 'QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ\n';
     csvContent += `Thời điểm xuất: ${getTodayVN()} | Tổng số hợp đồng: ${filteredData.length}\n\n`;
 
-    csvContent += 'STT,Số HĐTD,Mã KH,Số TV,Họ Tên Thành Viên,Tiền Vay (VNĐ),Dư Nợ (VNĐ),Lãi Suất (%/năm),Ngày Vay,Đến Hạn,Thời Hạn (Tháng),Sản Phẩm Vay,Địa Bàn,Trạng Thái\n';
+    csvContent += 'STT,Số HĐTD,Mã KH,Số TV,Họ Tên Thành Viên,Tiền Vay (VNĐ),Dư Nợ (VNĐ),Lãi Suất (%/năm),Ngày Vay,Đến Hạn,Thời Hạn (Tháng),Mã Loại HĐ,Hình Thức Bảo Đảm,Sản Phẩm Vay,Địa Bàn,Trạng Thái\n';
 
     filteredData.forEach((item, idx) => {
       const isTatToan = String(item.trangThaiHD || '').toUpperCase() === 'DA_TAT_TOAN' || Number(item.duNo) <= 0;
-      csvContent += `${idx + 1},"${item.soHDTD || ''}","'${item.maKH || ''}","'${item.soTV || ''}","${item.hoTen || ''}",${item.tienVay || 0},${item.duNo || 0},${item.laiSuat || 0},"${item.ngayVay || ''}","${item.denHan || ''}",${item.soThangVay || 0},"${item.maLoaiVay || ''}","${item.khuVuc || ''}","${isTatToan ? 'Đã tất toán' : 'Đang vay'}"\n`;
+      const loaiInfo = getLoaiHDInfo(item.maLoaiHD);
+      csvContent += `${idx + 1},"${item.soHDTD || ''}","'${item.maKH || ''}","'${item.soTV || ''}","${item.hoTen || ''}",${item.tienVay || 0},${item.duNo || 0},${item.laiSuat || 0},"${item.ngayVay || ''}","${item.denHan || ''}",${item.soThangVay || 0},"${loaiInfo.code}","${loaiInfo.label}","${item.maLoaiVay || ''}","${item.khuVuc || ''}","${isTatToan ? 'Đã tất toán' : 'Đang vay'}"\n`;
     });
 
-    csvContent += `\nTỔNG CỘNG,,,"${summary.totalRecords} Hợp đồng",${summary.totalTienVay},${summary.totalDuNo},,,,,,\n`;
+    csvContent += `\nTỔNG CỘNG,,,"${summary.totalRecords} Hợp đồng",${summary.totalTienVay},${summary.totalDuNo},,,,,,,,\n`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -215,10 +224,29 @@ export default function LoanStatementTable({ statementData = [], loading = false
               value={productFilter}
               onChange={(e) => { setProductFilter(e.target.value); setCurrentPage(1); }}
             >
-              <option value="ALL">Mọi Sản Phẩm Cho Vay</option>
+              <option value="ALL">Mọi Sản Phẩm Vay</option>
               <option value="NONG_NGHIEP">Nông nghiệp & Chăn nuôi</option>
               <option value="THUONG_MAI">Thương mại & Dịch vụ</option>
               <option value="TIEU_DUNG">Tiêu dùng & Đời sống</option>
+            </select>
+          </div>
+
+          {/* Lọc Hình Thức Bảo Đảm (MaLoaiHD) */}
+          <div className="col-6 col-md-2">
+            <select
+              className="form-select form-select-sm fw-medium"
+              value={securityFilter}
+              onChange={(e) => { setSecurityFilter(e.target.value); setCurrentPage(1); }}
+              title="Phân loại theo hình thức bảo đảm & đăng ký giao dịch bảo đảm"
+            >
+              <option value="ALL">Mọi Hình Thức Bảo Đảm</option>
+              <option value="THCDBTNMT">TH Có ĐB (GDBĐ)</option>
+              <option value="THBLCDBTNMT">TH Uỷ Quyền GDBĐ</option>
+              <option value="NHCDBTNMT">NH Có ĐB (GDBĐ)</option>
+              <option value="THCDB">TH Có TSBĐ (K.GDBĐ)</option>
+              <option value="NHCDB">NH Có TSBĐ (K.GDBĐ)</option>
+              <option value="NHKDB">NH Tín Chấp</option>
+              <option value="THKDB">TH Tín Chấp</option>
             </select>
           </div>
 
@@ -250,6 +278,7 @@ export default function LoanStatementTable({ statementData = [], loading = false
                 <th className="text-center" style={{ width: '70px' }}>Lãi Suất</th>
                 <th className="text-center" style={{ width: '90px' }}>Ngày Vay</th>
                 <th className="text-center" style={{ width: '90px' }}>Đến Hạn</th>
+                <th>Hình Thức Bảo Đảm</th>
                 <th>Sản Phẩm Vay</th>
                 <th>Địa Bàn</th>
                 <th className="text-center" style={{ width: '95px' }}>Trạng Thái</th>
@@ -258,7 +287,7 @@ export default function LoanStatementTable({ statementData = [], loading = false
             <tbody>
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-5 text-muted">
+                  <td colSpan={13} className="text-center py-5 text-muted">
                     <div className="empty-state-icon mx-auto mb-2"><FileSpreadsheet size={28} /></div>
                     <span>Không tìm thấy hợp đồng tín dụng phù hợp với bộ lọc</span>
                   </td>
@@ -297,6 +326,19 @@ export default function LoanStatementTable({ statementData = [], loading = false
                       </td>
                       <td className="text-center num-tabular text-muted" style={{ fontSize: '0.78rem' }}>
                         {item.denHan || '—'}
+                      </td>
+                      <td>
+                        {(() => {
+                          const loaiInfo = getLoaiHDInfo(item.maLoaiHD);
+                          return (
+                            <span 
+                              className={`badge small px-2 py-0.5 fw-medium ${loaiInfo.badgeClass}`}
+                              title={`Mã: ${loaiInfo.code} - ${loaiInfo.label}`}
+                            >
+                              {loaiInfo.shortLabel}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td>
                         <span className="text-truncate d-inline-block" style={{ maxWidth: '140px' }} title={item.maLoaiVay || item.moTaVay}>

@@ -16,6 +16,7 @@ import {
   Info
 } from 'lucide-react';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
+import { getLoaiHDInfo } from '../../utils/contractUtils';
 
 // Helper tính số ngày và phần trăm thời hạn vay đã qua
 const calculateLoanTimeline = (ngayVayStr, denHanStr) => {
@@ -117,7 +118,7 @@ export default function ContractTimelineList({
           if (isSettled) {
             barColor = '#94a3b8';
             statusBadgeClass = 'bg-secondary-subtle text-secondary border';
-            deadlineText = c.ngayTatToan ? `Tất toán ngày ${formatDateVN(c.ngayTatToan)}` : 'Đã tất toán';
+            deadlineText = 'Đã tất toán';
           } else if (timeline.isPastDue) {
             barColor = '#ef4444'; // Đỏ
             statusBadgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
@@ -127,6 +128,8 @@ export default function ContractTimelineList({
             statusBadgeClass = 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
             deadlineText = `Sắp đến hạn (còn ${timeline.daysLeft} ngày)`;
           }
+
+          const loaiHDInfo = getLoaiHDInfo(c.maLoaiHD);
 
           return (
             <div
@@ -138,9 +141,9 @@ export default function ContractTimelineList({
                 borderLeft: `4px solid ${barColor}`
               }}
             >
-              {/* HÀNG 1: SỐ HỢP ĐỒNG, TRẠNG THÁI & CBTD */}
+              {/* HÀNG 1: SỐ HỢP ĐỒNG, TRẠNG THÁI, HÌNH THỨC BẢO ĐẢM & CBTD */}
               <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center gap-2 flex-wrap">
                   <span className="fw-bold font-monospace text-primary fs-6">
                     {c.soHDTD}
                   </span>
@@ -154,6 +157,14 @@ export default function ContractTimelineList({
                         <Clock size={12} className="me-1 inline" /> ĐANG VAY
                       </>
                     )}
+                  </span>
+                  {/* Badge Phân Loại Hợp Đồng & Hình Thức Bảo Đảm */}
+                  <span 
+                    className={`badge small px-2 py-0.5 fw-medium ${loaiHDInfo.badgeClass}`}
+                    title={`Mã loại HĐ: ${loaiHDInfo.code} - ${loaiHDInfo.label}`}
+                  >
+                    <ShieldCheck size={11} className="me-1 inline" />
+                    {loaiHDInfo.shortLabel}
                   </span>
                   {c.moTaVay && (
                     <span className="text-muted small d-none d-md-inline">

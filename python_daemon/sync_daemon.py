@@ -468,6 +468,10 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     SELECT 
         A.MA_KHE_UOC AS SoHDTD,
         D.MA_KHACH_HANG AS MAKH,
+        B.TEN_KHACH_HANG AS TenKH,
+        B.SO_CMND AS CCCD,
+        B.SO_DI_DONG AS DienThoai,
+        B.DIA_CHI AS DiaChi,
         D.SO_TIEN_VAY AS TienVay,
         C.SO_DU AS DuNo,
         FORMAT(A.LAI_SUAT, 'N2') AS LaiSuat,
@@ -476,7 +480,8 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
         CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TraLaiDenNgay,
         SP.TEN_SAN_PHAM AS MaLoaiVay,
         D.SO_THANG_VAY AS SoThangVay,
-        D.MO_TA_MUC_DICH_VAY AS MucDichVay
+        D.MO_TA_MUC_DICH_VAY AS MucDichVay,
+        D.MA_LOAI_HD AS MaLoaiHD
     FROM dbo.TD_KHE_UOC A 
     INNER JOIN dbo.TD_HOP_DONG_TD D ON A.MA_HDTD = D.MA_HDTD
     INNER JOIN dbo.DC_KHACH_HANG B ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
@@ -503,9 +508,18 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
         if clean_makh and not clean_makh.startswith("'"):
             clean_makh = "'" + clean_makh
 
+        so_thang = clean_currency(row_map.get("SoThangVay")) or 12
+        raw_ma_loai_hd = str(row_map.get("MaLoaiHD", "")).strip()
+        if not raw_ma_loai_hd:
+            raw_ma_loai_hd = "THCDBTNMT" if so_thang > 12 else "NHCDBTNMT"
+
         record = {
             "SoHDTD": str(row_map.get("SoHDTD", "")).strip(),
             "MaKH": clean_makh,
+            "HoTen": str(row_map.get("TenKH", "")).strip(),
+            "CCCD": clean_number_code(row_map.get("CCCD")),
+            "DienThoai": clean_number_code(row_map.get("DienThoai")),
+            "DiaChi": clean_address(row_map.get("DiaChi")),
             "TienVay": clean_currency(row_map.get("TienVay")),
             "DuNo": clean_currency(row_map.get("DuNo")),
             "LaiSuat": clean_interest_rate(row_map.get("LaiSuat")),
@@ -513,12 +527,12 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
             "DenHan": format_efund_date(row_map.get("DenHan")),
             "TraLaiDenNgay": format_efund_date(row_map.get("TraLaiDenNgay")),
             "MaLoaiVay": str(row_map.get("MaLoaiVay", "")).strip(),
-            "SoThangVay": clean_currency(row_map.get("SoThangVay")) or 12,
+            "SoThangVay": so_thang,
             "MoTaVay": clean_address(row_map.get("MucDichVay") or row_map.get("MoTaVay")),
             "CBTD_PhuTrach": "qtdyentho.huyennhu",
             "Ten_CBTD": "Trần Như Huyền",
             "TrangThaiHD": "DANG_VAY",
-            "NgayTatToan": "",
+            "MaLoaiHD": raw_ma_loai_hd,
             "NgayCapNhat": sync_timestamp_str
         }
         records.append(record)
@@ -666,7 +680,7 @@ def process_sync_request(spreadsheet, sql_cfg):
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
         ])
         hdtd_sheet = get_or_create_worksheet(spreadsheet, "HDTD_CORE", hdtd_headers)
 
@@ -736,7 +750,7 @@ def process_sync_request(spreadsheet, sql_cfg):
                     "CBTD_PhuTrach": prev_r.get("CBTD_PhuTrach", "qtdyentho.cbtd"),
                     "Ten_CBTD": prev_r.get("Ten_CBTD", "Lê Văn Tín (CBTD)"),
                     "TrangThaiHD": "DA_TAT_TOAN",
-                    "NgayTatToan": prev_r.get("NgayTatToan") or sync_timestamp_str.split(" ")[0],
+                    "MaLoaiHD": prev_r.get("MaLoaiHD") or ("THCDBTNMT" if prev_r.get("SoThangVay", 12) > 12 else "NHCDBTNMT"),
                     "NgayCapNhat": sync_timestamp_str
                 }
                 settled_rows.append(settled_row)

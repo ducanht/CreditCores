@@ -85,11 +85,11 @@ var SchemaSetup = {
         "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
         "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
         "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
       ],
       color: "#1B365D",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:T": "@", "U:U": "dd/MM/yyyy", "V:V": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 120, 22: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
@@ -312,6 +312,10 @@ var SchemaSetup = {
                   } else if (targetColName === "TrangThaiHD") {
                     var oldDuNo = Number(oldData[r][3] || 0);
                     newRow[k] = oldDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN";
+                  } else if (targetColName === "MaLoaiHD") {
+                    // Mặc định phân loại dựa theo thời hạn vay nếu dữ liệu cũ chưa có
+                    var thVay = Number(oldData[r][14] || 12);
+                    newRow[k] = thVay > 12 ? "THCDBTNMT" : "NHCDBTNMT";
                   } else {
                     newRow[k] = "";
                   }

@@ -69,7 +69,7 @@ Tài liệu này mô tả chi tiết kiến trúc kỹ thuật 3 tầng phân t�
   2. Kết nối SQL Server `[NG-eFUND]` qua driver `pyodbc` nội bộ với tốc độ cao.
   3. Thực thi query tích hợp thông tin Khách hàng (`DC_KHACH_HANG`), Số tài khoản CASA (`KT_TAI_KHOAN`), Thành viên góp vốn và Khế ước dư nợ còn hiệu lực (`WHERE C.SO_DU > 0`).
   4. Cơ chế **Bảo toàn phân công cán bộ (Preserve Assignment)**: Đọc `existing_map` trước khi ghi, bảo toàn 100% hai cột `CBTD_PhuTrach` và `Ten_CBTD` đã được phân công trên WebApp.
-  5. Cơ chế **Bảo toàn lịch sử tất toán (Zero-Record-Loss)**: Hợp đồng khi khách hàng trả hết nợ không bị xóa mà cập nhật `DuNo = 0`, `TrangThaiHD = 'DA_TAT_TOAN'`, `NgayTatToan = Ngày chốt`.
+  5. Cơ chế **Bảo toàn lịch sử tất toán (Zero-Record-Loss)**: Hợp đồng khi khách hàng trả hết nợ không bị xóa mà cập nhật `DuNo = 0`, `TrangThaiHD = 'DA_TAT_TOAN'`.
   6. Batch update dữ liệu vào `KH_CORE` và `HDTD_CORE` trên Google Sheets qua `gspread` kèm Retry Exponential Backoff (2s, 4s, 6s).
   7. Cập nhật `STATUS='SUCCESS'`, ghi nhận số dòng và thời gian hoàn tất.
 
@@ -144,7 +144,7 @@ Hệ thống đã loại bỏ hoàn toàn việc truy xuất cột theo chỉ s�
   4. Cập nhật header và ghi lại toàn bộ dữ liệu (**Bảo toàn 100% dữ liệu cũ, không mất mát dù chỉ 1 cell**).
 
 ### 3. Trình Tự Cột Chuẩn Logic Nghiệp Vụ:
-- **`HDTD_CORE` (22 cột)**: `SoHDTD`, `MaKH`, `HoTen`, `CCCD`, `DienThoai`, `DiaChi`, `KvXa`, `KvThon`, `TienVay`, `DuNo`, `LaiSuat`, `NgayVay`, `DenHan`, `TraLaiDenNgay`, `SoThangVay`, `MaLoaiVay`, `MoTaVay`, `CBTD_PhuTrach`, `Ten_CBTD`, `TrangThaiHD`, `NgayTatToan`, `NgayCapNhat`.
+- **`HDTD_CORE` (22 cột)**: `SoHDTD`, `MaKH`, `HoTen`, `CCCD`, `DienThoai`, `DiaChi`, `KvXa`, `KvThon`, `TienVay`, `DuNo`, `LaiSuat`, `NgayVay`, `DenHan`, `TraLaiDenNgay`, `SoThangVay`, `MaLoaiVay`, `MoTaVay`, `CBTD_PhuTrach`, `Ten_CBTD`, `TrangThaiHD`, `MaLoaiHD`, `NgayCapNhat`.
 - **`KH_CORE` (22 cột)**: `MaKH`, `HoTen`, `CCCD`, `NgayCap`, `NoiCap`, `NgaySinh`, `DienThoai`, `DienThoaiDD`, `DiaChi`, `KvXa`, `KvThon`, `KhuVuc`, `SoTK`, `SoTV`, `SoSoCP`, `NgayVaoTV`, `TongTienCP`, `TongDuNoHienTai`, `SoLuongHDVay`, `TrangThaiVay`, `NhomNoCIC`, `NgayCapNhat`.
 - **`DANG_KY_TRICH_NO` (15 cột)**: `SoHDTD`, `MaKH`, `TenKH`, `SoTK`, `NgayVay`, `TraLaiDenNgay`, `LaiSuat`, `SoTienLai`, `SoTienNo`, `SoGoc`, `TongTien`, `KyTrichNo`, `TrangThai`, `GhiChu`, `NgayTao`.
 - **`LICH_SU_TRICH_NO` (11 cột)**: `MaDot`, `SoHDTD`, `MaKH`, `TenKH`, `SoTK`, `TongTienPhaiThu`, `DaTrich`, `ConNo`, `TrangThaiCore`, `MaGiaoDichCore`, `NgayTrich`.

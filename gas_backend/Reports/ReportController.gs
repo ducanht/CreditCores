@@ -112,8 +112,10 @@ var ReportController = {
         var hdMoTa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MoTaVay", "")).trim();
         var hdCBTD_Code = String(HeaderUtils.getCell(hdVals[j], colMapHD, "CBTD_PhuTrach", "")).trim();
         var hdTenCBTD   = String(HeaderUtils.getCell(hdVals[j], colMapHD, "Ten_CBTD", "")).trim();
-        var hdTrangThai = String(HeaderUtils.getCell(hdVals[j], colMapHD, "TrangThaiHD", hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).toUpperCase().trim();
-        var hdNgayTatToan = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "NgayTatToan", ""));
+        var hdMaLoaiHD  = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaLoaiHD", "")).trim();
+        if (!hdMaLoaiHD) {
+          hdMaLoaiHD = hdSoThang > 12 ? "THCDBTNMT" : "NHCDBTNMT";
+        }
 
         var khInfo = khMap[hdMaKH] || {
           hoTen: "Khách hàng " + hdMaKH,
@@ -152,7 +154,7 @@ var ReportController = {
           cbtdPhuTrach: hdCBTD_Code,
           tenCBTD: hdTenCBTD,
           trangThaiHD: hdTrangThai || (hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN"),
-          ngayTatToan: hdNgayTatToan
+          maLoaiHD: hdMaLoaiHD
         });
 
         totalTienVay += hdTienVay;
@@ -232,7 +234,46 @@ var ReportController = {
         color: loanTypeStats[p].color
       });
     }
-    loanTypeResult.sort(function(a, b) { return b.amount - a.amount; });
+    // Khởi tạo thống kê 7 hình thức bảo đảm
+    var securityTypeStats = {
+      "THCDBTNMT": { code: "THCDBTNMT", name: "Trung hạn có đảm bảo, đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Đăng ký GDBĐ)" },
+      "THBLCDBTNMT": { code: "THBLCDBTNMT", name: "Trung hạn đăng ký GDBĐ uỷ quyền", count: 0, duNo: 0, group: "Có TSBĐ (Đăng ký GDBĐ)" },
+      "NHCDBTNMT": { code: "NHCDBTNMT", name: "Ngắn hạn có đảm bảo, đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Đăng ký GDBĐ)" },
+      "THCDB": { code: "THCDB", name: "Trung hạn có TSBĐ không đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Không đăng ký)" },
+      "NHCDB": { code: "NHCDB", name: "Ngắn hạn có TSBĐ không đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Không đăng ký)" },
+      "NHKDB": { code: "NHKDB", name: "Ngắn hạn, tín chấp", count: 0, duNo: 0, group: "Tín chấp" },
+      "THKDB": { code: "THKDB", name: "Trung hạn tín chấp", count: 0, duNo: 0, group: "Tín chấp" }
+    };
+
+    // Duyệt lại danh sách hợp đồng đang vay để thống kê hình thức bảo đảm
+    for (var s = 0; s < statementResult.length; s++) {
+      var stItem = statementResult[s];
+      if (stItem.trangThaiHD !== "DA_TAT_TOAN" && stItem.duNo > 0) {
+        var mCode = stItem.maLoaiHD || "NHCDBTNMT";
+        if (!securityTypeStats[mCode]) {
+          securityTypeStats[mCode] = { code: mCode, name: mCode, count: 0, duNo: 0, group: "Khác" };
+        }
+        securityTypeStats[mCode].count++;
+        securityTypeStats[mCode].duNo += stItem.duNo;
+      }
+    }
+
+    var securityTypeResult = [];
+    for (var sc in securityTypeStats) {
+      var sObj = securityTypeStats[sc];
+      if (sObj.count > 0 || sObj.duNo > 0) {
+        var sRate = totalDuNo > 0 ? ((sObj.duNo / totalDuNo) * 100).toFixed(1) + "%" : "0%";
+        securityTypeResult.push({
+          code: sObj.code,
+          name: sObj.name,
+          group: sObj.group,
+          count: sObj.count,
+          amount: sObj.duNo,
+          rate: sRate
+        });
+      }
+    }
+    securityTypeResult.sort(function(a, b) { return b.amount - a.amount; });
 
     // --- Build topAvgDebtData result ---
     var topDebtArr = [];
@@ -338,6 +379,7 @@ var ReportController = {
     var finalResult = {
       areaData: areaResult,
       loanTypes: loanTypeResult,
+      securityTypes: securityTypeResult,
       statementData: statementResult,
       topAvgDebtData: topAvgDebtResult,
       kpiMetrics: {},

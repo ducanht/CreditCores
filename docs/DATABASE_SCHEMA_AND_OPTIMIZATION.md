@@ -61,7 +61,7 @@ Python Daemon chạy trực tiếp trên máy chủ SQL Server CoreBanking On-Pr
 | **4** | **Tự Động Sinh Bảng Snapshot Điều Hành (`DASHBOARD_SNAPSHOT`)** | Python tự động gom nhóm `records_hdtd` theo 3 Xã và 12 Thôn, tính sẵn: `TongDuNo`, `TongTienVay`, `SoLuongHD`, `SoLuongKH`, `DuNoBinhQuan`, cơ cấu sản phẩm và phân bổ theo 3 CBTD. Ghi đè vào sheet 16 dòng. | **Dashboard chỉ cần đọc 1 sheet 16 dòng (< 4KB)**, thời gian nạp giảm từ 6s xuống < 100ms! |
 | **5** | **Sinh Sẵn 2 Bảng Báo Cáo Chuyên Sâu** | Python sắp xếp và xếp hạng Top 20 khách hàng dư nợ bình quân lớn nhất, tính tỷ trọng % trên tổng dư nợ toàn quỹ, gắn mức độ cảnh báo rủi ro (An toàn, Cần theo dõi, Giám sát chặt) rồi ghi vào `TOP_DU_NO_BINH_QUAN` và `BC_DOANH_SO_TD`. | Phân hệ Báo Cáo không cần tính toán động khi người dùng mở tab. |
 | **6** | **Bảo Toàn Phân Công CBTD (Preserve Assignment)** | Python đọc `existing_map` của `HDTD_CORE` trên Sheets để bảo toàn 100% hai cột `CBTD_PhuTrach` và `Ten_CBTD` đã được phân công trên WebApp, chỉ tự động gán theo địa bàn cho các hợp đồng mới. | Không bao giờ bị mất phân công cán bộ khi đồng bộ dữ liệu mới từ CoreBanking. |
-| **7** | **Bảo Toàn Hợp Đồng Đã Tất Toán (Zero-Record-Loss)** | Nhận diện các hợp đồng không còn xuất hiện trong query dư nợ của SQL Server (`WHERE C.SO_DU > 0`). Giữ nguyên dòng trên Sheets và cập nhật `DuNo = 0`, `TrangThaiHD = 'DA_TAT_TOAN'`, `NgayTatToan = Ngày sync`. | Bảo toàn lịch sử tín dụng phục vụ tra cứu 360° và báo cáo doanh số giải ngân. |
+| **7** | **Bảo Toàn Hợp Đồng Đã Tất Toán (Zero-Record-Loss)** | Nhận diện các hợp đồng không còn xuất hiện trong query dư nợ của SQL Server (`WHERE C.SO_DU > 0`). Giữ nguyên dòng trên Sheets và cập nhật `DuNo = 0`, `TrangThaiHD = 'DA_TAT_TOAN'`. | Bảo toàn lịch sử tín dụng phục vụ tra cứu 360° và báo cáo doanh số giải ngân. |
 | **8** | **Làm Sạch Dữ Liệu & Chống Lỗi Formatting** | - Thêm nháy đơn `'` ở đầu `CCCD`, `MaKH`, `SoTK`, `SoTV` chống nuốt số 0.<br>- Ép kiểu tiền tệ thành số nguyên không phần thập phân.<br>- Chuẩn hóa ngày tháng `dd/MM/yyyy` GMT+7.<br>- Thêm `'` vào ô bắt đầu bằng `=`, `+`, `-`, `@` chống Formula Injection (CWE-1236). | Loại bỏ 100% lỗi sai lệch định dạng khi hiển thị trên giao diện WebApp. |
 
 ---
@@ -88,7 +88,7 @@ Python Daemon chạy trực tiếp trên máy chủ SQL Server CoreBanking On-Pr
 | 12 | `CBTD_PhuTrach` | String | Username CBTD (Bảo toàn từ existing_map hoặc gán theo xã) |
 | 13 | `Ten_CBTD` | String | Họ tên CBTD (Bảo toàn từ existing_map hoặc gán theo xã) |
 | 14 | `TrangThaiHD` | String | `DANG_VAY` (hoặc `DA_TAT_TOAN` nếu DuNo = 0) |
-| 15 | `NgayTatToan` | Date | Ngày tất toán hợp đồng (dd/MM/yyyy hoặc rỗng) |
+| 15 | `MaLoaiHD` | String | Mã loại HĐ theo hình thức bảo đảm (`THCDBTNMT`, `THBLCDBTNMT`, `NHCDBTNMT`, `THCDB`, `NHCDB`, `NHKDB`, `THKDB`) |
 | 16 | `NgayCapNhat` | DateTime | Thời điểm đồng bộ từ Core (dd/MM/yyyy HH:mm:ss) |
 | **17** | **`HoTen`** | String | `B.TEN_KHACH_HANG` (Họ và tên khách hàng vay vốn) |
 | **18** | **`CCCD`** | String | `B.SO_CMND` (Số CCCD/CMND có nháy đơn `'`) |

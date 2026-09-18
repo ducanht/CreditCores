@@ -476,11 +476,11 @@ var SchemaSetup = {
         "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
         "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
         "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
       ],
       color: "#1B365D",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:T": "@", "U:U": "dd/MM/yyyy", "V:V": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 120, 22: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
@@ -703,6 +703,10 @@ var SchemaSetup = {
                   } else if (targetColName === "TrangThaiHD") {
                     var oldDuNo = Number(oldData[r][3] || 0);
                     newRow[k] = oldDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN";
+                  } else if (targetColName === "MaLoaiHD") {
+                    // Mặc định phân loại dựa theo thời hạn vay nếu dữ liệu cũ chưa có
+                    var thVay = Number(oldData[r][14] || 12);
+                    newRow[k] = thVay > 12 ? "THCDBTNMT" : "NHCDBTNMT";
                   } else {
                     newRow[k] = "";
                   }
@@ -1161,8 +1165,11 @@ var Customer360Controller = {
       var tenCBTD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "Ten_CBTD", "Lê Văn Tín (CBTD)")).trim();
       var duNo = Number(HeaderUtils.getCell(hdValues[j], colMapHD, "DuNo", 0)) || 0;
       var trangThaiHD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
-      var ngayTatToan = HeaderUtils.getCell(hdValues[j], colMapHD, "NgayTatToan", "");
-      if (ngayTatToan) ngayTatToan = formatGasDate(ngayTatToan);
+      var maLoaiHD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "MaLoaiHD", "")).trim();
+      if (!maLoaiHD) {
+        var stv = Number(HeaderUtils.getCell(hdValues[j], colMapHD, "SoThangVay", 12)) || 12;
+        maLoaiHD = stv > 12 ? "THCDBTNMT" : "NHCDBTNMT";
+      }
 
       // Kiểm tra bộ lọc trạng thái
       if (statusFilter && statusFilter !== "ALL" && trangThaiHD !== statusFilter) {
@@ -1199,7 +1206,7 @@ var Customer360Controller = {
         cbtdPhuTrach: cbtdUser,
         tenCBTD: tenCBTD,
         trangThaiHD: trangThaiHD,
-        ngayTatToan: ngayTatToan,
+        maLoaiHD: maLoaiHD,
         ngayCapNhat: HeaderUtils.getCell(hdValues[j], colMapHD, "NgayCapNhat", "") ? formatGasDateTime(HeaderUtils.getCell(hdValues[j], colMapHD, "NgayCapNhat", "")) : ""
       });
     }
@@ -3079,8 +3086,10 @@ var ReportController = {
         var hdMoTa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MoTaVay", "")).trim();
         var hdCBTD_Code = String(HeaderUtils.getCell(hdVals[j], colMapHD, "CBTD_PhuTrach", "")).trim();
         var hdTenCBTD   = String(HeaderUtils.getCell(hdVals[j], colMapHD, "Ten_CBTD", "")).trim();
-        var hdTrangThai = String(HeaderUtils.getCell(hdVals[j], colMapHD, "TrangThaiHD", hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).toUpperCase().trim();
-        var hdNgayTatToan = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "NgayTatToan", ""));
+        var hdMaLoaiHD  = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaLoaiHD", "")).trim();
+        if (!hdMaLoaiHD) {
+          hdMaLoaiHD = hdSoThang > 12 ? "THCDBTNMT" : "NHCDBTNMT";
+        }
 
         var khInfo = khMap[hdMaKH] || {
           hoTen: "Khách hàng " + hdMaKH,
@@ -3119,7 +3128,7 @@ var ReportController = {
           cbtdPhuTrach: hdCBTD_Code,
           tenCBTD: hdTenCBTD,
           trangThaiHD: hdTrangThai || (hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN"),
-          ngayTatToan: hdNgayTatToan
+          maLoaiHD: hdMaLoaiHD
         });
 
         totalTienVay += hdTienVay;
@@ -3199,7 +3208,46 @@ var ReportController = {
         color: loanTypeStats[p].color
       });
     }
-    loanTypeResult.sort(function(a, b) { return b.amount - a.amount; });
+    // Khởi tạo thống kê 7 hình thức bảo đảm
+    var securityTypeStats = {
+      "THCDBTNMT": { code: "THCDBTNMT", name: "Trung hạn có đảm bảo, đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Đăng ký GDBĐ)" },
+      "THBLCDBTNMT": { code: "THBLCDBTNMT", name: "Trung hạn đăng ký GDBĐ uỷ quyền", count: 0, duNo: 0, group: "Có TSBĐ (Đăng ký GDBĐ)" },
+      "NHCDBTNMT": { code: "NHCDBTNMT", name: "Ngắn hạn có đảm bảo, đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Đăng ký GDBĐ)" },
+      "THCDB": { code: "THCDB", name: "Trung hạn có TSBĐ không đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Không đăng ký)" },
+      "NHCDB": { code: "NHCDB", name: "Ngắn hạn có TSBĐ không đăng ký GDBĐ", count: 0, duNo: 0, group: "Có TSBĐ (Không đăng ký)" },
+      "NHKDB": { code: "NHKDB", name: "Ngắn hạn, tín chấp", count: 0, duNo: 0, group: "Tín chấp" },
+      "THKDB": { code: "THKDB", name: "Trung hạn tín chấp", count: 0, duNo: 0, group: "Tín chấp" }
+    };
+
+    // Duyệt lại danh sách hợp đồng đang vay để thống kê hình thức bảo đảm
+    for (var s = 0; s < statementResult.length; s++) {
+      var stItem = statementResult[s];
+      if (stItem.trangThaiHD !== "DA_TAT_TOAN" && stItem.duNo > 0) {
+        var mCode = stItem.maLoaiHD || "NHCDBTNMT";
+        if (!securityTypeStats[mCode]) {
+          securityTypeStats[mCode] = { code: mCode, name: mCode, count: 0, duNo: 0, group: "Khác" };
+        }
+        securityTypeStats[mCode].count++;
+        securityTypeStats[mCode].duNo += stItem.duNo;
+      }
+    }
+
+    var securityTypeResult = [];
+    for (var sc in securityTypeStats) {
+      var sObj = securityTypeStats[sc];
+      if (sObj.count > 0 || sObj.duNo > 0) {
+        var sRate = totalDuNo > 0 ? ((sObj.duNo / totalDuNo) * 100).toFixed(1) + "%" : "0%";
+        securityTypeResult.push({
+          code: sObj.code,
+          name: sObj.name,
+          group: sObj.group,
+          count: sObj.count,
+          amount: sObj.duNo,
+          rate: sRate
+        });
+      }
+    }
+    securityTypeResult.sort(function(a, b) { return b.amount - a.amount; });
 
     // --- Build topAvgDebtData result ---
     var topDebtArr = [];
@@ -3305,6 +3353,7 @@ var ReportController = {
     var finalResult = {
       areaData: areaResult,
       loanTypes: loanTypeResult,
+      securityTypes: securityTypeResult,
       statementData: statementResult,
       topAvgDebtData: topAvgDebtResult,
       kpiMetrics: {},

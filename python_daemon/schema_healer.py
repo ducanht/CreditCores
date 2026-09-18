@@ -71,7 +71,7 @@ ALL_SCHEMAS = {
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
         ],
         "color": {"red": 0.11, "green": 0.21, "blue": 0.36}
     },
@@ -245,10 +245,29 @@ def init_or_heal_database_schema(spreadsheet, log=None):
                         new_row = []
                         for h in headers:
                             old_idx = old_map.get(h)
-                            if old_idx is not None and old_idx < len(row):
-                                new_row.append(row[old_idx])
+                            if old_idx is None and h == "MaLoaiHD":
+                                old_idx = old_map.get("NgayTatToan")
+
+                            if old_idx is not None and old_idx < len(row) and str(row[old_idx]).strip():
+                                val = row[old_idx]
+                                if h == "MaLoaiHD" and ("/" in str(val) or not str(val).strip()):
+                                    st_idx = old_map.get("SoThangVay")
+                                    st_val = 12
+                                    if st_idx is not None and st_idx < len(row):
+                                        try: st_val = int(float(str(row[st_idx]).replace(",", ".")))
+                                        except Exception: pass
+                                    val = "THCDBTNMT" if st_val > 12 else "NHCDBTNMT"
+                                new_row.append(val)
                             else:
-                                new_row.append("")
+                                if h == "MaLoaiHD":
+                                    st_idx = old_map.get("SoThangVay")
+                                    st_val = 12
+                                    if st_idx is not None and st_idx < len(row):
+                                        try: st_val = int(float(str(row[st_idx]).replace(",", ".")))
+                                        except Exception: pass
+                                    new_row.append("THCDBTNMT" if st_val > 12 else "NHCDBTNMT")
+                                else:
+                                    new_row.append("")
                         new_data.append(new_row)
 
                     ws.clear()

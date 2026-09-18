@@ -103,7 +103,7 @@ Tài liệu này định nghĩa chi tiết **14 bảng CSDL chuẩn** và **2 b�
 | L | `CBTD_PhuTrach` | String | `@` | Username Cán bộ Tín dụng quản lý HĐ (Bảo toàn khi sync) |
 | M | `Ten_CBTD` | String | `@` | Họ tên đầy đủ CBTD phụ trách (Bảo toàn khi sync) |
 | N | `TrangThaiHD` | Enum | `@` | Trạng thái hợp đồng (`DANG_VAY`, `DA_TAT_TOAN`) |
-| O | `NgayTatToan` | String | `dd/MM/yyyy` | Ngày ghi nhận tất toán (khi dư nợ Core về 0) |
+| O | `MaLoaiHD` | Enum / String | `@` | Mã loại HĐ theo hình thức bảo đảm: `THCDBTNMT`, `THBLCDBTNMT`, `NHCDBTNMT`, `THCDB`, `NHCDB`, `NHKDB`, `THKDB` |
 | P | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server hoặc phân công |
 
 ### 6. `DANG_KY_TRICH_NO` (Ủy Quyền Trích Nợ CASA)

@@ -52,8 +52,11 @@ var Customer360Controller = {
       var tenCBTD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "Ten_CBTD", "Lê Văn Tín (CBTD)")).trim();
       var duNo = Number(HeaderUtils.getCell(hdValues[j], colMapHD, "DuNo", 0)) || 0;
       var trangThaiHD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
-      var ngayTatToan = HeaderUtils.getCell(hdValues[j], colMapHD, "NgayTatToan", "");
-      if (ngayTatToan) ngayTatToan = formatGasDate(ngayTatToan);
+      var maLoaiHD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "MaLoaiHD", "")).trim();
+      if (!maLoaiHD) {
+        var stv = Number(HeaderUtils.getCell(hdValues[j], colMapHD, "SoThangVay", 12)) || 12;
+        maLoaiHD = stv > 12 ? "THCDBTNMT" : "NHCDBTNMT";
+      }
 
       // Kiểm tra bộ lọc trạng thái
       if (statusFilter && statusFilter !== "ALL" && trangThaiHD !== statusFilter) {
@@ -90,7 +93,7 @@ var Customer360Controller = {
         cbtdPhuTrach: cbtdUser,
         tenCBTD: tenCBTD,
         trangThaiHD: trangThaiHD,
-        ngayTatToan: ngayTatToan,
+        maLoaiHD: maLoaiHD,
         ngayCapNhat: HeaderUtils.getCell(hdValues[j], colMapHD, "NgayCapNhat", "") ? formatGasDateTime(HeaderUtils.getCell(hdValues[j], colMapHD, "NgayCapNhat", "")) : ""
       });
     }

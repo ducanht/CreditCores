@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrencyVN, getTodayVN } from '../utils/dateUtils';
+import { getLoaiHDInfo } from '../utils/contractUtils';
 import LoanStatementTable from './reports/LoanStatementTable';
 import TopAverageDebtTable from './reports/TopAverageDebtTable';
 
@@ -114,6 +115,10 @@ export default function Reports() {
     return reportsData?.loanTypes || [];
   }, [reportsData]);
 
+  const securityTypes = useMemo(() => {
+    return reportsData?.securityTypes || [];
+  }, [reportsData]);
+
   const statementData = useMemo(() => {
     return reportsData?.statementData || [];
   }, [reportsData]);
@@ -187,6 +192,27 @@ export default function Reports() {
       return;
     }
 
+    if (activeTab === 'security_type') {
+      csvContent += 'BÁO CÁO PHÂN LOẠI CHO VAY THEO HÌNH THỨC BẢO ĐẢM & ĐĂNG KÝ GDBĐ (7 NHÓM MALOAIHD)\n';
+      csvContent += 'QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ\n';
+      csvContent += `Thời điểm xuất: ${getTodayVN()} | Tổng dư nợ toàn Quỹ: ${totalDuNo} VNĐ\n\n`;
+      csvContent += 'STT,Mã Loại HĐ,Tên Phân Loại Chi Tiết,Số Món Vay,Tổng Dư Nợ (VNĐ),Tỷ Trọng (%),Hình Thức Bảo Đảm,Đăng Ký GDBĐ\n';
+      securityTypes.forEach((st, idx) => {
+        const info = getLoaiHDInfo(st.code);
+        csvContent += `${idx + 1},"${st.code}","${st.label}",${st.count},${st.duNo},"${st.rate}","${info.hasCollateral ? 'Có TSBĐ' : 'Tín chấp'}","${info.isRegisteredGDBD ? 'Có đăng ký GDBĐ' : 'Không đăng ký'}"\n`;
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `PhanLoai_BaoDam_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     // Xuất báo cáo tổng hợp
     csvContent += 'BÁO CÁO THỐNG KÊ & PHÂN TÍCH QUẢN TRỊ TÍN DỤNG TOÀN DIỆN\n';
     csvContent += 'QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ\n';
@@ -205,6 +231,15 @@ export default function Reports() {
       csvContent += `"${lt.type}",${lt.count},${lt.amount},"${lt.rate}"\n`;
     });
     csvContent += '\n';
+
+    if (securityTypes.length > 0) {
+      csvContent += '3. PHÂN LOẠI CHO VAY THEO HÌNH THỨC BẢO ĐẢM (7 NHÓM MALOAIHD)\n';
+      csvContent += 'Mã Loại HĐ,Phân Loại Chi Tiết,Số Món,Tổng Dư Nợ (VNĐ),Tỷ Trọng\n';
+      securityTypes.forEach((st) => {
+        csvContent += `"${st.code}","${st.label}",${st.count},${st.duNo},"${st.rate}"\n`;
+      });
+      csvContent += '\n';
+    }
 
     if (topAvgDebtData.length > 0) {
       csvContent += '3. TOP 10 KHÁCH HÀNG DƯ NỢ LỚN NHẤT\n';
@@ -449,6 +484,12 @@ export default function Reports() {
               onClick={() => setActiveTab('loan_type')}
             >
               <PieChart size={13} /> Cơ Cấu Vay
+            </button>
+            <button
+              className={`seg-item ${activeTab === 'security_type' ? 'active' : ''}`}
+              onClick={() => setActiveTab('security_type')}
+            >
+              <ShieldCheck size={13} /> Hình Thức Bảo Đảm
             </button>
             <button
               className={`seg-item ${activeTab === 'statement' ? 'active' : ''}`}
@@ -810,6 +851,159 @@ export default function Reports() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'security_type' && (
+        <div className="card-modern p-4 report-tab-panel">
+          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+              <h6 className="fw-semibold m-0 font-heading d-flex align-items-center gap-2">
+                <ShieldCheck size={18} className="text-primary" /> Phân Loại Dư Nợ Theo Hình Thức Bảo Đảm & Đăng Ký GDBĐ
+              </h6>
+              <span className="small text-muted">
+                Thống kê 7 nhóm mã loại hợp đồng (MaLoaiHD) chuẩn hoá theo quy chế bảo đảm tiền vay CoreBanking NG-eFUND
+              </span>
+            </div>
+            <span className="badge badge-brand-soft font-monospace">7 Mã Phân Loại</span>
+          </div>
+
+          {securityTypes.length === 0 ? (
+            <div className="empty-state py-4">
+              <div className="empty-state-icon mx-auto"><ShieldCheck size={26} /></div>
+              <h6 className="fw-semibold mt-2">Chưa có dữ liệu hình thức bảo đảm</h6>
+              <p className="small text-muted mb-0">Dữ liệu sẽ hiển thị khi GAS handler <code>getReportsData</code> trả về <code>securityTypes</code></p>
+            </div>
+          ) : (
+            <>
+              {/* Thẻ Thống Kê 3 Nhóm Chính */}
+              <div className="row g-2 mb-3">
+                {(() => {
+                  const gdbdTotal = securityTypes
+                    .filter(s => ['THCDBTNMT', 'THBLCDBTNMT', 'NHCDBTNMT'].includes(s.code))
+                    .reduce((sum, s) => sum + (Number(s.duNo) || 0), 0);
+                  const khongGdbdTotal = securityTypes
+                    .filter(s => ['THCDB', 'NHCDB'].includes(s.code))
+                    .reduce((sum, s) => sum + (Number(s.duNo) || 0), 0);
+                  const tinChapTotal = securityTypes
+                    .filter(s => ['NHKDB', 'THKDB'].includes(s.code))
+                    .reduce((sum, s) => sum + (Number(s.duNo) || 0), 0);
+                  const baseTotal = totalDuNo > 0 ? totalDuNo : (gdbdTotal + khongGdbdTotal + tinChapTotal || 1);
+
+                  return (
+                    <>
+                      <div className="col-12 col-md-4">
+                        <div className="p-2.5 rounded-3 bg-primary-subtle border border-primary-subtle">
+                          <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>1. Có TSBĐ & Đăng Ký GDBĐ</span>
+                          <strong className="text-primary fs-6 num-tabular">{formatCurrencyVN(gdbdTotal)}</strong>
+                          <div className="text-xs text-muted mt-0.5">Tỷ trọng: {((gdbdTotal / baseTotal) * 100).toFixed(1)}%</div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-4">
+                        <div className="p-2.5 rounded-3 bg-warning-subtle border border-warning-subtle">
+                          <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>2. Có TSBĐ (Không ĐK GDBĐ)</span>
+                          <strong className="text-warning-emphasis fs-6 num-tabular">{formatCurrencyVN(khongGdbdTotal)}</strong>
+                          <div className="text-xs text-muted mt-0.5">Tỷ trọng: {((khongGdbdTotal / baseTotal) * 100).toFixed(1)}%</div>
+                        </div>
+                      </div>
+                      <div className="col-12 col-md-4">
+                        <div className="p-2.5 rounded-3 bg-secondary-subtle border">
+                          <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>3. Cho Vay Tín Chấp</span>
+                          <strong className="text-dark fs-6 num-tabular">{formatCurrencyVN(tinChapTotal)}</strong>
+                          <div className="text-xs text-muted mt-0.5">Tỷ trọng: {((tinChapTotal / baseTotal) * 100).toFixed(1)}%</div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Progress bar 7 màu phân bổ */}
+              <div className="progress mb-3" style={{ height: 10, borderRadius: 6, backgroundColor: 'var(--bg-surface-soft)' }}>
+                {securityTypes.map((st, idx) => {
+                  const numRate = parseFloat(st.rate) || 0;
+                  return (
+                    <div
+                      key={idx}
+                      className="progress-bar"
+                      style={{ width: `${numRate}%`, backgroundColor: st.color }}
+                      title={`${st.code} - ${st.label}: ${st.rate}`}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Bảng Dữ Liệu 7 Loại */}
+              <div className="table-responsive">
+                <table className="table table-custom table-hover align-middle small">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '40px' }} className="text-center">STT</th>
+                      <th style={{ width: '130px' }}>Mã Loại HĐ</th>
+                      <th>Mô Tả Phân Loại Hình Thức Bảo Đảm</th>
+                      <th className="text-center" style={{ width: '90px' }}>Kỳ Hạn</th>
+                      <th className="text-center" style={{ width: '110px' }}>Đăng Ký GDBĐ</th>
+                      <th className="text-center" style={{ width: '90px' }}>Số Món</th>
+                      <th className="text-end" style={{ width: '140px' }}>Tổng Dư Nợ (VNĐ)</th>
+                      <th className="text-end" style={{ width: '90px' }}>Tỷ Trọng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {securityTypes.map((st, idx) => {
+                      const info = getLoaiHDInfo(st.code);
+                      return (
+                        <tr key={st.code || idx}>
+                          <td className="text-center text-muted">{idx + 1}</td>
+                          <td>
+                            <span className="font-monospace fw-bold text-primary">{st.code}</span>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center gap-2">
+                              <span style={{ width: 10, height: 10, borderRadius: '50%', background: st.color, flexShrink: 0, display: 'inline-block' }} />
+                              <span className="fw-medium text-dark">{st.label}</span>
+                            </div>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge bg-light text-dark border">
+                              {info.term}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            {info.isRegisteredGDBD ? (
+                              <span className="badge bg-success-subtle text-success border border-success-subtle">
+                                Có ĐK
+                              </span>
+                            ) : (
+                              <span className="badge bg-light text-muted border">
+                                Không
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-center num-tabular fw-medium">{st.count}</td>
+                          <td className="text-end fw-semibold num-tabular text-dark">{formatCurrencyVN(st.duNo)}</td>
+                          <td className="text-end">
+                            <span className="badge badge-brand-soft font-monospace">{st.rate}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="fw-bold bg-light-subtle">
+                      <td colSpan={5} className="text-center">TỔNG CỘNG 7 NHÓM BẢO ĐẢM</td>
+                      <td className="text-center num-tabular">
+                        {securityTypes.reduce((s, c) => s + (Number(c.count) || 0), 0)}
+                      </td>
+                      <td className="text-end num-tabular text-primary">
+                        {formatCurrencyVN(securityTypes.reduce((s, c) => s + (Number(c.duNo) || 0), 0))}
+                      </td>
+                      <td className="text-end">
+                        <span className="badge badge-brand-soft">100%</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       )}
