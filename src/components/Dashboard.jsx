@@ -51,6 +51,14 @@ const formatCompactVN = (amount) => {
   return num.toLocaleString('vi-VN') + ' đ';
 };
 
+// Helper tính tỷ trọng phần trăm chuẩn dạng số (làm tròn 1 chữ số thập phân)
+const calcPercentNum = (part, total) => {
+  const p = Number(part) || 0;
+  const t = Number(total) || 0;
+  if (t <= 0) return 0;
+  return Number(((p / t) * 100).toFixed(1));
+};
+
 // --- Skeleton Loader cho Dashboard ---
 function DashboardSkeleton() {
   return (

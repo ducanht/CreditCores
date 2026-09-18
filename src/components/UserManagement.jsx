@@ -18,7 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { api } from '../services/api';
-import { hashPassword, ROLE_LABELS, MODULE_REGISTRY } from '../services/auth';
+import { hashPassword, ROLE_LABELS, MODULE_REGISTRY, AuthService } from '../services/auth';
 import Pagination from './Pagination';
 
 const GROUPS_METADATA = [

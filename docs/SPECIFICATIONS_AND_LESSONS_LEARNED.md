@@ -442,6 +442,11 @@ Dưới đây là 15 sự cố, lỗi kỹ thuật và nghiệp vụ thực tế
 │    │ (AI buzzwords & Sparkles)     │ minh", "AI", icon Sparkles   │ dụng QTDND; dùng icon tác    │
 │    │                               │ gây mất chuyên nghiệp và rối │ nghiệp thực tế (CheckCircle2,│
 │    │                               │ mắt cán bộ nghiệp vụ.        │ FileCheck2, Search, Download)│
+├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ 16 │ Undefined Reference / Missing │ Vite chỉ transpile JSX mà    │ Tích hợp AST Static Scanner  │
+│    │ Import (ReferenceError Runtime)│ không kiểm tra binding; dẫn  │ (@babel/traverse) vào build  │
+│    │                               │ đến lỗi ReferenceError chết  │ pipeline (node tools/        │
+│    │                               │ màn hình khi render UI.      │ find_undefined_vars.js).     │
 └────┴───────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
 ```
 

@@ -676,7 +676,7 @@ export default function TemplateManager() {
 
       // Cập nhật vào danh sách templates chung
       const updatedList = templates.map((t) => (t.id === updatedTpl.id ? updatedTpl : t));
-      saveToStorage(updatedList, updatedTpl);
+      saveToBackend(updatedList, updatedTpl);
     }
 
     setNewCustomTagKey('');
@@ -693,7 +693,7 @@ export default function TemplateManager() {
     setSelectedTemplate(updatedTpl);
 
     const updatedList = templates.map((t) => (t.id === updatedTpl.id ? updatedTpl : t));
-    saveToStorage(updatedList, updatedTpl);
+    saveToBackend(updatedList, updatedTpl);
   };
 
   // Hàm sinh nội dung văn bản sau khi đã thay thế toàn bộ thẻ biến

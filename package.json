@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "check-syntax": "node tools/find_undefined_vars.js",
+    "build": "node tools/find_undefined_vars.js && vite build",
     "preview": "vite preview",
     "clasp-login": "clasp login",
     "clasp-status": "clasp status",
