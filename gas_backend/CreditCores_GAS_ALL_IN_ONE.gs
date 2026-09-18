@@ -3708,6 +3708,20 @@ function doPost(e) {
 
 function runSetupDirectly() {
   var ss = getSpreadsheetInstance();
-  return SchemaSetup.setupAllSheets(ss);
+  Logger.log(">>> Bắt đầu rà soát, nâng cấp và chuẩn hoá toàn bộ CSDL CreditCores...");
+  var res = SchemaSetup.setupAllSheets(ss);
+  Logger.log(">>> Kết quả: " + JSON.stringify(res));
+  return res;
 }
+
+function onOpen() {
+  var ui;
+  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
+  if (ui) {
+    ui.createMenu('⚙️ Quản Trị CSDL CreditCores')
+      .addItem('⚡ Khởi tạo / Tự động Chuẩn hoá Toàn bộ CSDL', 'runSetupDirectly')
+      .addToUi();
+  }
+}
+
 
