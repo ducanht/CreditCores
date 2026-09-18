@@ -75,7 +75,6 @@ export default function LoanProductDonutChart({
       {
         name: 'Nông nghiệp, lâm nghiệp, thủy sản',
         shortName: 'Nông nghiệp',
-        subDesc: 'Trồng trọt, chăn nuôi bò sữa, lợn thịt, thủy sản sông Mã',
         amount: nn,
         count: countNN,
         metricValue: isByCount ? countNN : nn,
@@ -86,7 +85,6 @@ export default function LoanProductDonutChart({
       {
         name: 'Tiêu dùng - Đời sống',
         shortName: 'Tiêu dùng',
-        subDesc: 'Xây sửa nhà kiên cố, đồ dùng gia đình, xe máy, học tập',
         amount: td,
         count: countTD,
         metricValue: isByCount ? countTD : td,
@@ -97,7 +95,6 @@ export default function LoanProductDonutChart({
       {
         name: 'Thương mại - Dịch vụ',
         shortName: 'Thương mại',
-        subDesc: 'Buôn bán nông sản, vật tư nông nghiệp, dịch vụ ăn uống',
         amount: tm,
         count: countTM,
         metricValue: isByCount ? countTM : tm,
@@ -294,8 +291,8 @@ export default function LoanProductDonutChart({
                     </div>
 
                     <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.72rem' }}>
-                      <span className="text-truncate" style={{ maxWidth: '140px' }} title={item.subDesc}>
-                        {item.subDesc}
+                      <span className="text-truncate" style={{ maxWidth: '140px' }} title={item.name}>
+                        {item.name}
                       </span>
                       <strong className="num-tabular text-dark">
                         {metricMode === 'countHD' ? `${item.count} món` : formatCompactVN(item.amount)}

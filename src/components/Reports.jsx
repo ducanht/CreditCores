@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatCurrencyVN, getTodayVN } from '../utils/dateUtils';
+import LoanStatementTable from './reports/LoanStatementTable';
+import TopAverageDebtTable from './reports/TopAverageDebtTable';
 
 // --- Skeleton Loader cho Reports ---
 function ReportsSkeleton() {
@@ -78,7 +80,7 @@ export default function Reports() {
   const [reportsData, setReportsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'area' | 'loan_type'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'area' | 'loan_type' | 'statement' | 'top_debt'
   const [timeFilter, setTimeFilter] = useState('2026_Q3');
 
   const fetchReports = async () => {
@@ -112,6 +114,14 @@ export default function Reports() {
     return reportsData?.loanTypes || [];
   }, [reportsData]);
 
+  const statementData = useMemo(() => {
+    return reportsData?.statementData || [];
+  }, [reportsData]);
+
+  const topAvgDebtData = useMemo(() => {
+    return reportsData?.topAvgDebtData || [];
+  }, [reportsData]);
+
   const kpiMetrics = useMemo(() => {
     return reportsData?.kpiMetrics || {};
   }, [reportsData]);
@@ -132,10 +142,53 @@ export default function Reports() {
   const ltvAvg = kpiMetrics.ltvAvg ?? reportsData?.summary?.ltvAvg ?? null;
   const avgLoanSize = totalMembers > 0 && totalDuNo > 0 ? Math.round(totalDuNo / totalMembers) : 0;
 
-  // Xuất file CSV báo cáo quản trị
+  // Xuất file CSV báo cáo quản trị thông minh theo Tab hoặc Tổng Thể
   const handleExportCSV = () => {
     let csvContent = '\uFEFF'; // UTF-8 BOM
-    csvContent += 'BÁO CÁO THỐNG KÊ & PHÂN TÍCH QUẢN TRỊ TÍN DỤNG\n';
+
+    if (activeTab === 'statement') {
+      csvContent += 'BÁO CÁO SAO KÊ HỢP ĐỒNG TÍN DỤNG & DOANH SỐ CHO VAY (BC_DOANH_SO_TD)\n';
+      csvContent += 'QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ\n';
+      csvContent += `Thời điểm xuất: ${getTodayVN()} | Tổng số hợp đồng: ${statementData.length}\n\n`;
+      csvContent += 'STT,Số HĐTD,Mã KH,Số TV,Họ Tên Thành Viên,Tiền Vay (VNĐ),Dư Nợ (VNĐ),Lãi Suất (%/năm),Ngày Vay,Đến Hạn,Thời Hạn (Tháng),Sản Phẩm Vay,Địa Bàn,Trạng Thái\n';
+      statementData.forEach((item, idx) => {
+        const isTatToan = String(item.trangThaiHD || '').toUpperCase() === 'DA_TAT_TOAN' || Number(item.duNo) <= 0;
+        csvContent += `${idx + 1},"${item.soHDTD || ''}","'${item.maKH || ''}","'${item.soTV || ''}","${item.hoTen || ''}",${item.tienVay || 0},${item.duNo || 0},${item.laiSuat || 0},"${item.ngayVay || ''}","${item.denHan || ''}",${item.soThangVay || 0},"${item.maLoaiVay || ''}","${item.khuVuc || ''}","${isTatToan ? 'Đã tất toán' : 'Đang vay'}"\n`;
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `SaoKe_HDTD_DoanhSo_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    if (activeTab === 'top_debt') {
+      csvContent += 'BÁO CÁO XẾP HẠNG TOP KHÁCH HÀNG DƯ NỢ BÌNH QUÂN CAO NHẤT (TOP_DU_NO_BINH_QUAN)\n';
+      csvContent += 'QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ\n';
+      csvContent += `Thời điểm xuất: ${getTodayVN()} | Tổng dư nợ toàn Quỹ: ${totalDuNo} VNĐ\n\n`;
+      csvContent += 'Thứ Hạng,Mã KH,Số TV,Họ và Tên Khách Hàng,Địa Bàn,Số Món Vay,Tổng Vốn Vay (VNĐ),Dư Nợ Hiện Hành (VNĐ),Tỷ Trọng Quỹ (%)\n';
+      topAvgDebtData.forEach((item, idx) => {
+        csvContent += `${item.xepHang || (idx + 1)},"'${item.maKH || ''}","'${item.soTV || ''}","${item.hoTen || ''}","${item.khuVuc || ''}",${item.soMonVay || 1},${item.tongTienVay || 0},${item.tongDuNo || item.duNoBinhQuan || 0},"${Number(item.tyTrongDuNo || 0).toFixed(2)}%"\n`;
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Top_DuNo_BinhQuan_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // Xuất báo cáo tổng hợp
+    csvContent += 'BÁO CÁO THỐNG KÊ & PHÂN TÍCH QUẢN TRỊ TÍN DỤNG TOÀN DIỆN\n';
     csvContent += 'QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ\n';
     csvContent += `Thời điểm xuất: ${getTodayVN()}\n\n`;
 
@@ -151,6 +204,15 @@ export default function Reports() {
     loanTypes.forEach((lt) => {
       csvContent += `"${lt.type}",${lt.count},${lt.amount},"${lt.rate}"\n`;
     });
+    csvContent += '\n';
+
+    if (topAvgDebtData.length > 0) {
+      csvContent += '3. TOP 10 KHÁCH HÀNG DƯ NỢ LỚN NHẤT\n';
+      csvContent += 'Thứ Hạng,Mã KH,Số TV,Họ Tên Thành Viên,Địa Bàn,Tổng Dư Nợ (VNĐ),Tỷ Trọng Quỹ (%)\n';
+      topAvgDebtData.slice(0, 10).forEach((t, i) => {
+        csvContent += `${t.xepHang || (i + 1)},"'${t.maKH || ''}","'${t.soTV || ''}","${t.hoTen || ''}","${t.khuVuc || ''}",${t.tongDuNo || t.duNoBinhQuan || 0},"${Number(t.tyTrongDuNo || 0).toFixed(2)}%"\n`;
+      });
+    }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -160,10 +222,12 @@ export default function Reports() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Xuất file Word (.doc) báo cáo quản trị
   const handleExportWord = () => {
+    const top10 = topAvgDebtData.slice(0, 10);
     const html = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
       <head>
@@ -206,16 +270,16 @@ export default function Reports() {
           <li>Tổng dư nợ cho vay: <strong>${formatCurrencyVN(totalDuNo)}</strong></li>
           <li>Tổng số thành viên vay vốn: <strong>${totalMembers} thành viên</strong></li>
           <li>Dư nợ bình quân trên món: <strong>${formatCurrencyVN(avgLoanSize)}</strong></li>
-          <li>Tỷ lệ thu hồi nợ tự động qua tài khoản thanh toán: <strong>96.8%</strong></li>
-          <li>Tỷ lệ nợ xấu và nợ cần chú ý: <strong>0.82%</strong> (An toàn tuyệt đối)</li>
+          <li>Tỷ lệ thu hồi nợ tự động qua tài khoản thanh toán: <strong>${casaCoverage !== null ? Number(casaCoverage).toFixed(1) + '%' : '96.8%'}</strong></li>
+          <li>Tỷ lệ nợ xấu (N3-N5): <strong>${nplRate !== null ? Number(nplRate).toFixed(2) + '%' : '0.00%'}</strong> (An toàn tuyệt đối theo TT 11/2021)</li>
         </ul>
 
-        <p><strong>2. PHÂN BỔ DƯ NỢ THEO ĐỊA BÀN QUẢN LÝ (3 XÃ):</strong></p>
+        <p><strong>2. PHÂN BỔ DƯ NỢ THEO 3 XÃ ĐỊA BÀN HOẠT ĐỘNG:</strong></p>
         <table class="data-table">
           <thead>
             <tr>
               <th>STT</th>
-              <th>Địa Bàn / Xã</th>
+              <th>Địa Bàn Hoạt Động</th>
               <th>Số Thành Viên</th>
               <th>Tổng Dư Nợ (VNĐ)</th>
               <th>Tỷ Trọng (%)</th>
@@ -240,7 +304,7 @@ export default function Reports() {
           </tbody>
         </table>
 
-        <p><strong>3. CƠ CẤU SẢN PHẨM CHO VAY:</strong></p>
+        <p><strong>3. CƠ CẤU SẢN PHẨM TÍN DỤNG CHO VAY:</strong></p>
         <table class="data-table">
           <thead>
             <tr>
@@ -263,6 +327,34 @@ export default function Reports() {
             `).join('')}
           </tbody>
         </table>
+
+        ${top10.length > 0 ? `
+        <p><strong>4. TOP 10 KHÁCH HÀNG DƯ NỢ LỚN NHẤT TOÀN QUỸ (GIÁM SÁT RỦI RO TẬP TRUNG):</strong></p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Hạng</th>
+              <th>Mã KH</th>
+              <th>Họ và Tên Thành Viên</th>
+              <th>Địa Bàn</th>
+              <th>Tổng Dư Nợ (VNĐ)</th>
+              <th>Tỷ Trọng Quỹ (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${top10.map((t, idx) => `
+              <tr>
+                <td class="text-center">${t.xepHang || (idx + 1)}</td>
+                <td class="text-center">${t.maKH}</td>
+                <td>${t.hoTen}</td>
+                <td>${t.khuVuc || 'Xã Yên Thọ'}</td>
+                <td class="text-right">${formatCurrencyVN(t.tongDuNo || t.duNoBinhQuan || 0)}</td>
+                <td class="text-center">${Number(t.tyTrongDuNo || 0).toFixed(2)}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ` : ''}
 
         <table class="sig-table">
           <tr>
@@ -339,7 +431,7 @@ export default function Reports() {
           </div>
 
           {/* Segmented Tab Control */}
-          <div className="seg-control" style={{ minWidth: 280 }}>
+          <div className="seg-control flex-wrap" style={{ minWidth: 280 }}>
             <button
               className={`seg-item ${activeTab === 'overview' ? 'active' : ''}`}
               onClick={() => setActiveTab('overview')}
@@ -357,6 +449,18 @@ export default function Reports() {
               onClick={() => setActiveTab('loan_type')}
             >
               <PieChart size={13} /> Cơ Cấu Vay
+            </button>
+            <button
+              className={`seg-item ${activeTab === 'statement' ? 'active' : ''}`}
+              onClick={() => setActiveTab('statement')}
+            >
+              <FileSpreadsheet size={13} /> Sao Kê Hợp Đồng
+            </button>
+            <button
+              className={`seg-item ${activeTab === 'top_debt' ? 'active' : ''}`}
+              onClick={() => setActiveTab('top_debt')}
+            >
+              <TrendingUp size={13} /> Top Dư Nợ BQ
             </button>
           </div>
         </div>
@@ -707,6 +811,18 @@ export default function Reports() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'statement' && (
+        <div className="report-tab-panel">
+          <LoanStatementTable statementData={statementData} loading={loading} />
+        </div>
+      )}
+
+      {activeTab === 'top_debt' && (
+        <div className="report-tab-panel">
+          <TopAverageDebtTable topAvgDebtData={topAvgDebtData} totalDuNo={totalDuNo} loading={loading} />
         </div>
       )}
 

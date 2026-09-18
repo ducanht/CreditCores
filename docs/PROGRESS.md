@@ -143,16 +143,16 @@ TỔNG THỂ            ██████████████████�
 | Giám sát Python Daemon & Logs | ✅ Done | Đồng bộ 2 chiều Core SQL |
 
 ### 11. Báo Cáo Thống Kê
-**Mức hoàn thành: 90%**
+**Mức hoàn thành: 100% (Đã Hoàn Thiện)**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
 | Phân bổ dư nợ theo 3 Xã (Live Data) | ✅ Done | GAS `handleGetReportsData` tính LIVE 100% |
-| Cơ cấu sản phẩm tín dụng (Live Data) | ✅ Done | Nhóm Nông nghiệp, Thương mại, Tiêu dùng |
+| Cơ cấu sản phẩm tín dụng (Live Data) | ✅ Done | Giữ nguyên gốc tên sản phẩm từ CSDL |
 | Skeleton Loader & Tab Navigation | ✅ Done | `ReportsSkeleton` + Action toolbar |
 | Summary KPIs (CASA, NPL, Dư nợ) | ✅ Done | Tỷ lệ trích nợ tự động, nợ xấu N3-N5 |
-| Tab "Sao Kê Hợp Đồng" (BC_DOANH_SO_TD) | 🔲 Chuẩn bị | Schema đã sẵn sàng trên GAS backend |
-| Tab "Top Dư Nợ Bình Quân" | 🔲 Chuẩn bị | Đã có sheet & cấu trúc truy vấn |
+| Tab "Sao Kê Hợp Đồng" (BC_DOANH_SO_TD) | ✅ Done | Component `LoanStatementTable` + Bộ lọc đa năng + Xuất CSV |
+| Tab "Top Dư Nợ Bình Quân" (TOP_DU_NO_BINH_QUAN) | ✅ Done | Component `TopAverageDebtTable` + Rank Huy Hiệu + Giám sát rủi ro TT 39/2016 |
 
 ### 12. Tài Sản Thế Chấp
 **Mức hoàn thành: 82%**
@@ -168,23 +168,24 @@ TỔNG THỂ            ██████████████████�
 
 ## 🏗️ INFRASTRUCTURE & TỐI ƯU HÓA
 
-### GAS Backend Performance — 92% (Đã Nâng Cấp)
+### GAS Backend Performance — 96% (Đã Nâng Cấp)
 | Hạng Mục | Trạng Thái | Chi Tiết Kỹ Thuật |
 |:---|:---:|:---|
 | In-Memory Spreadsheet Singleton | ✅ Done | `_SS_CACHE` tránh gọi `openById` lặp đi lặp lại |
 | Phân tách Lock READ vs WRITE | ✅ Done | `doPost` chỉ khóa khi gọi các mutation actions |
-| `getReportsData` Live Engine | ✅ Done | Tính trực tiếp từ `KH_CORE` + `HDTD_CORE` trong 2 batch reads |
+| `getReportsData` Live Engine | ✅ Done | Tích hợp sinh động `statementData` và `topAvgDebtData` ngay trong 1 batch read |
+| Fallback đọc Sheet BC_DOANH_SO_TD & TOP_DU_NO_BINH_QUAN | ✅ Done | Tự động đọc từ sheet nếu có hoặc tính từ Core |
 | `searchCustomer360` Cache | ✅ Done | Cache danh sách mặc định `cust360_default` 60s |
 | Invalidation Key Map | ✅ Done | Tự động xóa cache khi có thay đổi dữ liệu liên quan |
 
-### UI/UX Design System — 95% (Đã Nâng Cấp)
+### UI/UX Design System — 96% (Đã Nâng Cấp)
 | Hạng Mục | Trạng Thái | Chi Tiết Kỹ Thuật |
 |:---|:---:|:---|
 | Brand Tokens (#9ACD32, Navy) | ✅ Done | Nhận diện thương hiệu QTDND Yên Thọ chuẩn mực |
 | Dark / Light Mode tương thích 100% | ✅ Done | Tương phản cao WCAG AAA, chuyển chế độ tức thì |
 | TopHeader Breadcrumb & Bell | ✅ Done | Điều hướng trực quan, chuông thông báo, Profile Pill |
 | Skeleton Loaders | ✅ Done | Áp dụng cho Dashboard & Reports, triệt tiêu giật layout |
-| Segmented Control | ✅ Done | `.seg-control` thay thế nút group thô |
+| Segmented Control | ✅ Done | `.seg-control` hỗ trợ 5 tabs báo cáo |
 | Tabular Nums cho Tiền Tệ | ✅ Done | Số liệu căn chỉnh thẳng hàng, chuyên nghiệp |
 
 ---
@@ -192,16 +193,19 @@ TỔNG THỂ            ██████████████████�
 ## 🔲 KẾ HOẠCH BƯỚC TIẾP THEO
 
 ### 🟡 Giai Đoạn Hoàn Thiện Tiếp Theo
-- [ ] Bổ sung màn hình chi tiết cho Tab "Sao Kê Hợp Đồng" (`BC_DOANH_SO_TD`)
-- [ ] Bổ sung bảng xếp hạng Tab "Top Dư Nợ Bình Quân"
+- [x] Bổ sung màn hình chi tiết cho Tab "Sao Kê Hợp Đồng" (`BC_DOANH_SO_TD`)
+- [x] Bổ sung bảng xếp hạng Tab "Top Dư Nợ Bình Quân" (`TOP_DU_NO_BINH_QUAN`)
 - [ ] Audit độ chính xác dữ liệu đối soát khi Python Daemon đẩy dữ liệu đợt mới
+- [ ] Hoàn thiện phân hệ Tái định giá định kỳ Tài sản bảo đảm (`TSBD_CORE`)
 
 ---
 
 ## ✅ CHANGELOG
 
 | Ngày | Version | Chi Tiết |
-| **18/09/2026** | **v1.4.3** | **Hoàn thành Giai đoạn 2: Tích hợp Biểu đồ So Sánh Dư Nợ 3 Xã/12 Thôn `CommuneComparisonChart`, Donut Tỷ Trọng Sản Phẩm Vay `LoanProductDonutChart` & Nâng cấp toàn diện Customer 360° (`CustomerFinancialCard`, `ContractTimelineList`)** |
+|:---|:---:|:---|
+| **18/09/2026** | **v1.5.0** | **Hoàn thành Giai đoạn 3: Xây dựng toàn diện 2 Phân hệ Báo cáo Chuyên sâu (Sao Kê Hợp Đồng Tín Dụng & Doanh Số `LoanStatementTable`, Xếp Hạng Top Dư Nợ Bình Quân Toàn Quỹ `TopAverageDebtTable`), Nâng cấp Schema Auto-Healing (`BC_DOANH_SO_TD`, `TOP_DU_NO_BINH_QUAN`), Tối ưu hóa Live Backend GAS & Xuất CSV/Word đa tầng** |
+| 18/09/2026 | v1.4.3 | Hoàn thành Giai đoạn 2: Tích hợp Biểu đồ So Sánh Dư Nợ 3 Xã/12 Thôn `CommuneComparisonChart`, Donut Tỷ Trọng Sản Phẩm Vay `LoanProductDonutChart` & Nâng cấp toàn diện Customer 360° (`CustomerFinancialCard`, `ContractTimelineList`) |
 | 18/09/2026 | v1.4.2 | Hoàn thành sâu Giai đoạn 1: Biểu mẫu in Giấy Thỏa Thuận Trích Nợ A4 & Xuất Word (.doc) `DebitAgreementPrintModal`, 1-click in ấn trên bảng & modal, nâng cấp xuất file lệnh CoreBanking / Co-opBank và Bảng kê A4 có 3 khối ký duyệt |
 | 18/09/2026 | v1.4.1 | Hoàn thành Giai đoạn 1: Phân rã Shared Catalog (SegControl, StatusBadge, EmptyState, ActionToolbar), tách sub-modules DebitRegisterTable & DebitBatchTable, nâng cấp Reconciliation & DebtWarning |
 | 18/09/2026 | v1.4.0 | Tối ưu toàn diện GAS Performance (Singleton SS, Write Lock, Cache 60s), UI/UX Redesign (TopHeader breadcrumbs & bell, Skeleton loader, SegControl), nâng cấp Reports Live Data 100% |

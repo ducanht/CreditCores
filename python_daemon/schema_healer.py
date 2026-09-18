@@ -128,6 +128,22 @@ ALL_SCHEMAS = {
     "DOCUMENT_STORAGE": {
         "headers": ["ID_HOP_DONG", "MA_KH", "TEN_KHACH_HANG", "LOAI_BIEU_MAU", "NGUOI_LAP", "NGAY_LAP", "LINK_GOOGLE_DOC", "LINK_PDF", "TRANG_THAI"],
         "color": {"red": 0.15, "green": 0.68, "blue": 0.38}
+    },
+    "BC_DOANH_SO_TD": {
+        "headers": [
+            "SoHDTD", "MaKH", "SoTV", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
+            "MaLoaiVay", "SoThangVay", "MoTaVay", "KhuVuc"
+        ],
+        "color": {"red": 0.01, "green": 0.52, "blue": 0.78}
+    },
+    "TOP_DU_NO_BINH_QUAN": {
+        "headers": [
+            "NamBaoCao", "XepHang", "MaKH", "HoTen", "SoTV", "KhuVuc",
+            "DuNoThang01", "DuNoThang02", "DuNoThang03", "DuNoThang04", "DuNoThang05", "DuNoThang06",
+            "DuNoThang07", "DuNoThang08", "DuNoThang09", "DuNoThang10", "DuNoThang11", "DuNoThang12",
+            "DuNoBinhQuan", "TongTienVay", "TyTrongDuNo"
+        ],
+        "color": {"red": 0.71, "green": 0.33, "blue": 0.04}
     }
 }
 

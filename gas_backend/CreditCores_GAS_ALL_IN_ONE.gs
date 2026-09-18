@@ -2528,6 +2528,17 @@ var ReconciliationController = {
  * ========================================================================================
  */
 
+function formatGasDateVN(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    var d = ("0" + val.getDate()).slice(-2);
+    var m = ("0" + (val.getMonth() + 1)).slice(-2);
+    var y = val.getFullYear();
+    return d + "/" + m + "/" + y;
+  }
+  return String(val).trim();
+}
+
 var ReportController = {
   handleGetReportsData: function(ss) {
     var cached = CacheHelper.getCachedData('reports_data_v2');
@@ -2542,24 +2553,34 @@ var ReportController = {
         data: {
           areaData: [],
           loanTypes: [],
+          statementData: [],
+          topAvgDebtData: [],
           kpiMetrics: {},
-          summary: { totalDuNo: 0, totalKH: 0 }
+          summary: { totalDuNo: 0, totalTienVay: 0, totalKH: 0 }
         }
       };
     }
 
-    // --- Build KH area map (1 batch read) ---
+    // --- Build KH map (1 batch read 16 cols) ---
     var khMap = {};
     if (sKH.getLastRow() > 1) {
-      var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, 15).getValues();
+      var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, 16).getValues();
       for (var i = 0; i < khVals.length; i++) {
         var mKH = String(khVals[i][0]).trim();
-        var diaChiKV = String(khVals[i][2]).trim() + " " + String(khVals[i][10]).trim();
+        var hTen = String(khVals[i][1]).trim();
+        var dChi = String(khVals[i][2]).trim();
+        var sTV = String(khVals[i][11]).trim();
+        var diaChiKV = dChi + " " + String(khVals[i][10]).trim();
         var areaKey = "Khác";
         if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
         else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
         else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
-        khMap[mKH] = { area: areaKey };
+        khMap[mKH] = {
+          hoTen: hTen,
+          diaChi: dChi,
+          soTV: sTV,
+          area: areaKey
+        };
       }
     }
 
@@ -2576,38 +2597,92 @@ var ReportController = {
     };
 
     var totalDuNo = 0;
-    var totalCASA = 0;
+    var totalTienVay = 0;
     var countCASA = 0;
     var countNPL = 0;   // Nợ xấu N3-N5
     var totalKH = new Set();
+    var statementResult = [];
+    var customerDebtMap = {};
 
-    // --- Batch read HDTD_CORE (cols A→O = 1→15) ---
+    // --- Batch read HDTD_CORE (cols A→P = 1→16) ---
     if (sHDTD.getLastRow() > 1) {
       var hdRows = sHDTD.getLastRow() - 1;
-      // Col: A=MaHD, B=MaKH, C=LoaiVay, D=DuNo, E=LanSuatStr, F=KyHan,
-      //      G=NgayGiaiNgan, H=NgayDaoHan, I=NhomNo, J=CBTD, K=MoTa
-      var hdVals = sHDTD.getRange(2, 1, hdRows, 15).getValues();
+      var hdVals = sHDTD.getRange(2, 1, hdRows, 16).getValues();
 
       for (var j = 0; j < hdVals.length; j++) {
-        var hdMaKH    = String(hdVals[j][1]).trim();
-        var hdDuNo    = Number(hdVals[j][3]) || 0;
-        var hdNhomNo  = Number(hdVals[j][8]) || 1;  // col I (0-indexed = 8)
-        var hdCASA    = Number(hdVals[j][12]) || 0; // col M: so tien da trich
-        var hdMoTa    = String(hdVals[j][10]).toLowerCase().trim();
-        var hdTrangThai = String(hdVals[j][11]).toUpperCase().trim(); // col L: TrangThaiHD
+        var hdSoHDTD    = String(hdVals[j][0]).trim();
+        var hdMaKH      = String(hdVals[j][1]).trim();
+        var hdTienVay   = Number(hdVals[j][2]) || 0;
+        var hdDuNo      = Number(hdVals[j][3]) || 0;
+        var hdLaiSuat   = Number(hdVals[j][4]) || 0;
+        var hdNgayVay   = formatGasDateVN(hdVals[j][5]);
+        var hdDenHan    = formatGasDateVN(hdVals[j][6]);
+        var hdTraLaiDen = formatGasDateVN(hdVals[j][7]);
+        var hdMaLoaiVay = String(hdVals[j][8]).trim();
+        var hdSoThang   = Number(hdVals[j][9]) || 0;
+        var hdMoTa      = String(hdVals[j][10]).trim();
+        var hdCBTD_Code = String(hdVals[j][11]).trim();
+        var hdTenCBTD   = String(hdVals[j][12]).trim();
+        var hdTrangThai = String(hdVals[j][13]).toUpperCase().trim();
+        var hdNgayTatToan = formatGasDateVN(hdVals[j][14]);
 
-        // Skip đã tất toán
-        if (hdTrangThai === "DA_TAT_TOAN") continue;
+        var khInfo = khMap[hdMaKH] || {
+          hoTen: "Khách hàng " + hdMaKH,
+          diaChi: "Địa bàn QTDND",
+          soTV: "",
+          area: "Xã Yên Thọ (Thôn 1, 2, 3, 4)"
+        };
+
+        var aKey = khInfo.area || "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+
+        // Phân loại sản phẩm vay
+        var prodKey = "Nông nghiệp & Chăn nuôi";
+        var moTaLower = hdMoTa.toLowerCase();
+        if (moTaLower.indexOf("kinh doanh") > -1 || moTaLower.indexOf("thương mại") > -1 || moTaLower.indexOf("xe tải") > -1 || moTaLower.indexOf("buôn bán") > -1) {
+          prodKey = "Thương mại & Dịch vụ";
+        } else if (moTaLower.indexOf("tiêu dùng") > -1 || moTaLower.indexOf("nhà ở") > -1 || moTaLower.indexOf("sửa chữa") > -1) {
+          prodKey = "Tiêu dùng & Đời sống";
+        }
+
+        // Bổ sung vào danh sách sao kê toàn diện (Statement)
+        statementResult.push({
+          soHDTD: hdSoHDTD,
+          maKH: hdMaKH,
+          soTV: khInfo.soTV || "",
+          hoTen: khInfo.hoTen || ("KH " + hdMaKH),
+          tienVay: hdTienVay,
+          duNo: hdDuNo,
+          laiSuat: hdLaiSuat,
+          ngayVay: hdNgayVay,
+          denHan: hdDenHan,
+          maLoaiVay: hdMaLoaiVay || prodKey,
+          soThangVay: hdSoThang,
+          moTaVay: hdMoTa || prodKey,
+          khuVuc: aKey,
+          diaChi: khInfo.diaChi,
+          cbtdPhuTrach: hdCBTD_Code,
+          tenCBTD: hdTenCBTD,
+          trangThaiHD: hdTrangThai || (hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN"),
+          ngayTatToan: hdNgayTatToan
+        });
+
+        totalTienVay += hdTienVay;
+
+        // Bỏ qua hợp đồng đã tất toán khỏi các chỉ số dư nợ hiện tại
+        if (hdTrangThai === "DA_TAT_TOAN" || (hdDuNo <= 0 && hdTrangThai !== "DANG_VAY")) {
+          continue;
+        }
 
         totalDuNo += hdDuNo;
         totalKH.add(hdMaKH);
 
-        // CASA coverage (có đăng ký trích nợ)
+        // CASA coverage
         if (hdVals[j][12] !== "" && hdVals[j][12] !== null) {
           countCASA++;
         }
 
-        // NPL N3-N5
+        // Nhóm nợ xấu N3-N5
+        var hdNhomNo = Number(hdVals[j][8]) || 1;
         if (hdNhomNo >= 3) countNPL++;
 
         // Area grouping
@@ -2626,6 +2701,23 @@ var ReportController = {
         }
         loanTypeStats[prodKey].count++;
         loanTypeStats[prodKey].amount += hdDuNo;
+
+        // Gom nhóm tính Top Dư Nợ
+        if (!customerDebtMap[hdMaKH]) {
+          customerDebtMap[hdMaKH] = {
+            maKH: hdMaKH,
+            hoTen: khInfo.hoTen || ("KH " + hdMaKH),
+            soTV: khInfo.soTV || "",
+            khuVuc: aKey,
+            diaChi: khInfo.diaChi || "",
+            tongDuNo: 0,
+            tongTienVay: 0,
+            soMonVay: 0
+          };
+        }
+        customerDebtMap[hdMaKH].tongDuNo += hdDuNo;
+        customerDebtMap[hdMaKH].tongTienVay += hdTienVay;
+        customerDebtMap[hdMaKH].soMonVay += 1;
       }
     }
 
@@ -2645,7 +2737,6 @@ var ReportController = {
         rate: rateStr
       });
     }
-    // Sort by duNo desc
     areaResult.sort(function(a, b) { return b.duNo - a.duNo; });
 
     // --- Build loanTypes result ---
@@ -2662,21 +2753,122 @@ var ReportController = {
     }
     loanTypeResult.sort(function(a, b) { return b.amount - a.amount; });
 
+    // --- Build topAvgDebtData result ---
+    var topDebtArr = [];
+    for (var m in customerDebtMap) {
+      var cItem = customerDebtMap[m];
+      var cRate = totalDuNo > 0 ? Number(((cItem.tongDuNo / totalDuNo) * 100).toFixed(2)) : 0;
+      topDebtArr.push({
+        maKH: cItem.maKH,
+        hoTen: cItem.hoTen,
+        soTV: cItem.soTV,
+        khuVuc: cItem.khuVuc,
+        diaChi: cItem.diaChi,
+        tongDuNo: cItem.tongDuNo,
+        tongTienVay: cItem.tongTienVay,
+        soMonVay: cItem.soMonVay,
+        duNoBinhQuan: cItem.tongDuNo,
+        tyTrongDuNo: cRate
+      });
+    }
+    topDebtArr.sort(function(a, b) { return b.tongDuNo - a.tongDuNo; });
+
+    var topAvgDebtResult = topDebtArr.slice(0, 20).map(function(c, idx) {
+      c.xepHang = idx + 1;
+      c.namBaoCao = 2026;
+      return c;
+    });
+
+    // --- Kiểm tra nếu có sẵn sheet BC_DOANH_SO_TD có dữ liệu đẩy từ Python Daemon ---
+    var sBCDS = ss.getSheetByName("BC_DOANH_SO_TD");
+    if (sBCDS && sBCDS.getLastRow() > 1) {
+      try {
+        var bcdsVals = sBCDS.getRange(2, 1, sBCDS.getLastRow() - 1, 12).getValues();
+        if (bcdsVals.length > 0) {
+          var sheetStatement = [];
+          for (var b = 0; b < bcdsVals.length; b++) {
+            var row = bcdsVals[b];
+            if (!row[0] && !row[1]) continue;
+            var rMaKH = String(row[1]).trim();
+            var rKhInfo = khMap[rMaKH] || {};
+            sheetStatement.push({
+              soHDTD: String(row[0]).trim(),
+              maKH: rMaKH,
+              soTV: String(row[2] || rKhInfo.soTV || "").trim(),
+              hoTen: rKhInfo.hoTen || ("KH " + rMaKH),
+              tienVay: Number(row[3]) || 0,
+              duNo: Number(row[4]) || 0,
+              laiSuat: Number(row[5]) || 0,
+              ngayVay: formatGasDateVN(row[6]),
+              denHan: formatGasDateVN(row[7]),
+              maLoaiVay: String(row[8]).trim(),
+              soThangVay: Number(row[9]) || 0,
+              moTaVay: String(row[10]).trim(),
+              khuVuc: String(row[11] || rKhInfo.area || "Xã Yên Thọ").trim(),
+              diaChi: rKhInfo.diaChi || "",
+              trangThaiHD: (Number(row[4]) || 0) > 0 ? "DANG_VAY" : "DA_TAT_TOAN"
+            });
+          }
+          if (sheetStatement.length > 0) {
+            statementResult = sheetStatement;
+          }
+        }
+      } catch (eBC) {
+        Logger.log("Lỗi đọc BC_DOANH_SO_TD: " + eBC.toString());
+      }
+    }
+
+    // --- Kiểm tra nếu có sẵn sheet TOP_DU_NO_BINH_QUAN có dữ liệu đẩy từ Python Daemon ---
+    var sTop = ss.getSheetByName("TOP_DU_NO_BINH_QUAN");
+    if (sTop && sTop.getLastRow() > 1) {
+      try {
+        var topVals = sTop.getRange(2, 1, sTop.getLastRow() - 1, 21).getValues();
+        if (topVals.length > 0) {
+          var sheetTop = [];
+          for (var t = 0; t < topVals.length; t++) {
+            var tRow = topVals[t];
+            if (!tRow[2]) continue;
+            sheetTop.push({
+              namBaoCao: Number(tRow[0]) || 2026,
+              xepHang: Number(tRow[1]) || (t + 1),
+              maKH: String(tRow[2]).trim(),
+              hoTen: String(tRow[3]).trim(),
+              soTV: String(tRow[4]).trim(),
+              khuVuc: String(tRow[5]).trim(),
+              duNoBinhQuan: Number(tRow[18]) || 0,
+              tongTienVay: Number(tRow[19]) || 0,
+              tongDuNo: Number(tRow[18]) || 0,
+              tyTrongDuNo: typeof tRow[20] === 'number' ? Number((tRow[20] * 100).toFixed(2)) : parseFloat(String(tRow[20]).replace('%', '')) || 0
+            });
+          }
+          if (sheetTop.length > 0) {
+            topAvgDebtResult = sheetTop;
+          }
+        }
+      } catch (eTop) {
+        Logger.log("Lỗi đọc TOP_DU_NO_BINH_QUAN: " + eTop.toString());
+      }
+    }
+
     var totalKHCount = totalKH.size;
-    var nplRate  = totalLoanCount > 0 ? ((countNPL / totalLoanCount) * 100).toFixed(2) : null;
+    var nplRate = totalLoanCount > 0 ? ((countNPL / totalLoanCount) * 100).toFixed(2) : null;
     var casaCoverage = totalKHCount > 0 ? ((countCASA / totalLoanCount) * 100).toFixed(1) : null;
 
     var finalResult = {
       areaData: areaResult,
       loanTypes: loanTypeResult,
+      statementData: statementResult,
+      topAvgDebtData: topAvgDebtResult,
       kpiMetrics: {},
       summary: {
         totalDuNo: totalDuNo,
+        totalTienVay: totalTienVay,
         totalKH: totalKHCount,
+        totalActiveLoans: totalLoanCount,
         nplRate: nplRate,
         casaCoverage: casaCoverage,
-        inspectionRate: null,  // sẽ tính từ InspectionController khi tích hợp
-        ltvAvg: null           // sẽ tính từ CollateralController khi tích hợp
+        inspectionRate: null,
+        ltvAvg: null
       }
     };
 

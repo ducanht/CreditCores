@@ -161,6 +161,23 @@ var SchemaSetup = {
       color: "#27AE60",
       formats: { "F:F": "dd/MM/yyyy HH:mm:ss" },
       colWidths: { 1: 180, 2: 120, 3: 200, 4: 200, 5: 150, 6: 150, 7: 350, 8: 350, 9: 150 }
+    },
+    BC_DOANH_SO_TD: {
+      headers: ["SoHDTD", "MaKH", "SoTV", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "MaLoaiVay", "SoThangVay", "MoTaVay", "KhuVuc"],
+      color: "#0284C7",
+      formats: { "A:C": "@", "D:E": "#,##0", "F:F": "0.00", "G:H": "dd/MM/yyyy", "I:I": "@", "J:J": "#,##0", "K:L": "@" },
+      colWidths: { 1: 130, 2: 100, 3: 100, 4: 130, 5: 130, 6: 90, 7: 110, 8: 110, 9: 140, 10: 90, 11: 220, 12: 180 }
+    },
+    TOP_DU_NO_BINH_QUAN: {
+      headers: [
+        "NamBaoCao", "XepHang", "MaKH", "HoTen", "SoTV", "KhuVuc",
+        "DuNoThang01", "DuNoThang02", "DuNoThang03", "DuNoThang04", "DuNoThang05", "DuNoThang06",
+        "DuNoThang07", "DuNoThang08", "DuNoThang09", "DuNoThang10", "DuNoThang11", "DuNoThang12",
+        "DuNoBinhQuan", "TongTienVay", "TyTrongDuNo"
+      ],
+      color: "#B45309",
+      formats: { "A:B": "#,##0", "C:F": "@", "G:T": "#,##0", "U:U": "0.00%" },
+      colWidths: { 1: 100, 2: 80, 3: 100, 4: 180, 5: 100, 6: 160, 7: 120, 8: 120, 9: 120, 10: 120, 11: 120, 12: 120, 13: 120, 14: 120, 15: 120, 16: 120, 17: 120, 18: 120, 19: 140, 20: 140, 21: 100 }
     }
   },
 
