@@ -20,25 +20,34 @@ var DebitController = {
       return { status: "success", data: [] };
     }
 
+    var colMap = HeaderUtils.getHeaderMap(sheet);
     var numRows = sheet.getLastRow() - 1;
-    var numCols = Math.min(9, sheet.getLastColumn());
-    var values = sheet.getRange(2, 1, numRows, numCols).getValues();
+    var values = sheet.getRange(2, 1, numRows, sheet.getLastColumn()).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
       var row = values[i];
-      var rawMaKH = String(row[0] || "").trim();
-      if (!rawMaKH) continue;
+      var rawMaKH = String(HeaderUtils.getCell(row, colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var rawSoHD = String(HeaderUtils.getCell(row, colMap, "SoHDTD", "")).trim();
+      if (!rawMaKH && !rawSoHD) continue;
 
       results.push({
+        soHDTD: rawSoHD,
         maKH: rawMaKH,
-        hoTen: String(row[1] || "").trim(),
-        gttt: String(row[2] || "").replace(/^'/, "").trim(),
-        soTK: String(row[3] || "").replace(/^'/, "").trim(),
-        diaChi: String(row[4] || "").trim(),
-        kyTrich: Number(row[5]) || 1,
-        trangThai: String(row[6] || "Hiệu lực").trim(),
-        ghiChu: String(row[7] || "").trim(),
-        ngayTao: row[8] ? formatGasDateTime(row[8]) : ""
+        hoTen: String(HeaderUtils.getCell(row, colMap, "TenKH", "") || HeaderUtils.getCell(row, colMap, "HoTen", "")).trim(),
+        tenKH: String(HeaderUtils.getCell(row, colMap, "TenKH", "") || HeaderUtils.getCell(row, colMap, "HoTen", "")).trim(),
+        soTK: String(HeaderUtils.getCell(row, colMap, "SoTK", "")).replace(/^'/, "").trim(),
+        ngayVay: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayVay", "")),
+        traLaiDenNgay: formatGasDate(HeaderUtils.getCell(row, colMap, "TraLaiDenNgay", "")),
+        laiSuat: Number(HeaderUtils.getCell(row, colMap, "LaiSuat", 0)) || 0,
+        soTienLai: Number(HeaderUtils.getCell(row, colMap, "SoTienLai", 0)) || 0,
+        soTienNo: Number(HeaderUtils.getCell(row, colMap, "SoTienNo", 0)) || 0,
+        soGoc: Number(HeaderUtils.getCell(row, colMap, "SoGoc", 0)) || 0,
+        tongTien: Number(HeaderUtils.getCell(row, colMap, "TongTien", 0)) || 0,
+        kyTrich: Number(HeaderUtils.getCell(row, colMap, "KyTrichNo", 1) || HeaderUtils.getCell(row, colMap, "KyTrich", 1)) || 1,
+        kyTrichNo: Number(HeaderUtils.getCell(row, colMap, "KyTrichNo", 1) || HeaderUtils.getCell(row, colMap, "KyTrich", 1)) || 1,
+        trangThai: String(HeaderUtils.getCell(row, colMap, "TrangThai", "Hiệu lực")).trim(),
+        ghiChu: String(HeaderUtils.getCell(row, colMap, "GhiChu", "")).trim(),
+        ngayTao: HeaderUtils.getCell(row, colMap, "NgayTao", "") ? formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayTao", "")) : ""
       });
     }
 
@@ -201,35 +210,51 @@ var DebitController = {
       return { status: "error", message: "Không tìm thấy dữ liệu đăng ký trích nợ!" };
     }
 
-    var maKHInput = String(data.maKH || "").trim();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var maKHInput = String(data.maKH || "").replace(/^'/, "").trim();
+    var soHDTDInput = String(data.soHDTD || "").trim();
     var lastRow = sheet.getLastRow();
     var targetRow = -1;
-    var colMaKH = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    var allRows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
 
-    for (var i = 0; i < colMaKH.length; i++) {
-      var cur = String(colMaKH[i][0] || "").trim();
-      if (cur === maKHInput || cur.replace(/^'/, "") === maKHInput.replace(/^'/, "")) {
+    for (var i = 0; i < allRows.length; i++) {
+      var curMa = String(HeaderUtils.getCell(allRows[i], colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var curHD = String(HeaderUtils.getCell(allRows[i], colMap, "SoHDTD", "")).trim();
+      if ((soHDTDInput && curHD === soHDTDInput) || (maKHInput && curMa === maKHInput)) {
         targetRow = i + 2;
         break;
       }
     }
 
     if (targetRow === -1) {
-      return { status: "error", message: "Không tìm thấy khách hàng " + maKHInput + " trong danh sách đăng ký!" };
+      return { status: "error", message: "Không tìm thấy hồ sơ đăng ký trích nợ!" };
     }
 
     if (data.soTK !== undefined) {
-      var cleanSoTK = String(data.soTK).replace(/^'/, "").trim();
-      sheet.getRange(targetRow, 4).setValue("'" + cleanSoTK);
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoTK", "'" + String(data.soTK).replace(/^'/, "").trim());
     }
-    if (data.kyTrich !== undefined) {
-      sheet.getRange(targetRow, 6).setValue(Number(data.kyTrich) || 1);
+    if (data.kyTrich !== undefined || data.kyTrichNo !== undefined) {
+      var kt = Number(data.kyTrich || data.kyTrichNo) || 1;
+      HeaderUtils.setCell(sheet, targetRow, colMap, "KyTrichNo", kt);
+      HeaderUtils.setCell(sheet, targetRow, colMap, "KyTrich", kt);
+    }
+    if (data.soTienLai !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoTienLai", Number(data.soTienLai) || 0);
+    }
+    if (data.soTienNo !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoTienNo", Number(data.soTienNo) || 0);
+    }
+    if (data.soGoc !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoGoc", Number(data.soGoc) || 0);
+    }
+    if (data.tongTien !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "TongTien", Number(data.tongTien) || 0);
     }
     if (data.trangThai !== undefined) {
-      sheet.getRange(targetRow, 7).setValue(String(data.trangThai).trim());
+      HeaderUtils.setCell(sheet, targetRow, colMap, "TrangThai", String(data.trangThai).trim());
     }
     if (data.ghiChu !== undefined) {
-      sheet.getRange(targetRow, 8).setValue(String(data.ghiChu).trim());
+      HeaderUtils.setCell(sheet, targetRow, colMap, "GhiChu", String(data.ghiChu).trim());
     }
 
     CacheHelper.invalidateModuleCache('debit');
@@ -242,31 +267,34 @@ var DebitController = {
       return { status: "error", message: "Không tìm thấy dữ liệu đăng ký trích nợ!" };
     }
 
-    var maKHInput = String(data.maKH || "").trim();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var maKHInput = String(data.maKH || "").replace(/^'/, "").trim();
+    var soHDTDInput = String(data.soHDTD || "").trim();
     var lastRow = sheet.getLastRow();
     var targetRow = -1;
     var currentStatus = "Hiệu lực";
 
-    var colData = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
-    for (var i = 0; i < colData.length; i++) {
-      var cur = String(colData[i][0] || "").trim();
-      if (cur === maKHInput || cur.replace(/^'/, "") === maKHInput.replace(/^'/, "")) {
+    var allRows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    for (var i = 0; i < allRows.length; i++) {
+      var curMa = String(HeaderUtils.getCell(allRows[i], colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var curHD = String(HeaderUtils.getCell(allRows[i], colMap, "SoHDTD", "")).trim();
+      if ((soHDTDInput && curHD === soHDTDInput) || (maKHInput && curMa === maKHInput)) {
         targetRow = i + 2;
-        currentStatus = String(colData[i][6] || "Hiệu lực").trim();
+        currentStatus = String(HeaderUtils.getCell(allRows[i], colMap, "TrangThai", "Hiệu lực")).trim();
         break;
       }
     }
 
     if (targetRow === -1) {
-      return { status: "error", message: "Không tìm thấy khách hàng " + maKHInput + " trong danh sách đăng ký!" };
+      return { status: "error", message: "Không tìm thấy hồ sơ đăng ký trích nợ!" };
     }
 
     var newStatus = data.newStatus;
     if (!newStatus) {
-      newStatus = (currentStatus === "Hiệu lực" || currentStatus === "Hieu luc") ? "Tạm ngưng" : "Hiệu lực";
+      newStatus = (currentStatus === "Hiệu lực" || currentStatus === "Hieu luc" || currentStatus === "HOAT_DONG") ? "Tạm ngưng" : "Hiệu lực";
     }
 
-    sheet.getRange(targetRow, 7).setValue(newStatus);
+    HeaderUtils.setCell(sheet, targetRow, colMap, "TrangThai", newStatus);
     CacheHelper.invalidateModuleCache('debit');
     return { status: "success", message: "Đã chuyển trạng thái sang: " + newStatus, newStatus: newStatus };
   },
@@ -277,21 +305,24 @@ var DebitController = {
       return { status: "error", message: "Không tìm thấy dữ liệu đăng ký trích nợ!" };
     }
 
-    var maKHInput = String(data.maKH || "").trim();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var maKHInput = String(data.maKH || "").replace(/^'/, "").trim();
+    var soHDTDInput = String(data.soHDTD || "").trim();
     var lastRow = sheet.getLastRow();
     var targetRow = -1;
 
-    var colMaKH = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-    for (var i = 0; i < colMaKH.length; i++) {
-      var cur = String(colMaKH[i][0] || "").trim();
-      if (cur === maKHInput || cur.replace(/^'/, "") === maKHInput.replace(/^'/, "")) {
+    var allRows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    for (var i = 0; i < allRows.length; i++) {
+      var curMa = String(HeaderUtils.getCell(allRows[i], colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var curHD = String(HeaderUtils.getCell(allRows[i], colMap, "SoHDTD", "")).trim();
+      if ((soHDTDInput && curHD === soHDTDInput) || (maKHInput && curMa === maKHInput)) {
         targetRow = i + 2;
         break;
       }
     }
 
     if (targetRow === -1) {
-      return { status: "error", message: "Không tìm thấy khách hàng " + maKHInput + " trong danh sách đăng ký!" };
+      return { status: "error", message: "Không tìm thấy hồ sơ đăng ký trích nợ!" };
     }
 
     sheet.deleteRow(targetRow);
@@ -308,19 +339,25 @@ var DebitController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.min(10, sheet.getLastColumn())).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
+      var row = values[i];
+      var maDot = String(HeaderUtils.getCell(row, colMap, "MaDot", "")).trim();
+      if (!maDot) continue;
+
       results.push({
-        maDot: values[i][0],
-        thangNam: values[i][1],
-        kyTrich: Number(values[i][2]),
-        tongPhaiThu: Number(values[i][3]) || 0,
-        tongDaTrich: Number(values[i][4]) || 0,
-        tongConNo: Number(values[i][5]) || 0,
-        tongSoKH: Number(values[i][6]) || 0,
-        trangThai: values[i][7] || "CHO_TRICH_NO",
-        ngayTao: formatGasDateTime(values[i][8])
+        maDot: maDot,
+        thangNam: String(HeaderUtils.getCell(row, colMap, "ThangNam", "")).trim(),
+        kyTrich: Number(HeaderUtils.getCell(row, colMap, "KyTrichNo", 1) || HeaderUtils.getCell(row, colMap, "KyTrich", 1)) || 1,
+        tongPhaiThu: Number(HeaderUtils.getCell(row, colMap, "TongPhaiThu", 0)) || 0,
+        tongDaTrich: Number(HeaderUtils.getCell(row, colMap, "TongDaTrich", 0)) || 0,
+        tongConNo: Number(HeaderUtils.getCell(row, colMap, "TongConNo", 0)) || 0,
+        tongSoKH: Number(HeaderUtils.getCell(row, colMap, "TongSoKH", 0)) || 0,
+        tongSoHD: Number(HeaderUtils.getCell(row, colMap, "TongSoHD", 0)) || 0,
+        trangThai: String(HeaderUtils.getCell(row, colMap, "TrangThai", "CHO_TRICH_NO")).trim(),
+        ngayTao: HeaderUtils.getCell(row, colMap, "NgayTao", "") ? formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayTao", "")) : ""
       });
     }
 

@@ -20,19 +20,25 @@ var DebtWarningController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var lastCol = sheet.getLastColumn();
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
-      if (values[i][6] === "CHUA_THU") {
+      var row = values[i];
+      var trangThai = HeaderUtils.getCell(row, colMap, "TrangThai", "");
+      if (trangThai === "CHUA_THU") {
         results.push({
-          maKH: values[i][0],
-          soHDTD: values[i][1],
-          gocTon: values[i][2],
-          laiTon: values[i][3],
-          tongNoTon: values[i][4],
-          kyPhatSinh: values[i][5],
-          trangThai: values[i][6],
-          ngayCapNhat: formatGasDateTime(values[i][7])
+          soHDTD: HeaderUtils.getCell(row, colMap, "SoHDTD", ""),
+          maKH: HeaderUtils.getCell(row, colMap, "MaKH", ""),
+          tenKH: HeaderUtils.getCell(row, colMap, "TenKH", ""),
+          gocTon: Number(HeaderUtils.getCell(row, colMap, "GocTon", 0)) || 0,
+          laiTon: Number(HeaderUtils.getCell(row, colMap, "LaiTon", 0)) || 0,
+          tongNoTon: Number(HeaderUtils.getCell(row, colMap, "TongNoTon", 0)) || 0,
+          kyPhatSinh: HeaderUtils.getCell(row, colMap, "KyPhatSinh", ""),
+          trangThai: trangThai,
+          ghiChu: HeaderUtils.getCell(row, colMap, "GhiChu", ""),
+          ngayCapNhat: formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayCapNhat", ""))
         });
       }
     }

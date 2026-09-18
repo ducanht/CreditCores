@@ -20,47 +20,49 @@ var CollateralController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.min(sheet.getLastColumn(), 31)).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var lastCol = sheet.getLastColumn();
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     var list = [];
 
     for (var i = 0; i < values.length; i++) {
       var row = values[i];
-      var maTSBD = String(row[0] || "");
-      var soGCN = String(row[1] || "");
+      var maTSBD = String(HeaderUtils.getCell(row, colMap, "MaTSBD", "")).trim();
+      var soGCN = String(HeaderUtils.getCell(row, colMap, "SoGCN", "")).trim();
       if (!soGCN && !maTSBD) continue;
 
       list.push({
         maTSBD: maTSBD,
         soGCN: soGCN,
-        soVaoSoCapGCN: String(row[2] || ""),
-        ngayCapGCN: row[3] ? formatGasDate(row[3]) : "",
-        noiCapGCN: String(row[4] || ""),
-        maKH: String(row[5] || ""),
-        chuSoHuu: String(row[6] || ""),
-        cccdChuTS: String(row[7] || ""),
-        quanHeChuTS: String(row[8] || "Chính chủ"),
-        nguoiDongSoHuu: String(row[9] || ""),
-        thuaDatSo: String(row[10] || ""),
-        toBanDoSo: String(row[11] || ""),
-        diaChiThuaDat: String(row[12] || ""),
-        dienTich: Number(row[13] || 0),
-        hinhThucSuDung: String(row[14] || "Sử dụng riêng"),
-        chiTietPhanLoaiDat: String(row[15] || ""),
-        nguonGocSuDung: String(row[16] || "Nhận chuyển nhượng quyền sử dụng đất"),
-        giaTriDinhGiaQTD: Number(row[17] || 0),
-        giaTriThiTruong: Number(row[18] || 0),
-        tyLeChoVayToiDa: Number(row[19] || 70),
-        soTienDamBaoToiDa: Number(row[20] || 0),
-        trangThaiTheChap: String(row[21] || "DANG_THE_CHAP"),
-        soHDTD_LienKet: String(row[22] || ""),
-        soCongChung: String(row[23] || ""),
-        ngayCongChung: row[24] ? formatGasDate(row[24]) : "",
-        vanPhongCongChung: String(row[25] || ""),
-        soDangKyGDBD: String(row[26] || ""),
-        ngayDangKyGDBD: row[27] ? formatGasDate(row[27]) : "",
-        hinhAnhGCN: String(row[28] || ""),
-        hinhAnhThucDia: String(row[29] || ""),
-        ngayCapNhat: row[30] ? formatGasDateTime(row[30]) : ""
+        soVaoSoCapGCN: String(HeaderUtils.getCell(row, colMap, "SoVaoSoCapGCN", "")),
+        ngayCapGCN: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayCapGCN", "")),
+        noiCapGCN: String(HeaderUtils.getCell(row, colMap, "NoiCapGCN", "")),
+        maKH: String(HeaderUtils.getCell(row, colMap, "MaKH", "")),
+        chuSoHuu: String(HeaderUtils.getCell(row, colMap, "ChuSoHuu", "")),
+        cccdChuTS: String(HeaderUtils.getCell(row, colMap, "CCCDChuTS", "")),
+        quanHeChuTS: String(HeaderUtils.getCell(row, colMap, "QuanHeChuTS", "Chính chủ")),
+        nguoiDongSoHuu: String(HeaderUtils.getCell(row, colMap, "NguoiDongSoHuu", "")),
+        thuaDatSo: String(HeaderUtils.getCell(row, colMap, "ThuaDatSo", "")),
+        toBanDoSo: String(HeaderUtils.getCell(row, colMap, "ToBanDoSo", "")),
+        diaChiThuaDat: String(HeaderUtils.getCell(row, colMap, "DiaChiThuaDat", "")),
+        dienTich: Number(HeaderUtils.getCell(row, colMap, "DienTich", 0)) || 0,
+        hinhThucSuDung: String(HeaderUtils.getCell(row, colMap, "HinhThucSuDung", "Sử dụng riêng")),
+        chiTietPhanLoaiDat: String(HeaderUtils.getCell(row, colMap, "ChiTietPhanLoaiDat", "")),
+        nguonGocSuDung: String(HeaderUtils.getCell(row, colMap, "NguonGocSuDung", "Nhận chuyển nhượng quyền sử dụng đất")),
+        giaTriDinhGiaQTD: Number(HeaderUtils.getCell(row, colMap, "GiaTriDinhGiaQTD", 0)) || 0,
+        giaTriThiTruong: Number(HeaderUtils.getCell(row, colMap, "GiaTriThiTruong", 0)) || 0,
+        tyLeChoVayToiDa: Number(HeaderUtils.getCell(row, colMap, "TyLeChoVayToiDa", 70)) || 70,
+        soTienDamBaoToiDa: Number(HeaderUtils.getCell(row, colMap, "SoTienDamBaoToiDa", 0)) || 0,
+        trangThaiTheChap: String(HeaderUtils.getCell(row, colMap, "TrangThaiTheChap", "DANG_THE_CHAP")),
+        soHDTD_LienKet: String(HeaderUtils.getCell(row, colMap, "SoHDTD_LienKet", "")),
+        soCongChung: String(HeaderUtils.getCell(row, colMap, "SoCongChung", "")),
+        ngayCongChung: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayCongChung", "")),
+        vanPhongCongChung: String(HeaderUtils.getCell(row, colMap, "VanPhongCongChung", "")),
+        soDangKyGDBD: String(HeaderUtils.getCell(row, colMap, "SoDangKyGDBD", "")),
+        ngayDangKyGDBD: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayDangKyGDBD", "")),
+        hinhAnhGCN: String(HeaderUtils.getCell(row, colMap, "HinhAnhGCN", "")),
+        hinhAnhThucDia: String(HeaderUtils.getCell(row, colMap, "HinhAnhThucDia", "")),
+        ngayCapNhat: formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayCapNhat", ""))
       });
     }
 
@@ -81,58 +83,73 @@ var CollateralController = {
       sheet = ss.getSheetByName("TSBD_CORE");
     }
 
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var defaultHeaders = [
+      "MaTSBD", "SoGCN", "SoVaoSoCapGCN", "NgayCapGCN", "NoiCapGCN", "MaKH", "ChuSoHuu", "CCCDChuTS", "QuanHeChuTS", "NguoiDongSoHuu",
+      "ThuaDatSo", "ToBanDoSo", "DiaChiThuaDat", "DienTich", "HinhThucSuDung", "ChiTietPhanLoaiDat", "NguonGocSuDung", "GiaTriDinhGiaQTD",
+      "GiaTriThiTruong", "TyLeChoVayToiDa", "SoTienDamBaoToiDa", "TrangThaiTheChap", "SoHDTD_LienKet", "SoCongChung", "NgayCongChung",
+      "VanPhongCongChung", "SoDangKyGDBD", "NgayDangKyGDBD", "HinhAnhGCN", "HinhAnhThucDia", "NgayCapNhat"
+    ];
+
     var soGCN = String(data.soGCN).trim();
     var maTSBD = data.maTSBD || ("TSBD-" + new Date().getFullYear() + "-" + String(Math.floor(1000 + Math.random() * 9000)));
 
-    var values = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues() : [];
+    var lastRow = sheet.getLastRow();
     var targetRowIndex = -1;
 
-    for (var i = 0; i < values.length; i++) {
-      if (String(values[i][1]).trim() === soGCN || (data.maTSBD && String(values[i][0]).trim() === data.maTSBD)) {
-        targetRowIndex = i + 2;
-        maTSBD = String(values[i][0]).trim() || maTSBD;
-        break;
+    if (lastRow > 1) {
+      var values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+      for (var i = 0; i < values.length; i++) {
+        var rowGCN = String(HeaderUtils.getCell(values[i], colMap, "SoGCN", "")).trim();
+        var rowMa = String(HeaderUtils.getCell(values[i], colMap, "MaTSBD", "")).trim();
+        if (rowGCN === soGCN || (data.maTSBD && rowMa === String(data.maTSBD).trim())) {
+          targetRowIndex = i + 2;
+          maTSBD = rowMa || maTSBD;
+          break;
+        }
       }
     }
 
-    var rowData = [
-      maTSBD,
-      soGCN,
-      data.soVaoSoCapGCN || "",
-      data.ngayCapGCN ? parseGasDate(data.ngayCapGCN) : "",
-      data.noiCapGCN || "",
-      data.maKH || "",
-      data.chuSoHuu || "",
-      data.cccdChuTS || "",
-      data.quanHeChuTS || "Chính chủ",
-      data.nguoiDongSoHuu || "",
-      data.thuaDatSo || "",
-      data.toBanDoSo || "",
-      data.diaChiThuaDat || "",
-      Number(data.dienTich) || 0,
-      data.hinhThucSuDung || "Sử dụng riêng",
-      typeof data.chiTietPhanLoaiDat === 'object' ? JSON.stringify(data.chiTietPhanLoaiDat) : (data.chiTietPhanLoaiDat || ""),
-      data.nguonGocSuDung || "Nhận chuyển nhượng quyền sử dụng đất",
-      Number(data.giaTriDinhGiaQTD) || 0,
-      Number(data.giaTriThiTruong) || 0,
-      Number(data.tyLeChoVayToiDa) || 70,
-      Number(data.soTienDamBaoToiDa) || (Number(data.giaTriDinhGiaQTD) * (Number(data.tyLeChoVayToiDa || 70) / 100)),
-      data.trangThaiTheChap || "DANG_THE_CHAP",
-      data.soHDTD_LienKet || "",
-      data.soCongChung || "",
-      data.ngayCongChung ? parseGasDate(data.ngayCongChung) : "",
-      data.vanPhongCongChung || "",
-      data.soDangKyGDBD || "",
-      data.ngayDangKyGDBD ? parseGasDate(data.ngayDangKyGDBD) : "",
-      data.hinhAnhGCN || "",
-      data.hinhAnhThucDia || "",
-      new Date()
-    ];
+    var dict = {
+      MaTSBD: maTSBD,
+      SoGCN: soGCN,
+      SoVaoSoCapGCN: data.soVaoSoCapGCN || "",
+      NgayCapGCN: data.ngayCapGCN ? parseGasDateToSheet(data.ngayCapGCN) : "",
+      NoiCapGCN: data.noiCapGCN || "",
+      MaKH: data.maKH || "",
+      ChuSoHuu: data.chuSoHuu || "",
+      CCCDChuTS: data.cccdChuTS || "",
+      QuanHeChuTS: data.quanHeChuTS || "Chính chủ",
+      NguoiDongSoHuu: data.nguoiDongSoHuu || "",
+      ThuaDatSo: data.thuaDatSo || "",
+      ToBanDoSo: data.toBanDoSo || "",
+      DiaChiThuaDat: data.diaChiThuaDat || "",
+      DienTich: Number(data.dienTich) || 0,
+      HinhThucSuDung: data.hinhThucSuDung || "Sử dụng riêng",
+      ChiTietPhanLoaiDat: typeof data.chiTietPhanLoaiDat === 'object' ? JSON.stringify(data.chiTietPhanLoaiDat) : (data.chiTietPhanLoaiDat || ""),
+      NguonGocSuDung: data.nguonGocSuDung || "Nhận chuyển nhượng quyền sử dụng đất",
+      GiaTriDinhGiaQTD: Number(data.giaTriDinhGiaQTD) || 0,
+      GiaTriThiTruong: Number(data.giaTriThiTruong) || 0,
+      TyLeChoVayToiDa: Number(data.tyLeChoVayToiDa) || 70,
+      SoTienDamBaoToiDa: Number(data.soTienDamBaoToiDa) || (Number(data.giaTriDinhGiaQTD || 0) * (Number(data.tyLeChoVayToiDa || 70) / 100)),
+      TrangThaiTheChap: data.trangThaiTheChap || "DANG_THE_CHAP",
+      SoHDTD_LienKet: data.soHDTD_LienKet || "",
+      SoCongChung: data.soCongChung || "",
+      NgayCongChung: data.ngayCongChung ? parseGasDateToSheet(data.ngayCongChung) : "",
+      VanPhongCongChung: data.vanPhongCongChung || "",
+      SoDangKyGDBD: data.soDangKyGDBD || "",
+      NgayDangKyGDBD: data.ngayDangKyGDBD ? parseGasDateToSheet(data.ngayDangKyGDBD) : "",
+      HinhAnhGCN: data.hinhAnhGCN || "",
+      HinhAnhThucDia: data.hinhAnhThucDia || "",
+      NgayCapNhat: new Date()
+    };
+
+    var row = HeaderUtils.dictToRow(dict, colMap, defaultHeaders);
 
     if (targetRowIndex > 0) {
-      sheet.getRange(targetRowIndex, 1, 1, rowData.length).setValues([rowData]);
+      sheet.getRange(targetRowIndex, 1, 1, row.length).setValues([row]);
     } else {
-      sheet.appendRow(rowData);
+      sheet.appendRow(row);
     }
 
     CacheHelper.invalidateModuleCache('collaterals');

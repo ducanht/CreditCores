@@ -333,13 +333,44 @@ def clean_interest_rate(val):
     except Exception:
         return val
 
+def extract_xa_thon(dia_chi, khu_vuc=""):
+    """
+    Tách Xã và Thôn từ Địa chỉ hoặc Khu vực cho địa bàn QTDND Yên Thọ (Thanh Hóa).
+    """
+    text = (str(dia_chi or "") + " " + str(khu_vuc or "")).lower()
+    xa = ""
+    if "quý lộc" in text or "quy loc" in text:
+        xa = "Xã Quý Lộc"
+    elif "yên trường" in text or "yen truong" in text:
+        xa = "Xã Yên Trường"
+    elif "vĩnh lộc" in text or "vinh loc" in text:
+        xa = "Xã Vĩnh Lộc"
+    elif "yên thọ" in text or "yen tho" in text:
+        xa = "Xã Yên Thọ"
+    elif "yên phú" in text or "yen phu" in text:
+        xa = "Xã Yên Phú"
+    elif "định tân" in text or "dinh tan" in text:
+        xa = "Xã Định Tân"
+    else:
+        xa = "Xã Quý Lộc"
+
+    import re
+    thon = ""
+    thon_match = re.search(r"(thôn|bản|khu phố|phố|kp)\s+([^,]+)", str(dia_chi or ""), re.IGNORECASE)
+    if thon_match:
+        thon = thon_match.group(0).strip()
+    elif khu_vuc and not xa:
+        thon = str(khu_vuc).strip()
+
+    return xa, thon
+
 def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     """
     Truy vấn bảng Khách hàng, Thành viên, Khu vực từ CSDL NG-eFUND.
     Tự động chuẩn hóa:
     - Ngày tháng YYYYMMDD -> dd/MM/yyyy.
     - Bảo toàn số 0 ở đầu cho CCCD, Điện thoại, Số thành viên, Số tài khoản, Mã KH.
-    - Làm sạch địa chỉ, chuẩn hóa tiền vốn cổ phần.
+    - Làm sạch địa chỉ, phân tách KvXa, KvThon, chuẩn hóa tiền vốn cổ phần.
     """
     query = """
     SELECT 
@@ -387,22 +418,32 @@ def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     for row in cursor.fetchall():
         row_map = {col: (val if val is not None else "") for col, val in zip(columns, row)}
 
+        dia_chi_clean = clean_address(row_map.get("DiaChi"))
+        khu_vuc_clean = clean_address(row_map.get("KhuVuc"))
+        kv_xa, kv_thon = extract_xa_thon(dia_chi_clean, khu_vuc_clean)
+
         record = {
             "MaKH": clean_number_code(row_map.get("MaKH")),
             "HoTen": str(row_map.get("HoTen", "")).strip(),
-            "DiaChi": clean_address(row_map.get("DiaChi")),
-            "NgaySinh": format_efund_date(row_map.get("NgaySinh")),
             "CCCD": clean_number_code(row_map.get("CCCD")),
             "NgayCap": format_efund_date(row_map.get("NgayCap")),
             "NoiCap": str(row_map.get("NoiCap", "")).strip(),
+            "NgaySinh": format_efund_date(row_map.get("NgaySinh")),
             "DienThoai": clean_number_code(row_map.get("DienThoai")),
             "DienThoaiDD": clean_number_code(row_map.get("DienThoaiDD")),
+            "DiaChi": dia_chi_clean,
+            "KvXa": kv_xa,
+            "KvThon": kv_thon,
+            "KhuVuc": khu_vuc_clean,
             "SoTK": clean_number_code(row_map.get("SoTK")),
-            "KhuVuc": clean_address(row_map.get("KhuVuc")),
             "SoTV": clean_number_code(row_map.get("SoTV")),
             "SoSoCP": str(row_map.get("SoSoCP", "")).strip(),
             "NgayVaoTV": format_efund_date(row_map.get("NgayVaoTV")),
             "TongTienCP": clean_currency(row_map.get("TongTienCP")),
+            "TongDuNoHienTai": 0,
+            "SoLuongHDVay": 0,
+            "TrangThaiVay": "CHUA_VAY",
+            "NhomNoCIC": "N1",
             "NgayCapNhat": sync_timestamp_str
         }
         records.append(record)
@@ -494,24 +535,38 @@ def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
     """
     Ghi danh sách bản ghi (list of dicts) vào sheet bằng 1 lệnh batch duy nhất.
     Áp dụng sanitize chống Formula Injection (CWE-1236).
+    Tự động đọc danh sách Header thực tế trên sheet để map chính xác từng cột theo tên.
     """
     if not records:
         logger.warning(f"⚠️ Không có bản ghi nào để ghi vào sheet '{sheet.title}'.")
         return 0
 
+    # Ưu tiên lấy Header thực tế của Sheet nếu có
+    actual_headers = []
+    try:
+        actual_headers = [str(h).strip() for h in sheet.row_values(1) if str(h).strip()]
+    except Exception:
+        actual_headers = []
+
+    final_headers = actual_headers if actual_headers else headers
+
     values = []
     for r in records:
         row_vals = []
-        for h in headers:
+        for h in final_headers:
             val = r.get(h, "")
             row_vals.append(sanitize_cell_value(val))
         values.append(row_vals)
 
     num_rows = len(values)
-    num_cols = len(headers)
+    num_cols = len(final_headers)
 
     for attempt in range(max_retries):
         try:
+            # Mở rộng số cột nếu sheet thiếu
+            if sheet.col_count < num_cols:
+                sheet.add_cols(num_cols - sheet.col_count + 5)
+
             max_rows = sheet.row_count
             if max_rows >= start_row:
                 clear_range = f"A{start_row}:{gspread.utils.rowcol_to_a1(max_rows, num_cols)}"
@@ -524,7 +579,7 @@ def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
                 sheet.add_rows(start_row + num_rows - sheet.row_count + 50)
 
             sheet.update(values=values, range_name=target_range, value_input_option="USER_ENTERED")
-            logger.info(f"✅ Đã ghi {num_rows} bản ghi vào sheet '{sheet.title}'.")
+            logger.info(f"✅ Đã ghi {num_rows} bản ghi vào sheet '{sheet.title}' (Cột: {num_cols}).")
             return num_rows
         except gspread.exceptions.APIError as api_err:
             if attempt < max_retries - 1:
@@ -562,13 +617,57 @@ def process_sync_request(spreadsheet, sql_cfg):
             records_kh = fetch_customer_core_data(sql_conn, sync_timestamp_str)
             records_hdtd = fetch_loan_contract_core_data(sql_conn, sync_timestamp_str)
 
+        # Lập Map tra cứu khách hàng O(1) theo MaKH (bỏ dấu nháy ' nếu có)
+        kh_lookup = {}
+        for k in records_kh:
+            m = str(k.get("MaKH", "")).strip().lstrip("'")
+            kh_lookup[m] = k
+
+        # Bổ sung thông tin Khách hàng (Họ tên, CCCD, SĐT, Địa chỉ, Xã, Thôn) vào records_hdtd
+        cust_loan_stats = {}
+        for r in records_hdtd:
+            makh = str(r.get("MaKH", "")).strip().lstrip("'")
+            cust = kh_lookup.get(makh, {})
+            r["HoTen"] = cust.get("HoTen", "")
+            r["CCCD"] = cust.get("CCCD", "")
+            r["DienThoai"] = cust.get("DienThoai", "") or cust.get("DienThoaiDD", "")
+            r["DiaChi"] = cust.get("DiaChi", "")
+            r["KvXa"] = cust.get("KvXa", "")
+            r["KvThon"] = cust.get("KvThon", "")
+
+            du_no = float(r.get("DuNo", 0) or 0)
+            if makh not in cust_loan_stats:
+                cust_loan_stats[makh] = {"total_duno": 0, "count_hd": 0}
+            if du_no > 0:
+                cust_loan_stats[makh]["total_duno"] += du_no
+                cust_loan_stats[makh]["count_hd"] += 1
+
+        # Cập nhật các chỉ số tổng hợp vào records_kh
+        for k in records_kh:
+            makh = str(k.get("MaKH", "")).strip().lstrip("'")
+            stats = cust_loan_stats.get(makh, {"total_duno": 0, "count_hd": 0})
+            k["TongDuNoHienTai"] = stats["total_duno"]
+            k["SoLuongHDVay"] = stats["count_hd"]
+            k["TrangThaiVay"] = "DANG_VAY" if stats["count_hd"] > 0 else "CHUA_VAY"
+            k["NhomNoCIC"] = "N1"
+
         # 1. Đẩy dữ liệu Khách hàng & Thành viên (KH_CORE)
-        kh_headers = ["MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat"]
+        kh_headers = ALL_SCHEMAS.get("KH_CORE", {}).get("headers", [
+            "MaKH", "HoTen", "CCCD", "NgayCap", "NoiCap", "NgaySinh",
+            "DienThoai", "DienThoaiDD", "DiaChi", "KvXa", "KvThon", "KhuVuc", "SoTK",
+            "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP",
+            "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "NgayCapNhat"
+        ])
         kh_sheet = get_or_create_worksheet(spreadsheet, "KH_CORE", kh_headers)
         rows_kh = sync_records_to_sheet(kh_sheet, kh_headers, records_kh, start_row=2)
 
         # 2. Đẩy dữ liệu Khế ước & Dư nợ (HDTD_CORE) kèm bảo toàn CBTD
-        hdtd_headers = ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"]
+        hdtd_headers = ALL_SCHEMAS.get("HDTD_CORE", {}).get("headers", [
+            "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+            "SoThangVay", "MaLoaiVay", "MoTaVay",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
+        ])
         hdtd_sheet = get_or_create_worksheet(spreadsheet, "HDTD_CORE", hdtd_headers)
 
         try:
@@ -585,7 +684,7 @@ def process_sync_request(spreadsheet, sql_cfg):
         cust_area_map = {}
         for k in records_kh:
             m = str(k.get("MaKH", "")).strip().lstrip("'")
-            kv = (str(k.get("KhuVuc", "")) + " " + str(k.get("DiaChi", ""))).lower()
+            kv = (str(k.get("KvXa", "")) + " " + str(k.get("KhuVuc", "")) + " " + str(k.get("DiaChi", ""))).lower()
             if "quý lộc" in kv or "quy loc" in kv:
                 cust_area_map[m] = ("qtdyentho.huyennhu", "Trần Như Huyền")
             elif "yên trường" in kv or "yen truong" in kv:
@@ -614,17 +713,25 @@ def process_sync_request(spreadsheet, sql_cfg):
         settled_rows = []
         for so_hd, prev_r in existing_map.items():
             if so_hd not in active_so_hd_set:
+                p_makh = str(prev_r.get("MaKH", "")).strip().lstrip("'")
+                p_cust = kh_lookup.get(p_makh, {})
                 settled_row = {
                     "SoHDTD": so_hd,
                     "MaKH": prev_r.get("MaKH", ""),
+                    "HoTen": prev_r.get("HoTen", "") or p_cust.get("HoTen", ""),
+                    "CCCD": prev_r.get("CCCD", "") or p_cust.get("CCCD", ""),
+                    "DienThoai": prev_r.get("DienThoai", "") or p_cust.get("DienThoai", ""),
+                    "DiaChi": prev_r.get("DiaChi", "") or p_cust.get("DiaChi", ""),
+                    "KvXa": prev_r.get("KvXa", "") or p_cust.get("KvXa", ""),
+                    "KvThon": prev_r.get("KvThon", "") or p_cust.get("KvThon", ""),
                     "TienVay": prev_r.get("TienVay", 0),
                     "DuNo": 0,
                     "LaiSuat": prev_r.get("LaiSuat", 0),
                     "NgayVay": prev_r.get("NgayVay", ""),
                     "DenHan": prev_r.get("DenHan", ""),
                     "TraLaiDenNgay": prev_r.get("TraLaiDenNgay", ""),
-                    "MaLoaiVay": prev_r.get("MaLoaiVay", "LV01"),
                     "SoThangVay": prev_r.get("SoThangVay", 12),
+                    "MaLoaiVay": prev_r.get("MaLoaiVay", "LV01"),
                     "MoTaVay": prev_r.get("MoTaVay", ""),
                     "CBTD_PhuTrach": prev_r.get("CBTD_PhuTrach", "qtdyentho.cbtd"),
                     "Ten_CBTD": prev_r.get("Ten_CBTD", "Lê Văn Tín (CBTD)"),

@@ -35,41 +35,49 @@ var DashboardController = {
     // 1. Ánh xạ địa bàn khách hàng (Xã & Thôn) từ KH_CORE
     var custMap = {};
     if (sKH && sKH.getLastRow() > 1) {
-      var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, 12).getValues();
+      var colMapKH = HeaderUtils.getHeaderMap(sKH);
+      var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, sKH.getLastColumn()).getValues();
       for (var k = 0; k < khValues.length; k++) {
-        var makh = String(khValues[k][0]).replace(/^'/, '').trim();
-        var rawKhuVuc = (String(khValues[k][10] || "") + " " + String(khValues[k][2] || "")).trim();
-        var hoten = String(khValues[k][1] || "").trim();
-        var sotv = String(khValues[k][11] || "").trim();
+        var makh = String(HeaderUtils.getCell(khValues[k], colMapKH, "MaKH", "")).replace(/^'/, '').trim();
+        var directXa = String(HeaderUtils.getCell(khValues[k], colMapKH, "KvXa", "")).trim();
+        var directThon = String(HeaderUtils.getCell(khValues[k], colMapKH, "KvThon", "")).trim();
+        var rawKhuVuc = (String(HeaderUtils.getCell(khValues[k], colMapKH, "KhuVuc", "")) + " " + String(HeaderUtils.getCell(khValues[k], colMapKH, "DiaChi", ""))).trim();
+        var hoten = String(HeaderUtils.getCell(khValues[k], colMapKH, "HoTen", "")).trim();
+        var sotv = String(HeaderUtils.getCell(khValues[k], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
 
-        var rawLower = rawKhuVuc.toLowerCase();
-        var xa = "Xã Quý Lộc";
-        if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) {
-          xa = "Xã Yên Trường";
-        } else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) {
-          xa = "Xã Vĩnh Lộc";
-        } else {
-          xa = "Xã Quý Lộc";
+        var xa = directXa;
+        if (!xa) {
+          var rawLower = rawKhuVuc.toLowerCase();
+          if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) {
+            xa = "Xã Yên Trường";
+          } else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) {
+            xa = "Xã Vĩnh Lộc";
+          } else {
+            xa = "Xã Quý Lộc";
+          }
         }
 
-        var thon = "Khu trung tâm " + xa.replace("Xã ", "");
-        var m = rawKhuVuc.match(/thôn\s+[^,]+/i);
-        if (m && m[0]) {
-          var rawThon = m[0].trim();
-          var tl = rawThon.toLowerCase();
-          if (tl.indexOf("tu mục") > -1) thon = "Thôn Tu Mục";
-          else if (tl.indexOf("tân lộc") > -1) thon = "Thôn Tân Lộc";
-          else if (tl.indexOf("đan nê") > -1) thon = "Thôn Đan Nê";
-          else if (tl.indexOf("phố kiểu") > -1) thon = "Thôn Phố Kiểu";
-          else if (tl.indexOf("lựu khê") > -1) thon = "Thôn Lựu Khê";
-          else if (tl.indexOf("thạc quả") > -1) thon = "Thôn Thạc Quả";
-          else if (tl.indexOf("yên lạc") > -1) thon = "Thôn Yên Lạc";
-          else if (tl.indexOf("thọ vực") > -1) thon = "Thôn Thọ Vực";
-          else if (tl.indexOf("phi bình") > -1) thon = "Thôn Phi Bình";
-          else if (tl.indexOf("kỳ ngãi") > -1) thon = "Thôn Kỳ Ngãi";
-          else if (tl.indexOf("vĩnh khang 1") > -1) thon = "Thôn Vĩnh Khang 1";
-          else if (tl.indexOf("vĩnh khang 2") > -1) thon = "Thôn Vĩnh Khang 2";
-          else thon = rawThon;
+        var thon = directThon;
+        if (!thon) {
+          thon = "Khu trung tâm " + xa.replace("Xã ", "");
+          var m = rawKhuVuc.match(/thôn\s+[^,]+/i);
+          if (m && m[0]) {
+            var rawThon = m[0].trim();
+            var tl = rawThon.toLowerCase();
+            if (tl.indexOf("tu mục") > -1) thon = "Thôn Tu Mục";
+            else if (tl.indexOf("tân lộc") > -1) thon = "Thôn Tân Lộc";
+            else if (tl.indexOf("đan nê") > -1) thon = "Thôn Đan Nê";
+            else if (tl.indexOf("phố kiểu") > -1) thon = "Thôn Phố Kiểu";
+            else if (tl.indexOf("lựu khê") > -1) thon = "Thôn Lựu Khê";
+            else if (tl.indexOf("thạc quả") > -1) thon = "Thôn Thạc Quả";
+            else if (tl.indexOf("yên lạc") > -1) thon = "Thôn Yên Lạc";
+            else if (tl.indexOf("thọ vực") > -1) thon = "Thôn Thọ Vực";
+            else if (tl.indexOf("phi bình") > -1) thon = "Thôn Phi Bình";
+            else if (tl.indexOf("kỳ ngãi") > -1) thon = "Thôn Kỳ Ngãi";
+            else if (tl.indexOf("vĩnh khang 1") > -1) thon = "Thôn Vĩnh Khang 1";
+            else if (tl.indexOf("vĩnh khang 2") > -1) thon = "Thôn Vĩnh Khang 2";
+            else thon = rawThon;
+          }
         }
         custMap[makh] = { hoten: hoten, sotv: sotv, xa: xa, thon: thon };
       }
@@ -190,16 +198,19 @@ var DashboardController = {
     var totalWeightedLai = 0;
 
     if (sHDTD && sHDTD.getLastRow() > 1) {
-      var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, 14).getValues();
+      var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
+      var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
       for (var i = 0; i < hdValues.length; i++) {
-        var makh = String(hdValues[i][1]).replace(/^'/, '').trim();
-        var duNo = Number(hdValues[i][3]) || 0;
-        var laiSuat = Number(String(hdValues[i][4]).replace(',', '.')) || 0;
-        var maLoaiVay = String(hdValues[i][8] || "").trim();
-        var moTaVay = String(hdValues[i][10] || "").trim();
-        var cbtdUser = String(hdValues[i][11] || "").trim();
-        var cbtdName = String(hdValues[i][12] || "").trim();
-        var trangThaiHD = String(hdValues[i][13] || "DANG_VAY").trim();
+        var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
+        var duNo = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "DuNo", 0)) || 0;
+        var laiSuat = Number(String(HeaderUtils.getCell(hdValues[i], colMapHD, "LaiSuat", 0)).replace(',', '.')) || 0;
+        var maLoaiVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiVay", "")).trim();
+        var moTaVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MoTaVay", "")).trim();
+        var cbtdUser = String(HeaderUtils.getCell(hdValues[i], colMapHD, "CBTD_PhuTrach", "")).trim();
+        var cbtdName = String(HeaderUtils.getCell(hdValues[i], colMapHD, "Ten_CBTD", "")).trim();
+        var trangThaiHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
+        var directXa = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvXa", "")).trim();
+        var directThon = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvThon", "")).trim();
 
         if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
           totalDuNo += duNo;
@@ -209,8 +220,8 @@ var DashboardController = {
           allBorrowersSet[makh] = true;
 
           var cust = custMap[makh] || { xa: "Xã Quý Lộc", thon: "Thôn khác" };
-          var xa = cust.xa;
-          var thon = cust.thon;
+          var xa = directXa || cust.xa;
+          var thon = directThon || cust.thon;
 
           // Phân loại nhóm cho vay
           var prodName = maLoaiVay || moTaVay || "Cho vay khác";

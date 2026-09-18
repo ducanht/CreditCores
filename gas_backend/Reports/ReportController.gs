@@ -45,20 +45,24 @@ var ReportController = {
       };
     }
 
-    // --- Build KH map (1 batch read 16 cols) ---
+    // --- Build KH map (batch read theo tên cột) ---
     var khMap = {};
     if (sKH.getLastRow() > 1) {
-      var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, 16).getValues();
+      var colMapKH = HeaderUtils.getHeaderMap(sKH);
+      var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, sKH.getLastColumn()).getValues();
       for (var i = 0; i < khVals.length; i++) {
-        var mKH = String(khVals[i][0]).trim();
-        var hTen = String(khVals[i][1]).trim();
-        var dChi = String(khVals[i][2]).trim();
-        var sTV = String(khVals[i][11]).trim();
-        var diaChiKV = dChi + " " + String(khVals[i][10]).trim();
-        var areaKey = "Khác";
-        if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
-        else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
-        else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        var mKH = String(HeaderUtils.getCell(khVals[i], colMapKH, "MaKH", "")).replace(/^'/, "").trim();
+        var hTen = String(HeaderUtils.getCell(khVals[i], colMapKH, "HoTen", "")).trim();
+        var dChi = String(HeaderUtils.getCell(khVals[i], colMapKH, "DiaChi", "")).trim();
+        var sTV = String(HeaderUtils.getCell(khVals[i], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
+        var directXa = String(HeaderUtils.getCell(khVals[i], colMapKH, "KvXa", "")).trim();
+        var diaChiKV = (dChi + " " + String(HeaderUtils.getCell(khVals[i], colMapKH, "KhuVuc", ""))).trim();
+        var areaKey = directXa || "Khác";
+        if (!directXa) {
+          if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+          else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
+          else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        }
         khMap[mKH] = {
           hoTen: hTen,
           diaChi: dChi,
@@ -88,27 +92,28 @@ var ReportController = {
     var statementResult = [];
     var customerDebtMap = {};
 
-    // --- Batch read HDTD_CORE (cols A→P = 1→16) ---
+    // --- Batch read HDTD_CORE (theo tên cột) ---
     if (sHDTD.getLastRow() > 1) {
+      var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
       var hdRows = sHDTD.getLastRow() - 1;
-      var hdVals = sHDTD.getRange(2, 1, hdRows, 16).getValues();
+      var hdVals = sHDTD.getRange(2, 1, hdRows, sHDTD.getLastColumn()).getValues();
 
       for (var j = 0; j < hdVals.length; j++) {
-        var hdSoHDTD    = String(hdVals[j][0]).trim();
-        var hdMaKH      = String(hdVals[j][1]).trim();
-        var hdTienVay   = Number(hdVals[j][2]) || 0;
-        var hdDuNo      = Number(hdVals[j][3]) || 0;
-        var hdLaiSuat   = Number(hdVals[j][4]) || 0;
-        var hdNgayVay   = formatGasDateVN(hdVals[j][5]);
-        var hdDenHan    = formatGasDateVN(hdVals[j][6]);
-        var hdTraLaiDen = formatGasDateVN(hdVals[j][7]);
-        var hdMaLoaiVay = String(hdVals[j][8]).trim();
-        var hdSoThang   = Number(hdVals[j][9]) || 0;
-        var hdMoTa      = String(hdVals[j][10]).trim();
-        var hdCBTD_Code = String(hdVals[j][11]).trim();
-        var hdTenCBTD   = String(hdVals[j][12]).trim();
-        var hdTrangThai = String(hdVals[j][13]).toUpperCase().trim();
-        var hdNgayTatToan = formatGasDateVN(hdVals[j][14]);
+        var hdSoHDTD    = String(HeaderUtils.getCell(hdVals[j], colMapHD, "SoHDTD", "")).trim();
+        var hdMaKH      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaKH", "")).replace(/^'/, "").trim();
+        var hdTienVay   = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "TienVay", 0)) || 0;
+        var hdDuNo      = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "DuNo", 0)) || 0;
+        var hdLaiSuat   = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "LaiSuat", 0)) || 0;
+        var hdNgayVay   = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "NgayVay", ""));
+        var hdDenHan    = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "DenHan", ""));
+        var hdTraLaiDen = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "TraLaiDenNgay", ""));
+        var hdMaLoaiVay = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaLoaiVay", "")).trim();
+        var hdSoThang   = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "SoThangVay", 0)) || 0;
+        var hdMoTa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MoTaVay", "")).trim();
+        var hdCBTD_Code = String(HeaderUtils.getCell(hdVals[j], colMapHD, "CBTD_PhuTrach", "")).trim();
+        var hdTenCBTD   = String(HeaderUtils.getCell(hdVals[j], colMapHD, "Ten_CBTD", "")).trim();
+        var hdTrangThai = String(HeaderUtils.getCell(hdVals[j], colMapHD, "TrangThaiHD", hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).toUpperCase().trim();
+        var hdNgayTatToan = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "NgayTatToan", ""));
 
         var khInfo = khMap[hdMaKH] || {
           hoTen: "Khách hàng " + hdMaKH,

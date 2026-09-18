@@ -4,11 +4,12 @@
  * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
  * 
  * @description Trọn bộ Backend Google Apps Script All-In-One:
+ *              - Header-Name Based Mapping (chống lệch cột, an toàn khi thêm/bớt cột)
  *              - Tối ưu tra cứu O(1) Hash Map cho 5.175+ khách hàng & 549+ hợp đồng
  *              - Thẩm định, Trích nợ Auto-Debit, Kiểm tra vốn, In hợp đồng Mail Merge
  *              - Độc lập hoàn toàn, không nghẽn Timeout, Zero Mock Data
- * @updated     16/09/2026
- * @version     3.0 Pro Production
+ * @updated     18/9/2026
+ * @version     3.1 Header-Based Resilient Engine
  * ========================================================================================
  */
 
@@ -122,19 +123,128 @@ function calculateGasInterest(duNo, laiSuat, actualDays) {
 }
 
 
+
+// ==========================================
+// MODULE FILE: gas_backend/Utils/HeaderUtils.gs
+// ==========================================
+
+/**
+ * ========================================================================================
+ * CREDITCORES - HEADER UTILITIES
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Các hàm tiện ích truy xuất & ghi dữ liệu Google Sheets THEO TÊN CỘT
+ *              Đảm bảo 100% không bị ảnh hưởng khi thêm, bớt hoặc thay đổi thứ tự cột.
+ * ========================================================================================
+ */
+
+var HeaderUtils = {
+  /**
+   * Lấy Map ánh xạ { TênCột: index (0-based) } từ dòng 1 của Sheet
+   * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+   * @return {Object} { [colName]: colIndex }
+   */
+  getHeaderMap: function(sheet) {
+    if (!sheet) return {};
+    var lastCol = sheet.getLastColumn();
+    if (lastCol < 1) return {};
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var map = {};
+    for (var i = 0; i < headers.length; i++) {
+      var h = String(headers[i] || "").trim();
+      if (h) {
+        map[h] = i;
+      }
+    }
+    return map;
+  },
+
+  /**
+   * Lấy giá trị ô an toàn từ mảng row dựa theo Tên Cột
+   * @param {Array} row Mảng dữ liệu của một hàng
+   * @param {Object} headerMap Map { TênCột: index }
+   * @param {string} colName Tên cột cần lấy
+   * @param {*} defaultVal Giá trị mặc định nếu ô rỗng hoặc không tồn tại
+   * @return {*}
+   */
+  getCell: function(row, headerMap, colName, defaultVal) {
+    if (!row || !headerMap) return defaultVal !== undefined ? defaultVal : "";
+    var idx = headerMap[colName];
+    if (idx !== undefined && idx < row.length) {
+      var val = row[idx];
+      if (val !== undefined && val !== null && val !== "") {
+        return val;
+      }
+    }
+    return defaultVal !== undefined ? defaultVal : "";
+  },
+
+  /**
+   * Chuyển đổi 1 mảng dòng row thành đối tượng key-value theo Tên Cột
+   * @param {Array} row Mảng dữ liệu hàng
+   * @param {Object} headerMap Map { TênCột: index }
+   * @return {Object}
+   */
+  rowToDict: function(row, headerMap) {
+    var dict = {};
+    if (!row || !headerMap) return dict;
+    for (var colName in headerMap) {
+      var idx = headerMap[colName];
+      dict[colName] = (idx < row.length && row[idx] !== undefined && row[idx] !== null) ? row[idx] : "";
+    }
+    return dict;
+  },
+
+  /**
+   * Cập nhật 1 ô trên Sheet dựa theo Tên Cột
+   * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+   * @param {number} rowIdx Vị trí dòng trên Google Sheet (1-based, ví dụ: 2, 3...)
+   * @param {Object} headerMap Map { TênCột: index }
+   * @param {string} colName Tên cột cần ghi
+   * @param {*} value Giá trị cần ghi
+   */
+  setCell: function(sheet, rowIdx, headerMap, colName, value) {
+    if (!sheet || !headerMap) return;
+    var idx = headerMap[colName];
+    if (idx !== undefined) {
+      sheet.getRange(rowIdx, idx + 1).setValue(value);
+    }
+  },
+
+  /**
+   * Tạo mảng dữ liệu row từ dict theo đúng thứ tự mảng headers
+   * @param {Object} dict Dữ liệu key-value
+   * @param {Array} headers Mảng tên cột
+   * @return {Array}
+   */
+  dictToRow: function(dict, headers) {
+    var row = [];
+    for (var i = 0; i < headers.length; i++) {
+      var colName = headers[i];
+      var val = dict[colName];
+      row.push(val !== undefined && val !== null ? val : "");
+    }
+    return row;
+  }
+};
+
+
+
 // ==========================================
 // MODULE FILE: gas_backend/Database/Cache.gs
 // ==========================================
 
 /**
  * ========================================================================================
- * CREDITCORES - CACHE
+ * CREDITCORES - CACHE (HIGH-PERFORMANCE CHUNKED CACHE)
  * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
  * 
- * @description Controller/Module Cache xử lý nghiệp vụ liên quan
+ * @description Hệ thống Memory Caching phân tầng (Multi-tier Chunked Cache)
+ *              Hỗ trợ tự động chia nhỏ dữ liệu vượt ngưỡng 100KB của CacheService
+ *              và ghép lại nguyên vẹn (Zero-drop-cache), tham chiếu kiến trúc HuyDongVon.
  * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
+ * @updated     18/09/2026
+ * @version     3.0
  * ========================================================================================
  */
 
@@ -274,6 +384,7 @@ var CacheHelper = {
 };
 
 
+
 // ==========================================
 // MODULE FILE: gas_backend/Database/SchemaSetup.gs
 // ==========================================
@@ -351,30 +462,37 @@ var SchemaSetup = {
     },
     KH_CORE: {
       headers: [
-        "MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat",
-        "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "KvXa", "KvThon"
+        "MaKH", "HoTen", "CCCD", "NgayCap", "NoiCap", "NgaySinh",
+        "DienThoai", "DienThoaiDD", "DiaChi", "KvXa", "KvThon", "KhuVuc", "SoTK",
+        "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP",
+        "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "NgayCapNhat"
       ],
       color: "#004D40",
-      formats: { "D:D": "dd/MM/yyyy", "E:E": "@", "F:F": "dd/MM/yyyy", "H:J": "@", "N:N": "dd/MM/yyyy", "O:O": "#,##0", "P:P": "dd/MM/yyyy HH:mm:ss", "Q:R": "#,##0", "S:V": "@" },
-      colWidths: { 1: 100, 2: 180, 3: 220, 4: 110, 5: 130, 6: 110, 7: 160, 8: 110, 9: 110, 10: 140, 11: 140, 12: 100, 13: 100, 14: 110, 15: 130, 16: 160, 17: 140, 18: 110, 19: 120, 20: 120, 21: 140, 22: 140 }
+      formats: { "A:C": "@", "D:D": "dd/MM/yyyy", "E:E": "@", "F:F": "dd/MM/yyyy", "G:M": "@", "N:O": "@", "P:P": "dd/MM/yyyy", "Q:S": "#,##0", "T:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 100, 2: 180, 3: 130, 4: 110, 5: 160, 6: 110, 7: 110, 8: 110, 9: 220, 10: 130, 11: 130, 12: 140, 13: 140, 14: 100, 15: 100, 16: 110, 17: 130, 18: 140, 19: 110, 20: 120, 21: 110, 22: 160 }
     },
     HDTD_CORE: {
       headers: [
-        "SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat",
-        "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon"
+        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+        "SoThangVay", "MaLoaiVay", "MoTaVay",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
       ],
       color: "#1B365D",
-      formats: { "C:D": "#,##0", "E:E": "0.00", "F:H": "dd/MM/yyyy", "J:J": "#,##0", "L:M": "@", "N:N": "@", "O:O": "dd/MM/yyyy", "P:P": "dd/MM/yyyy HH:mm:ss", "Q:V": "@" },
-      colWidths: { 1: 130, 2: 100, 3: 130, 4: 130, 5: 90, 6: 110, 7: 110, 8: 120, 9: 140, 10: 90, 11: 220, 12: 140, 13: 160, 14: 120, 15: 120, 16: 160, 17: 180, 18: 130, 19: 120, 20: 220, 21: 140, 22: 140 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:T": "@", "U:U": "dd/MM/yyyy", "V:V": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 120, 22: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
       headers: [
-        "SoHDTD", "NgayVay", "TraLaiDenNgay", "LaiSuat", "MaKH", "TenKH", "SoTK", "SoTienLai", "SoTienNo", "SoGoc", "TongTien", "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
+        "SoHDTD", "MaKH", "TenKH", "SoTK",
+        "NgayVay", "TraLaiDenNgay", "LaiSuat",
+        "SoTienLai", "SoTienNo", "SoGoc", "TongTien",
+        "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
       ],
       color: "#0F5132",
-      formats: { "A:A": "@", "B:C": "dd/MM/yyyy", "D:D": "0.00", "E:G": "@", "H:K": "#,##0", "L:L": "#,##0", "M:N": "@", "O:O": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 110, 3: 110, 4: 90, 5: 100, 6: 180, 7: 140, 8: 120, 9: 120, 10: 120, 11: 140, 12: 90, 13: 120, 14: 200, 15: 160 }
+      formats: { "A:D": "@", "E:F": "dd/MM/yyyy", "G:G": "0.00", "H:K": "#,##0", "L:L": "#,##0", "M:N": "@", "O:O": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 140, 5: 110, 6: 120, 7: 90, 8: 120, 9: 120, 10: 120, 11: 140, 12: 90, 13: 120, 14: 200, 15: 160 }
     },
     LICH_SU_TRICH_NO: {
       aliases: ["CHI_TIET_TRICH_NO", "LICH_SU_GIAO_DICH"],
@@ -460,6 +578,23 @@ var SchemaSetup = {
       color: "#27AE60",
       formats: { "F:F": "dd/MM/yyyy HH:mm:ss" },
       colWidths: { 1: 180, 2: 120, 3: 200, 4: 200, 5: 150, 6: 150, 7: 350, 8: 350, 9: 150 }
+    },
+    BC_DOANH_SO_TD: {
+      headers: ["SoHDTD", "MaKH", "SoTV", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "MaLoaiVay", "SoThangVay", "MoTaVay", "KhuVuc"],
+      color: "#0284C7",
+      formats: { "A:C": "@", "D:E": "#,##0", "F:F": "0.00", "G:H": "dd/MM/yyyy", "I:I": "@", "J:J": "#,##0", "K:L": "@" },
+      colWidths: { 1: 130, 2: 100, 3: 100, 4: 130, 5: 130, 6: 90, 7: 110, 8: 110, 9: 140, 10: 90, 11: 220, 12: 180 }
+    },
+    TOP_DU_NO_BINH_QUAN: {
+      headers: [
+        "NamBaoCao", "XepHang", "MaKH", "HoTen", "SoTV", "KhuVuc",
+        "DuNoThang01", "DuNoThang02", "DuNoThang03", "DuNoThang04", "DuNoThang05", "DuNoThang06",
+        "DuNoThang07", "DuNoThang08", "DuNoThang09", "DuNoThang10", "DuNoThang11", "DuNoThang12",
+        "DuNoBinhQuan", "TongTienVay", "TyTrongDuNo"
+      ],
+      color: "#B45309",
+      formats: { "A:B": "#,##0", "C:F": "@", "G:T": "#,##0", "U:U": "0.00%" },
+      colWidths: { 1: 100, 2: 80, 3: 100, 4: 180, 5: 100, 6: 160, 7: 120, 8: 120, 9: 120, 10: 120, 11: 120, 12: 120, 13: 120, 14: 120, 15: 120, 16: 120, 17: 120, 18: 120, 19: 140, 20: 140, 21: 100 }
     }
   },
 
@@ -610,6 +745,7 @@ var SchemaSetup = {
     return this.ensureDatabaseSchema(ss, true);
   }
 };
+
 
 
 // ==========================================
@@ -789,6 +925,7 @@ var AuthController = {
 };
 
 
+
 // ==========================================
 // MODULE FILE: gas_backend/Auth/RoleController.gs
 // ==========================================
@@ -957,190 +1094,6 @@ var RoleController = {
 };
 
 
-// ==========================================
-// MODULE FILE: gas_backend/Dashboard/DashboardController.gs
-// ==========================================
-
-/**
- * ========================================================================================
- * CREDITCORES - DASHBOARDCONTROLLER
- * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
- * 
- * @description Controller/Module DashboardController xử lý nghiệp vụ liên quan
- * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
- * ========================================================================================
- */
-
-var DashboardController = {
-  handleGetDashboardStats: function(ss) {
-    ss = getSpreadsheetInstance(ss);
-    if (!ss) {
-      return { status: "error", message: "Không thể kết nối Google Spreadsheet!" };
-    }
-
-    var cached = CacheHelper.getCachedData('dashboard_stats');
-    if (cached) return { status: "success", data: cached };
-
-    var sHDTD = ss.getSheetByName("HDTD_CORE");
-    var sKH = ss.getSheetByName("KH_CORE");
-    var sNoTon = ss.getSheetByName("NO_TON_DONG");
-    var sDot = ss.getSheetByName("DOT_TRICH_NO");
-    var sDS = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
-    var sAppraisal = ss.getSheetByName("THAM_DINH_TD");
-    var sInspection = ss.getSheetByName("KIEM_TRA_VON");
-
-    var totalDuNo = 0;
-    var totalHopDong = 0;
-    var totalDuThuLai = 0;
-
-    // Cơ cấu sản phẩm vay
-    var loanTypeMap = {};
-
-    if (sHDTD && sHDTD.getLastRow() > 1) {
-      var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, 12).getValues();
-      for (var i = 0; i < hdValues.length; i++) {
-        var duNo = Number(hdValues[i][3]) || 0;
-        var laiSuat = Number(hdValues[i][4]) || 0;
-        var loaiVay = String(hdValues[i][10] || hdValues[i][8] || "Khác").trim();
-
-        totalDuNo += duNo;
-        totalHopDong++;
-        totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
-
-        if (!loanTypeMap[loaiVay]) {
-          loanTypeMap[loaiVay] = { name: loaiVay, count: 0, duNo: 0 };
-        }
-        loanTypeMap[loaiVay].count++;
-        loanTypeMap[loaiVay].duNo += duNo;
-      }
-    }
-
-    // Cơ cấu dư nợ theo 3 địa bàn xã chính
-    var areaMap = {
-      "Xã Yên Thọ": { name: "Xã Yên Thọ (Thôn 1, 2, 3, 4)", countKH: 0, duNo: 0 },
-      "Xã Yên Trường": { name: "Xã Yên Trường (Thôn 1, 2, 3)", countKH: 0, duNo: 0 },
-      "Xã Yên Bái / Quý Lộc": { name: "Xã Yên Bái / Quý Lộc", countKH: 0, duNo: 0 }
-    };
-
-    if (sKH && sKH.getLastRow() > 1) {
-      var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, 11).getValues();
-      for (var k = 0; k < khValues.length; k++) {
-        var khuVuc = String(khValues[k][10] || khValues[k][2] || "").trim();
-        var matched = "Xã Yên Thọ";
-        if (khuVuc.indexOf("Yên Trường") > -1) matched = "Xã Yên Trường";
-        else if (khuVuc.indexOf("Yên Bái") > -1 || khuVuc.indexOf("Quý Lộc") > -1) matched = "Xã Yên Bái / Quý Lộc";
-        
-        if (areaMap[matched]) {
-          areaMap[matched].countKH++;
-        }
-      }
-    }
-
-    // Phân bổ dư nợ ước tính theo tỉ lệ khách hàng từng xã
-    var totalKHCount = 0;
-    for (var aKey in areaMap) totalKHCount += areaMap[aKey].countKH;
-    if (totalKHCount > 0) {
-      for (var aKey2 in areaMap) {
-        areaMap[aKey2].duNo = Math.round((areaMap[aKey2].countKH / totalKHCount) * totalDuNo);
-        areaMap[aKey2].rate = totalDuNo > 0 ? Math.round((areaMap[aKey2].duNo / totalDuNo) * 100) + "%" : "0%";
-      }
-    }
-
-    // Đăng ký trích nợ
-    var totalKhachHangTrichNo = 0;
-    if (sDS && sDS.getLastRow() > 1) {
-      var dsValues = sDS.getRange(2, 1, sDS.getLastRow() - 1, 7).getValues();
-      for (var d = 0; d < dsValues.length; d++) {
-        if (String(dsValues[d][6]).toUpperCase() !== "NGUNG" && String(dsValues[d][6]).toUpperCase() !== "HUY") {
-          totalKhachHangTrichNo++;
-        }
-      }
-    }
-
-    // Nợ tồn đọng
-    var totalNoTon = 0;
-    var countNoTon = 0;
-    if (sNoTon && sNoTon.getLastRow() > 1) {
-      var noTonValues = sNoTon.getRange(2, 1, sNoTon.getLastRow() - 1, 7).getValues();
-      for (var j = 0; j < noTonValues.length; j++) {
-        var st = Number(noTonValues[j][4]) || 0;
-        if (st > 0) {
-          totalNoTon += st;
-          countNoTon++;
-        }
-      }
-    }
-
-    // Đợt trích nợ gần nhất
-    var recentBatches = [];
-    if (sDot && sDot.getLastRow() > 1) {
-      var maxRows = Math.min(6, sDot.getLastRow() - 1);
-      var dotValues = sDot.getRange(2, 1, maxRows, 8).getValues();
-      for (var b = 0; b < dotValues.length; b++) {
-        var phaiThu = Number(dotValues[b][3]) || 0;
-        var daTrich = Number(dotValues[b][4]) || 0;
-        var conNo = Number(dotValues[b][5]) || 0;
-        var cRate = phaiThu > 0 ? Math.round((daTrich / phaiThu) * 100) : 0;
-
-        recentBatches.push({
-          maDot: String(dotValues[b][0]),
-          thangNam: String(dotValues[b][1]),
-          kyTrich: Number(dotValues[b][2]) || 1,
-          tongPhaiThu: phaiThu,
-          tongDaTrich: daTrich,
-          tongConNo: conNo,
-          completionRate: cRate,
-          ngayTao: formatGasDateTime(dotValues[b][6]),
-          trangThai: String(dotValues[b][7] || "KHOI_TAO")
-        });
-      }
-    }
-
-    // Thẩm định chờ duyệt
-    var pendingAppraisals = 0;
-    if (sAppraisal && sAppraisal.getLastRow() > 1) {
-      var appValues = sAppraisal.getRange(2, 1, sAppraisal.getLastRow() - 1, 14).getValues();
-      for (var ap = 0; ap < appValues.length; ap++) {
-        var appStatus = String(appValues[ap][13] || "");
-        if (appStatus.indexOf("CHO_DUYET") > -1 || appStatus.indexOf("KHOI_TAO") > -1) {
-          pendingAppraisals++;
-        }
-      }
-    }
-
-    // Kiểm tra vốn cần thực hiện
-    var pendingInspections = 0;
-    if (sInspection && sInspection.getLastRow() > 1) {
-      var insValues = sInspection.getRange(2, 1, sInspection.getLastRow() - 1, 12).getValues();
-      for (var ip = 0; ip < insValues.length; ip++) {
-        var insStatus = String(insValues[ip][10] || "");
-        if (insStatus.indexOf("DANG_THEO_DOI") > -1 || insStatus.indexOf("CHUA_DAT") > -1) {
-          pendingInspections++;
-        }
-      }
-    }
-
-    var result = {
-      totalDuNo: totalDuNo,
-      totalHopDong: totalHopDong,
-      totalDuThuLai: Math.round(totalDuThuLai),
-      totalKhachHangTrichNo: totalKhachHangTrichNo,
-      totalNoTon: totalNoTon,
-      countNoTon: countNoTon,
-      pendingAppraisals: pendingAppraisals,
-      pendingInspections: pendingInspections,
-      recentBatches: recentBatches,
-      areaStats: Object.values(areaMap),
-      loanTypes: Object.values(loanTypeMap)
-    };
-
-    CacheHelper.setCachedData('dashboard_stats', result, CacheHelper.TIERS.HOT);
-    return { status: "success", data: result };
-  }
-};
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Customer/Customer360Controller.gs
@@ -1168,9 +1121,10 @@ var Customer360Controller = {
     var query = (data.query || "").toLowerCase().trim();
     var cbtdFilter = (data.cbtdUsername || "").toLowerCase().trim();
     var statusFilter = (data.status || "").toUpperCase().trim(); // 'ALL' | 'DANG_VAY' | 'DA_TAT_TOAN'
+    var maxLimit = data.limit ? Number(data.limit) : 250;
     var isDefaultSearch = (!query && (!cbtdFilter || cbtdFilter === "all") && (!statusFilter || statusFilter === "ALL"));
     if (isDefaultSearch) {
-      var cachedDefault = CacheHelper.getCachedData('cust360_default');
+      var cachedDefault = (typeof CacheHelper !== 'undefined') ? CacheHelper.getCachedData('cust360_default') : null;
       if (cachedDefault) {
         return { status: "success", data: cachedDefault, total: cachedDefault.length, isFiltered: false };
       }
@@ -1184,21 +1138,23 @@ var Customer360Controller = {
     }
 
     // 1. Đọc dữ liệu hợp đồng và Gom vào Hash Map theo MaKH O(M)
+    var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
     var hdValues = (sHDTD && sHDTD.getLastRow() > 1) 
-      ? sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, Math.min(sHDTD.getLastColumn(), 16)).getValues() 
+      ? sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues() 
       : [];
 
     var contractsByMaKH = {};
     for (var j = 0; j < hdValues.length; j++) {
-      var rowSoHD = String(hdValues[j][0] || "").trim();
-      var rowMaKH = String(hdValues[j][1] || "").trim();
+      var rowSoHD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "SoHDTD", "")).trim();
+      var rowMaKH = String(HeaderUtils.getCell(hdValues[j], colMapHD, "MaKH", "")).replace(/^'/, "").trim();
       if (!rowMaKH) continue;
 
-      var cbtdUser = String(hdValues[j][11] || "qtdyentho.cbtd").trim();
-      var tenCBTD = String(hdValues[j][12] || "Lê Văn Tín (CBTD)").trim();
-      var duNo = Number(hdValues[j][3] || 0);
-      var trangThaiHD = String(hdValues[j][13] || (duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
-      var ngayTatToan = hdValues[j][14] ? formatGasDate(hdValues[j][14]) : "";
+      var cbtdUser = String(HeaderUtils.getCell(hdValues[j], colMapHD, "CBTD_PhuTrach", "qtdyentho.cbtd")).trim();
+      var tenCBTD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "Ten_CBTD", "Lê Văn Tín (CBTD)")).trim();
+      var duNo = Number(HeaderUtils.getCell(hdValues[j], colMapHD, "DuNo", 0)) || 0;
+      var trangThaiHD = String(HeaderUtils.getCell(hdValues[j], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
+      var ngayTatToan = HeaderUtils.getCell(hdValues[j], colMapHD, "NgayTatToan", "");
+      if (ngayTatToan) ngayTatToan = formatGasDate(ngayTatToan);
 
       // Kiểm tra bộ lọc trạng thái
       if (statusFilter && statusFilter !== "ALL" && trangThaiHD !== statusFilter) {
@@ -1217,25 +1173,32 @@ var Customer360Controller = {
       contractsByMaKH[rowMaKH].push({
         soHDTD: rowSoHD,
         maKH: rowMaKH,
-        tienVay: Number(hdValues[j][2] || 0),
+        tienVay: Number(HeaderUtils.getCell(hdValues[j], colMapHD, "TienVay", 0)) || 0,
         duNo: duNo,
-        laiSuat: Number(hdValues[j][4] || 0),
-        ngayVay: formatGasDate(hdValues[j][5]),
-        denHan: formatGasDate(hdValues[j][6]),
-        traLaiDenNgay: formatGasDate(hdValues[j][7]),
-        maLoaiVay: String(hdValues[j][8] || "LV01"),
-        soThangVay: Number(hdValues[j][9] || 12),
-        moTaVay: String(hdValues[j][10] || ""),
+        laiSuat: Number(HeaderUtils.getCell(hdValues[j], colMapHD, "LaiSuat", 0)) || 0,
+        ngayVay: formatGasDate(HeaderUtils.getCell(hdValues[j], colMapHD, "NgayVay", "")),
+        denHan: formatGasDate(HeaderUtils.getCell(hdValues[j], colMapHD, "DenHan", "")),
+        traLaiDenNgay: formatGasDate(HeaderUtils.getCell(hdValues[j], colMapHD, "TraLaiDenNgay", "")),
+        maLoaiVay: String(HeaderUtils.getCell(hdValues[j], colMapHD, "MaLoaiVay", "LV01")),
+        soThangVay: Number(HeaderUtils.getCell(hdValues[j], colMapHD, "SoThangVay", 12)) || 12,
+        moTaVay: String(HeaderUtils.getCell(hdValues[j], colMapHD, "MoTaVay", "")),
+        hoTen: String(HeaderUtils.getCell(hdValues[j], colMapHD, "HoTen", "")),
+        cccd: String(HeaderUtils.getCell(hdValues[j], colMapHD, "CCCD", "")).replace(/^'/, ""),
+        dienThoai: String(HeaderUtils.getCell(hdValues[j], colMapHD, "DienThoai", "")).replace(/^'/, ""),
+        diaChi: String(HeaderUtils.getCell(hdValues[j], colMapHD, "DiaChi", "")),
+        kvXa: String(HeaderUtils.getCell(hdValues[j], colMapHD, "KvXa", "")),
+        kvThon: String(HeaderUtils.getCell(hdValues[j], colMapHD, "KvThon", "")),
         cbtdPhuTrach: cbtdUser,
         tenCBTD: tenCBTD,
         trangThaiHD: trangThaiHD,
         ngayTatToan: ngayTatToan,
-        ngayCapNhat: hdValues[j][15] ? formatGasDateTime(hdValues[j][15]) : ""
+        ngayCapNhat: HeaderUtils.getCell(hdValues[j], colMapHD, "NgayCapNhat", "") ? formatGasDateTime(HeaderUtils.getCell(hdValues[j], colMapHD, "NgayCapNhat", "")) : ""
       });
     }
 
     // 2. Đọc bảng Khách hàng
-    var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, Math.min(sKH.getLastColumn(), 16)).getValues();
+    var colMapKH = HeaderUtils.getHeaderMap(sKH);
+    var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, sKH.getLastColumn()).getValues();
     var results = [];
 
     // Helper đóng gói object khách hàng
@@ -1249,21 +1212,27 @@ var Customer360Controller = {
       }
 
       return {
-        maKH: String(row[0]),
-        hoTen: String(row[1] || ""),
-        diaChi: String(row[2] || ""),
-        ngaySinh: formatGasDate(row[3]),
-        cccd: String(row[4] || ""),
-        ngayCap: formatGasDate(row[5]),
-        noiCap: String(row[6] || ""),
-        dienThoai: String(row[7] || ""),
-        dienThoaiDD: String(row[8] || ""),
-        soTK: String(row[9] || ""),
-        khuVuc: String(row[10] || ""),
-        soTV: String(row[11] || ""),
-        soSoCP: String(row[12] || ""),
-        ngayVaoTV: formatGasDate(row[13]),
-        tongTienCP: Number(row[14] || 0),
+        maKH: String(HeaderUtils.getCell(row, colMapKH, "MaKH", "")).replace(/^'/, "").trim(),
+        hoTen: String(HeaderUtils.getCell(row, colMapKH, "HoTen", "")).trim(),
+        diaChi: String(HeaderUtils.getCell(row, colMapKH, "DiaChi", "")).trim(),
+        ngaySinh: formatGasDate(HeaderUtils.getCell(row, colMapKH, "NgaySinh", "")),
+        cccd: String(HeaderUtils.getCell(row, colMapKH, "CCCD", "")).replace(/^'/, "").trim(),
+        ngayCap: formatGasDate(HeaderUtils.getCell(row, colMapKH, "NgayCap", "")),
+        noiCap: String(HeaderUtils.getCell(row, colMapKH, "NoiCap", "")).trim(),
+        dienThoai: String(HeaderUtils.getCell(row, colMapKH, "DienThoai", "")).replace(/^'/, "").trim(),
+        dienThoaiDD: String(HeaderUtils.getCell(row, colMapKH, "DienThoaiDD", "")).replace(/^'/, "").trim(),
+        soTK: String(HeaderUtils.getCell(row, colMapKH, "SoTK", "")).replace(/^'/, "").trim(),
+        khuVuc: String(HeaderUtils.getCell(row, colMapKH, "KhuVuc", "")).trim(),
+        kvXa: String(HeaderUtils.getCell(row, colMapKH, "KvXa", "")).trim(),
+        kvThon: String(HeaderUtils.getCell(row, colMapKH, "KvThon", "")).trim(),
+        soTV: String(HeaderUtils.getCell(row, colMapKH, "SoTV", "")).replace(/^'/, "").trim(),
+        soSoCP: String(HeaderUtils.getCell(row, colMapKH, "SoSoCP", "")).trim(),
+        ngayVaoTV: formatGasDate(HeaderUtils.getCell(row, colMapKH, "NgayVaoTV", "")),
+        tongTienCP: Number(HeaderUtils.getCell(row, colMapKH, "TongTienCP", 0)) || 0,
+        tongDuNoHienTai: Number(HeaderUtils.getCell(row, colMapKH, "TongDuNoHienTai", 0)) || 0,
+        soLuongHDVay: Number(HeaderUtils.getCell(row, colMapKH, "SoLuongHDVay", 0)) || 0,
+        trangThaiVay: String(HeaderUtils.getCell(row, colMapKH, "TrangThaiVay", "")).trim(),
+        nhomNoCIC: String(HeaderUtils.getCell(row, colMapKH, "NhomNoCIC", "")).trim(),
         cbtdPhuTrach: custCBTD || "qtdyentho.cbtd",
         tenCBTD: custTenCBTD || "Lê Văn Tín (CBTD)",
         contracts: custContracts
@@ -1276,7 +1245,7 @@ var Customer360Controller = {
       // Lập Map tra cứu khách hàng nhanh O(1)
       var khMap = {};
       for (var k = 0; k < khValues.length; k++) {
-        var mKH = String(khValues[k][0]).trim();
+        var mKH = String(HeaderUtils.getCell(khValues[k], colMapKH, "MaKH", "")).replace(/^'/, "").trim();
         if (mKH) khMap[mKH] = khValues[k];
       }
 
@@ -1297,7 +1266,7 @@ var Customer360Controller = {
       if (!cbtdFilter || cbtdFilter === "all") {
         if (!statusFilter || statusFilter === "ALL") {
           for (var idx = 0; idx < khValues.length && results.length < maxLimit; idx++) {
-            var currMaKH = String(khValues[idx][0]).trim();
+            var currMaKH = String(HeaderUtils.getCell(khValues[idx], colMapKH, "MaKH", "")).replace(/^'/, "").trim();
             if (!seenCust[currMaKH]) {
               seenCust[currMaKH] = true;
               results.push(buildCustomerObj(khValues[idx], contractsByMaKH[currMaKH] || []));
@@ -1306,7 +1275,7 @@ var Customer360Controller = {
         }
       }
 
-      if (isDefaultSearch) {
+      if (isDefaultSearch && typeof CacheHelper !== 'undefined') {
         CacheHelper.setCachedData('cust360_default', results, 60);
       }
       return { status: "success", data: results, total: results.length, isFiltered: false };
@@ -1316,12 +1285,12 @@ var Customer360Controller = {
     for (var i = 0; i < khValues.length; i++) {
       if (results.length >= maxLimit) break;
 
-      var maKH = String(khValues[i][0]).trim();
-      var hoTen = String(khValues[i][1] || "").trim();
-      var cccd = String(khValues[i][4] || "").trim();
-      var phone = String(khValues[i][8] || "").trim();
-      var soTK = String(khValues[i][9] || "").trim();
-      var khuVuc = String(khValues[i][10] || "").trim();
+      var maKH = String(HeaderUtils.getCell(khValues[i], colMapKH, "MaKH", "")).replace(/^'/, "").trim();
+      var hoTen = String(HeaderUtils.getCell(khValues[i], colMapKH, "HoTen", "")).trim();
+      var cccd = String(HeaderUtils.getCell(khValues[i], colMapKH, "CCCD", "")).replace(/^'/, "").trim();
+      var phone = String(HeaderUtils.getCell(khValues[i], colMapKH, "DienThoai", "") || HeaderUtils.getCell(khValues[i], colMapKH, "DienThoaiDD", "")).replace(/^'/, "").trim();
+      var soTK = String(HeaderUtils.getCell(khValues[i], colMapKH, "SoTK", "")).replace(/^'/, "").trim();
+      var khuVuc = String(HeaderUtils.getCell(khValues[i], colMapKH, "KhuVuc", "") || HeaderUtils.getCell(khValues[i], colMapKH, "DiaChi", "")).trim();
 
       var isMatch = 
         maKH.toLowerCase().indexOf(query) > -1 ||
@@ -1351,7 +1320,6 @@ var Customer360Controller = {
   handleGetCBTDPortfolioStats: function(ss, data) {
     var cbtdUsername = (data.cbtdUsername || "").toLowerCase().trim();
     var sHDTD = ss.getSheetByName("HDTD_CORE");
-    var sKH = ss.getSheetByName("KH_CORE");
 
     if (!sHDTD || sHDTD.getLastRow() <= 1) {
       return {
@@ -1370,7 +1338,8 @@ var Customer360Controller = {
       };
     }
 
-    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, Math.min(sHDTD.getLastColumn(), 16)).getValues();
+    var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
+    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
     var now = new Date();
     var in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -1385,15 +1354,15 @@ var Customer360Controller = {
     var cbtdSummaryMap = {};
 
     for (var i = 0; i < hdValues.length; i++) {
-      if (!hdValues[i][0]) continue;
-      var soHD = String(hdValues[i][0]);
-      var maKH = String(hdValues[i][1]);
-      var tienVay = Number(hdValues[i][2] || 0);
-      var duNo = Number(hdValues[i][3] || 0);
-      var cbtd = String(hdValues[i][11] || "qtdyentho.cbtd").trim();
-      var tenCBTD = String(hdValues[i][12] || "Lê Văn Tín (CBTD)").trim();
-      var trangThai = String(hdValues[i][13] || (duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
-      var rawDenHan = hdValues[i][6];
+      var soHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "SoHDTD", "")).trim();
+      if (!soHD) continue;
+      var maKH = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, "").trim();
+      var tienVay = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "TienVay", 0)) || 0;
+      var duNo = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "DuNo", 0)) || 0;
+      var cbtd = String(HeaderUtils.getCell(hdValues[i], colMapHD, "CBTD_PhuTrach", "qtdyentho.cbtd")).trim();
+      var tenCBTD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "Ten_CBTD", "Lê Văn Tín (CBTD)")).trim();
+      var trangThai = String(HeaderUtils.getCell(hdValues[i], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
+      var rawDenHan = HeaderUtils.getCell(hdValues[i], colMapHD, "DenHan", "");
 
       // Ghi nhận vào danh sách CBTD tổng thể
       if (!cbtdSummaryMap[cbtd]) {
@@ -1428,10 +1397,11 @@ var Customer360Controller = {
           uniqueCustomers[maKH] = true;
 
           // Kiểm tra ngày đến hạn
-          if (rawDenHan instanceof Date && !isNaN(rawDenHan.getTime())) {
-            if (rawDenHan < now) {
+          var dDate = rawDenHan instanceof Date ? rawDenHan : (typeof rawDenHan === "string" ? new Date(rawDenHan) : null);
+          if (dDate && !isNaN(dDate.getTime())) {
+            if (dDate < now) {
               pastDueContracts++;
-            } else if (rawDenHan <= in30Days) {
+            } else if (dDate <= in30Days) {
               dueIn30Days++;
             }
           }
@@ -1489,12 +1459,13 @@ var Customer360Controller = {
       return { status: "error", message: "Bảng dữ liệu HDTD_CORE chưa tồn tại hoặc rỗng!" };
     }
 
-    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, Math.min(sHDTD.getLastColumn(), 16)).getValues();
+    var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
+    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
     var updatedCount = 0;
 
     for (var i = 0; i < hdValues.length; i++) {
-      var rowSoHD = String(hdValues[i][0]).trim();
-      var rowMaKH = String(hdValues[i][1]).trim();
+      var rowSoHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "SoHDTD", "")).trim();
+      var rowMaKH = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, "").trim();
 
       var shouldUpdate = false;
       if (assignAllForCustomer && maKH && rowMaKH === maKH) {
@@ -1505,9 +1476,9 @@ var Customer360Controller = {
 
       if (shouldUpdate) {
         var rowIndex = i + 2;
-        sHDTD.getRange(rowIndex, 12).setValue(cbtdUsername);
-        sHDTD.getRange(rowIndex, 13).setValue(tenCBTD);
-        sHDTD.getRange(rowIndex, 16).setValue(new Date());
+        HeaderUtils.setCell(sHDTD, rowIndex, colMapHD, "CBTD_PhuTrach", cbtdUsername);
+        HeaderUtils.setCell(sHDTD, rowIndex, colMapHD, "Ten_CBTD", tenCBTD);
+        HeaderUtils.setCell(sHDTD, rowIndex, colMapHD, "NgayCapNhat", new Date());
         updatedCount++;
       }
     }
@@ -1525,6 +1496,7 @@ var Customer360Controller = {
     }
   }
 };
+
 
 
 
@@ -1554,47 +1526,49 @@ var CollateralController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.min(sheet.getLastColumn(), 31)).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var lastCol = sheet.getLastColumn();
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     var list = [];
 
     for (var i = 0; i < values.length; i++) {
       var row = values[i];
-      var maTSBD = String(row[0] || "");
-      var soGCN = String(row[1] || "");
+      var maTSBD = String(HeaderUtils.getCell(row, colMap, "MaTSBD", "")).trim();
+      var soGCN = String(HeaderUtils.getCell(row, colMap, "SoGCN", "")).trim();
       if (!soGCN && !maTSBD) continue;
 
       list.push({
         maTSBD: maTSBD,
         soGCN: soGCN,
-        soVaoSoCapGCN: String(row[2] || ""),
-        ngayCapGCN: row[3] ? formatGasDate(row[3]) : "",
-        noiCapGCN: String(row[4] || ""),
-        maKH: String(row[5] || ""),
-        chuSoHuu: String(row[6] || ""),
-        cccdChuTS: String(row[7] || ""),
-        quanHeChuTS: String(row[8] || "Chính chủ"),
-        nguoiDongSoHuu: String(row[9] || ""),
-        thuaDatSo: String(row[10] || ""),
-        toBanDoSo: String(row[11] || ""),
-        diaChiThuaDat: String(row[12] || ""),
-        dienTich: Number(row[13] || 0),
-        hinhThucSuDung: String(row[14] || "Sử dụng riêng"),
-        chiTietPhanLoaiDat: String(row[15] || ""),
-        nguonGocSuDung: String(row[16] || "Nhận chuyển nhượng quyền sử dụng đất"),
-        giaTriDinhGiaQTD: Number(row[17] || 0),
-        giaTriThiTruong: Number(row[18] || 0),
-        tyLeChoVayToiDa: Number(row[19] || 70),
-        soTienDamBaoToiDa: Number(row[20] || 0),
-        trangThaiTheChap: String(row[21] || "DANG_THE_CHAP"),
-        soHDTD_LienKet: String(row[22] || ""),
-        soCongChung: String(row[23] || ""),
-        ngayCongChung: row[24] ? formatGasDate(row[24]) : "",
-        vanPhongCongChung: String(row[25] || ""),
-        soDangKyGDBD: String(row[26] || ""),
-        ngayDangKyGDBD: row[27] ? formatGasDate(row[27]) : "",
-        hinhAnhGCN: String(row[28] || ""),
-        hinhAnhThucDia: String(row[29] || ""),
-        ngayCapNhat: row[30] ? formatGasDateTime(row[30]) : ""
+        soVaoSoCapGCN: String(HeaderUtils.getCell(row, colMap, "SoVaoSoCapGCN", "")),
+        ngayCapGCN: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayCapGCN", "")),
+        noiCapGCN: String(HeaderUtils.getCell(row, colMap, "NoiCapGCN", "")),
+        maKH: String(HeaderUtils.getCell(row, colMap, "MaKH", "")),
+        chuSoHuu: String(HeaderUtils.getCell(row, colMap, "ChuSoHuu", "")),
+        cccdChuTS: String(HeaderUtils.getCell(row, colMap, "CCCDChuTS", "")),
+        quanHeChuTS: String(HeaderUtils.getCell(row, colMap, "QuanHeChuTS", "Chính chủ")),
+        nguoiDongSoHuu: String(HeaderUtils.getCell(row, colMap, "NguoiDongSoHuu", "")),
+        thuaDatSo: String(HeaderUtils.getCell(row, colMap, "ThuaDatSo", "")),
+        toBanDoSo: String(HeaderUtils.getCell(row, colMap, "ToBanDoSo", "")),
+        diaChiThuaDat: String(HeaderUtils.getCell(row, colMap, "DiaChiThuaDat", "")),
+        dienTich: Number(HeaderUtils.getCell(row, colMap, "DienTich", 0)) || 0,
+        hinhThucSuDung: String(HeaderUtils.getCell(row, colMap, "HinhThucSuDung", "Sử dụng riêng")),
+        chiTietPhanLoaiDat: String(HeaderUtils.getCell(row, colMap, "ChiTietPhanLoaiDat", "")),
+        nguonGocSuDung: String(HeaderUtils.getCell(row, colMap, "NguonGocSuDung", "Nhận chuyển nhượng quyền sử dụng đất")),
+        giaTriDinhGiaQTD: Number(HeaderUtils.getCell(row, colMap, "GiaTriDinhGiaQTD", 0)) || 0,
+        giaTriThiTruong: Number(HeaderUtils.getCell(row, colMap, "GiaTriThiTruong", 0)) || 0,
+        tyLeChoVayToiDa: Number(HeaderUtils.getCell(row, colMap, "TyLeChoVayToiDa", 70)) || 70,
+        soTienDamBaoToiDa: Number(HeaderUtils.getCell(row, colMap, "SoTienDamBaoToiDa", 0)) || 0,
+        trangThaiTheChap: String(HeaderUtils.getCell(row, colMap, "TrangThaiTheChap", "DANG_THE_CHAP")),
+        soHDTD_LienKet: String(HeaderUtils.getCell(row, colMap, "SoHDTD_LienKet", "")),
+        soCongChung: String(HeaderUtils.getCell(row, colMap, "SoCongChung", "")),
+        ngayCongChung: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayCongChung", "")),
+        vanPhongCongChung: String(HeaderUtils.getCell(row, colMap, "VanPhongCongChung", "")),
+        soDangKyGDBD: String(HeaderUtils.getCell(row, colMap, "SoDangKyGDBD", "")),
+        ngayDangKyGDBD: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayDangKyGDBD", "")),
+        hinhAnhGCN: String(HeaderUtils.getCell(row, colMap, "HinhAnhGCN", "")),
+        hinhAnhThucDia: String(HeaderUtils.getCell(row, colMap, "HinhAnhThucDia", "")),
+        ngayCapNhat: formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayCapNhat", ""))
       });
     }
 
@@ -1615,58 +1589,73 @@ var CollateralController = {
       sheet = ss.getSheetByName("TSBD_CORE");
     }
 
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var defaultHeaders = [
+      "MaTSBD", "SoGCN", "SoVaoSoCapGCN", "NgayCapGCN", "NoiCapGCN", "MaKH", "ChuSoHuu", "CCCDChuTS", "QuanHeChuTS", "NguoiDongSoHuu",
+      "ThuaDatSo", "ToBanDoSo", "DiaChiThuaDat", "DienTich", "HinhThucSuDung", "ChiTietPhanLoaiDat", "NguonGocSuDung", "GiaTriDinhGiaQTD",
+      "GiaTriThiTruong", "TyLeChoVayToiDa", "SoTienDamBaoToiDa", "TrangThaiTheChap", "SoHDTD_LienKet", "SoCongChung", "NgayCongChung",
+      "VanPhongCongChung", "SoDangKyGDBD", "NgayDangKyGDBD", "HinhAnhGCN", "HinhAnhThucDia", "NgayCapNhat"
+    ];
+
     var soGCN = String(data.soGCN).trim();
     var maTSBD = data.maTSBD || ("TSBD-" + new Date().getFullYear() + "-" + String(Math.floor(1000 + Math.random() * 9000)));
 
-    var values = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues() : [];
+    var lastRow = sheet.getLastRow();
     var targetRowIndex = -1;
 
-    for (var i = 0; i < values.length; i++) {
-      if (String(values[i][1]).trim() === soGCN || (data.maTSBD && String(values[i][0]).trim() === data.maTSBD)) {
-        targetRowIndex = i + 2;
-        maTSBD = String(values[i][0]).trim() || maTSBD;
-        break;
+    if (lastRow > 1) {
+      var values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+      for (var i = 0; i < values.length; i++) {
+        var rowGCN = String(HeaderUtils.getCell(values[i], colMap, "SoGCN", "")).trim();
+        var rowMa = String(HeaderUtils.getCell(values[i], colMap, "MaTSBD", "")).trim();
+        if (rowGCN === soGCN || (data.maTSBD && rowMa === String(data.maTSBD).trim())) {
+          targetRowIndex = i + 2;
+          maTSBD = rowMa || maTSBD;
+          break;
+        }
       }
     }
 
-    var rowData = [
-      maTSBD,
-      soGCN,
-      data.soVaoSoCapGCN || "",
-      data.ngayCapGCN ? parseGasDate(data.ngayCapGCN) : "",
-      data.noiCapGCN || "",
-      data.maKH || "",
-      data.chuSoHuu || "",
-      data.cccdChuTS || "",
-      data.quanHeChuTS || "Chính chủ",
-      data.nguoiDongSoHuu || "",
-      data.thuaDatSo || "",
-      data.toBanDoSo || "",
-      data.diaChiThuaDat || "",
-      Number(data.dienTich) || 0,
-      data.hinhThucSuDung || "Sử dụng riêng",
-      typeof data.chiTietPhanLoaiDat === 'object' ? JSON.stringify(data.chiTietPhanLoaiDat) : (data.chiTietPhanLoaiDat || ""),
-      data.nguonGocSuDung || "Nhận chuyển nhượng quyền sử dụng đất",
-      Number(data.giaTriDinhGiaQTD) || 0,
-      Number(data.giaTriThiTruong) || 0,
-      Number(data.tyLeChoVayToiDa) || 70,
-      Number(data.soTienDamBaoToiDa) || (Number(data.giaTriDinhGiaQTD) * (Number(data.tyLeChoVayToiDa || 70) / 100)),
-      data.trangThaiTheChap || "DANG_THE_CHAP",
-      data.soHDTD_LienKet || "",
-      data.soCongChung || "",
-      data.ngayCongChung ? parseGasDate(data.ngayCongChung) : "",
-      data.vanPhongCongChung || "",
-      data.soDangKyGDBD || "",
-      data.ngayDangKyGDBD ? parseGasDate(data.ngayDangKyGDBD) : "",
-      data.hinhAnhGCN || "",
-      data.hinhAnhThucDia || "",
-      new Date()
-    ];
+    var dict = {
+      MaTSBD: maTSBD,
+      SoGCN: soGCN,
+      SoVaoSoCapGCN: data.soVaoSoCapGCN || "",
+      NgayCapGCN: data.ngayCapGCN ? parseGasDateToSheet(data.ngayCapGCN) : "",
+      NoiCapGCN: data.noiCapGCN || "",
+      MaKH: data.maKH || "",
+      ChuSoHuu: data.chuSoHuu || "",
+      CCCDChuTS: data.cccdChuTS || "",
+      QuanHeChuTS: data.quanHeChuTS || "Chính chủ",
+      NguoiDongSoHuu: data.nguoiDongSoHuu || "",
+      ThuaDatSo: data.thuaDatSo || "",
+      ToBanDoSo: data.toBanDoSo || "",
+      DiaChiThuaDat: data.diaChiThuaDat || "",
+      DienTich: Number(data.dienTich) || 0,
+      HinhThucSuDung: data.hinhThucSuDung || "Sử dụng riêng",
+      ChiTietPhanLoaiDat: typeof data.chiTietPhanLoaiDat === 'object' ? JSON.stringify(data.chiTietPhanLoaiDat) : (data.chiTietPhanLoaiDat || ""),
+      NguonGocSuDung: data.nguonGocSuDung || "Nhận chuyển nhượng quyền sử dụng đất",
+      GiaTriDinhGiaQTD: Number(data.giaTriDinhGiaQTD) || 0,
+      GiaTriThiTruong: Number(data.giaTriThiTruong) || 0,
+      TyLeChoVayToiDa: Number(data.tyLeChoVayToiDa) || 70,
+      SoTienDamBaoToiDa: Number(data.soTienDamBaoToiDa) || (Number(data.giaTriDinhGiaQTD || 0) * (Number(data.tyLeChoVayToiDa || 70) / 100)),
+      TrangThaiTheChap: data.trangThaiTheChap || "DANG_THE_CHAP",
+      SoHDTD_LienKet: data.soHDTD_LienKet || "",
+      SoCongChung: data.soCongChung || "",
+      NgayCongChung: data.ngayCongChung ? parseGasDateToSheet(data.ngayCongChung) : "",
+      VanPhongCongChung: data.vanPhongCongChung || "",
+      SoDangKyGDBD: data.soDangKyGDBD || "",
+      NgayDangKyGDBD: data.ngayDangKyGDBD ? parseGasDateToSheet(data.ngayDangKyGDBD) : "",
+      HinhAnhGCN: data.hinhAnhGCN || "",
+      HinhAnhThucDia: data.hinhAnhThucDia || "",
+      NgayCapNhat: new Date()
+    };
+
+    var row = HeaderUtils.dictToRow(dict, colMap, defaultHeaders);
 
     if (targetRowIndex > 0) {
-      sheet.getRange(targetRowIndex, 1, 1, rowData.length).setValues([rowData]);
+      sheet.getRange(targetRowIndex, 1, 1, row.length).setValues([row]);
     } else {
-      sheet.appendRow(rowData);
+      sheet.appendRow(row);
     }
 
     CacheHelper.invalidateModuleCache('collaterals');
@@ -1677,6 +1666,7 @@ var CollateralController = {
     };
   }
 };
+
 
 
 // ==========================================
@@ -2192,6 +2182,7 @@ var AppraisalController = {
 };
 
 
+
 // ==========================================
 // MODULE FILE: gas_backend/Inspection/InspectionController.gs
 // ==========================================
@@ -2218,32 +2209,34 @@ var InspectionController = {
       return { status: "success", data: [] };
     }
 
+    var colMap = HeaderUtils.getHeaderMap(sheet);
     var numRows = sheet.getLastRow() - 1;
     var numCols = sheet.getLastColumn();
     var values = sheet.getRange(2, 1, numRows, numCols).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
+      var row = values[i];
       results.push({
-        maBBKT: values[i][0],
-        soHDTD: values[i][1],
-        maKH: values[i][2],
-        hoTen: values[i][3],
-        loaiDoanKT: values[i][4] || "CBTD",
-        thanhPhanDoan: values[i][5] || "",
-        ngayKiemTra: formatGasDate(values[i][6]),
-        lanKiemTra: values[i][7] || "Lần 1 (Sau giải ngân)",
-        ngayKTNext: formatGasDate(values[i][8]),
-        hinhThuc: values[i][9] || "Thực địa",
-        diaDiemKT: values[i][10] || "",
-        danhGiaMucDich: values[i][11] || "Đúng mục đích",
-        tienDoSuDungVon: values[i][12] || "Đã đưa vào sản xuất",
-        mucDoRuiRo: values[i][13] || "Thấp",
-        moTaThucTe: values[i][14] || "",
-        kienNghi: values[i][15] || "",
-        fileBienBanUrl: values[i][16] || "",
-        hinhAnhKiemTra: values[i][17] || "",
-        trangThai: values[i][18] || "ĐÃ_DUYỆT",
-        ngayTao: formatGasDateTime(values[i][19])
+        maBBKT: HeaderUtils.getCell(row, colMap, "MaBBKT", ""),
+        soHDTD: HeaderUtils.getCell(row, colMap, "SoHDTD", ""),
+        maKH: HeaderUtils.getCell(row, colMap, "MaKH", ""),
+        hoTen: HeaderUtils.getCell(row, colMap, "HoTen", ""),
+        loaiDoanKT: HeaderUtils.getCell(row, colMap, "LoaiDoanKT", "CBTD"),
+        thanhPhanDoan: HeaderUtils.getCell(row, colMap, "ThanhPhanDoan", ""),
+        ngayKiemTra: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayKiemTra", "")),
+        lanKiemTra: HeaderUtils.getCell(row, colMap, "LanKiemTra", "Lần 1 (Sau giải ngân)"),
+        ngayKTNext: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayKTNext", "")),
+        hinhThuc: HeaderUtils.getCell(row, colMap, "HinhThuc", "Thực địa"),
+        diaDiemKT: HeaderUtils.getCell(row, colMap, "DiaDiemKT", ""),
+        danhGiaMucDich: HeaderUtils.getCell(row, colMap, "DanhGiaMucDich", "Đúng mục đích"),
+        tienDoSuDungVon: HeaderUtils.getCell(row, colMap, "TienDoSuDungVon", "Đã đưa vào sản xuất"),
+        mucDoRuiRo: HeaderUtils.getCell(row, colMap, "MucDoRuiRo", "Thấp"),
+        moTaThucTe: HeaderUtils.getCell(row, colMap, "MoTaThucTe", ""),
+        kienNghi: HeaderUtils.getCell(row, colMap, "KienNghi", ""),
+        fileBienBanUrl: HeaderUtils.getCell(row, colMap, "FileBienBanUrl", ""),
+        hinhAnhKiemTra: HeaderUtils.getCell(row, colMap, "HinhAnhKiemTra", ""),
+        trangThai: HeaderUtils.getCell(row, colMap, "TrangThai", "ĐÃ_DUYỆT"),
+        ngayTao: formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayTao", ""))
       });
     }
 
@@ -2259,29 +2252,35 @@ var InspectionController = {
     }
 
     var maBBKT = data.maBBKT || ("BBKT-" + Utilities.formatDate(new Date(), "GMT+7", "yyyyMMdd-HHmmss"));
-    var row = [
-      maBBKT,
-      data.soHDTD || "",
-      data.maKH || "",
-      data.hoTen || "",
-      data.loaiDoanKT || "CBTD",
-      data.thanhPhanDoan || "Lê Văn Tín (CBTD)",
-      parseGasDateToSheet(data.ngayKiemTra) || new Date(),
-      data.lanKiemTra || "Lần 1 (Sau giải ngân)",
-      parseGasDateToSheet(data.ngayKTNext) || "",
-      data.hinhThuc || "Thực địa",
-      data.diaDiemKT || "",
-      data.danhGiaMucDich || "Đúng mục đích",
-      data.tienDoSuDungVon || "Đã đưa vào sản xuất",
-      data.mucDoRuiRo || "Thấp",
-      data.moTaThucTe || "",
-      data.kienNghi || "Tiếp tục theo dõi định kỳ",
-      data.fileBienBanUrl || "",
-      data.hinhAnhKiemTra || "",
-      data.trangThai || "ĐÃ_DUYỆT",
-      new Date()
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var defaultHeaders = [
+      "MaBBKT", "SoHDTD", "MaKH", "HoTen", "LoaiDoanKT", "ThanhPhanDoan", "NgayKiemTra", "LanKiemTra", "NgayKTNext", "HinhThuc", "DiaDiemKT", "DanhGiaMucDich", "TienDoSuDungVon", "MucDoRuiRo", "MoTaThucTe", "KienNghi", "FileBienBanUrl", "HinhAnhKiemTra", "TrangThai", "NgayTao"
     ];
 
+    var dict = {
+      MaBBKT: maBBKT,
+      SoHDTD: data.soHDTD || "",
+      MaKH: data.maKH || "",
+      HoTen: data.hoTen || "",
+      LoaiDoanKT: data.loaiDoanKT || "CBTD",
+      ThanhPhanDoan: data.thanhPhanDoan || "Lê Văn Tín (CBTD)",
+      NgayKiemTra: parseGasDateToSheet(data.ngayKiemTra) || new Date(),
+      LanKiemTra: data.lanKiemTra || "Lần 1 (Sau giải ngân)",
+      NgayKTNext: parseGasDateToSheet(data.ngayKTNext) || "",
+      HinhThuc: data.hinhThuc || "Thực địa",
+      DiaDiemKT: data.diaDiemKT || "",
+      DanhGiaMucDich: data.danhGiaMucDich || "Đúng mục đích",
+      TienDoSuDungVon: data.tienDoSuDungVon || "Đã đưa vào sản xuất",
+      MucDoRuiRo: data.mucDoRuiRo || "Thấp",
+      MoTaThucTe: data.moTaThucTe || "",
+      KienNghi: data.kienNghi || "Tiếp tục theo dõi định kỳ",
+      FileBienBanUrl: data.fileBienBanUrl || "",
+      HinhAnhKiemTra: data.hinhAnhKiemTra || "",
+      TrangThai: data.trangThai || "ĐÃ_DUYỆT",
+      NgayTao: new Date()
+    };
+
+    var row = HeaderUtils.dictToRow(dict, colMap, defaultHeaders);
     sheet.appendRow(row);
     CacheHelper.invalidateModuleCache('inspection');
     return {
@@ -2291,6 +2290,7 @@ var InspectionController = {
     };
   }
 };
+
 
 
 // ==========================================
@@ -2319,18 +2319,34 @@ var DebitController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var numRows = sheet.getLastRow() - 1;
+    var values = sheet.getRange(2, 1, numRows, sheet.getLastColumn()).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
+      var row = values[i];
+      var rawMaKH = String(HeaderUtils.getCell(row, colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var rawSoHD = String(HeaderUtils.getCell(row, colMap, "SoHDTD", "")).trim();
+      if (!rawMaKH && !rawSoHD) continue;
+
       results.push({
-        maKH: String(values[i][0]),
-        hoTen: String(values[i][1]),
-        gttt: String(values[i][2]),
-        soTK: String(values[i][3]),
-        diaChi: String(values[i][4]),
-        kyTrich: Number(values[i][5]) || 1,
-        trangThai: String(values[i][6]) || "Hiệu lực",
-        ghiChu: String(values[i][7] || "")
+        soHDTD: rawSoHD,
+        maKH: rawMaKH,
+        hoTen: String(HeaderUtils.getCell(row, colMap, "TenKH", "") || HeaderUtils.getCell(row, colMap, "HoTen", "")).trim(),
+        tenKH: String(HeaderUtils.getCell(row, colMap, "TenKH", "") || HeaderUtils.getCell(row, colMap, "HoTen", "")).trim(),
+        soTK: String(HeaderUtils.getCell(row, colMap, "SoTK", "")).replace(/^'/, "").trim(),
+        ngayVay: formatGasDate(HeaderUtils.getCell(row, colMap, "NgayVay", "")),
+        traLaiDenNgay: formatGasDate(HeaderUtils.getCell(row, colMap, "TraLaiDenNgay", "")),
+        laiSuat: Number(HeaderUtils.getCell(row, colMap, "LaiSuat", 0)) || 0,
+        soTienLai: Number(HeaderUtils.getCell(row, colMap, "SoTienLai", 0)) || 0,
+        soTienNo: Number(HeaderUtils.getCell(row, colMap, "SoTienNo", 0)) || 0,
+        soGoc: Number(HeaderUtils.getCell(row, colMap, "SoGoc", 0)) || 0,
+        tongTien: Number(HeaderUtils.getCell(row, colMap, "TongTien", 0)) || 0,
+        kyTrich: Number(HeaderUtils.getCell(row, colMap, "KyTrichNo", 1) || HeaderUtils.getCell(row, colMap, "KyTrich", 1)) || 1,
+        kyTrichNo: Number(HeaderUtils.getCell(row, colMap, "KyTrichNo", 1) || HeaderUtils.getCell(row, colMap, "KyTrich", 1)) || 1,
+        trangThai: String(HeaderUtils.getCell(row, colMap, "TrangThai", "Hiệu lực")).trim(),
+        ghiChu: String(HeaderUtils.getCell(row, colMap, "GhiChu", "")).trim(),
+        ngayTao: HeaderUtils.getCell(row, colMap, "NgayTao", "") ? formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayTao", "")) : ""
       });
     }
 
@@ -2345,21 +2361,272 @@ var DebitController = {
       sheet = ss.getSheetByName("DANG_KY_TRICH_NO");
     }
 
-    var row = [
-      data.maKH || "",
-      data.hoTen || "",
-      "'" + (data.gttt || ""),
-      "'" + (data.soTK || ""),
-      data.diaChi || "",
-      Number(data.kyTrich) || 1,
-      data.trangThai || "Hiệu lực",
-      data.ghiChu || "",
-      new Date()
-    ];
+    var maKHInput = String(data.maKH || "").trim();
+    if (!maKHInput) {
+      return { status: "error", message: "Mã khách hàng không được để trống!" };
+    }
 
-    sheet.appendRow(row);
+    var cleanGTTT = String(data.gttt || "").replace(/^'/, "").trim();
+    var cleanSoTK = String(data.soTK || "").replace(/^'/, "").trim();
+
+    // Kiểm tra xem khách hàng đã tồn tại trong danh sách chưa
+    var lastRow = sheet.getLastRow();
+    var existingRowIndex = -1;
+    if (lastRow > 1) {
+      var colMaKH = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var r = 0; r < colMaKH.length; r++) {
+        var currentMaKH = String(colMaKH[r][0] || "").trim();
+        if (currentMaKH === maKHInput || currentMaKH.replace(/^'/, "") === maKHInput.replace(/^'/, "")) {
+          existingRowIndex = r + 2;
+          break;
+        }
+      }
+    }
+
+    if (existingRowIndex > 0) {
+      // Đã tồn tại -> Cập nhật thông tin dòng hiện có
+      sheet.getRange(existingRowIndex, 2).setValue(data.hoTen || "");
+      sheet.getRange(existingRowIndex, 3).setValue("'" + cleanGTTT);
+      sheet.getRange(existingRowIndex, 4).setValue("'" + cleanSoTK);
+      sheet.getRange(existingRowIndex, 5).setValue(data.diaChi || "");
+      sheet.getRange(existingRowIndex, 6).setValue(Number(data.kyTrich) || 1);
+      sheet.getRange(existingRowIndex, 7).setValue(data.trangThai || "Hiệu lực");
+      sheet.getRange(existingRowIndex, 8).setValue(data.ghiChu || "");
+      CacheHelper.invalidateModuleCache('debit');
+      return { status: "success", message: "Đã cập nhật thỏa thuận trích nợ tự động của khách hàng " + (data.hoTen || maKHInput) };
+    } else {
+      // Chưa có -> Thêm dòng mới
+      var row = [
+        maKHInput.startsWith("'") ? maKHInput : ("'" + maKHInput),
+        data.hoTen || "",
+        "'" + cleanGTTT,
+        "'" + cleanSoTK,
+        data.diaChi || "",
+        Number(data.kyTrich) || 1,
+        data.trangThai || "Hiệu lực",
+        data.ghiChu || "",
+        new Date()
+      ];
+      sheet.appendRow(row);
+      CacheHelper.invalidateModuleCache('debit');
+      return { status: "success", message: "Đăng ký dịch vụ trích nợ tự động thành công!" };
+    }
+  },
+
+  handleSaveBatchDebitRegister: function(ss, data) {
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    if (!sheet) {
+      SchemaSetup.ensureDatabaseSchema(ss);
+      sheet = ss.getSheetByName("DANG_KY_TRICH_NO");
+    }
+
+    var items = data.items || (Array.isArray(data) ? data : []);
+    if (!items || items.length === 0) {
+      return { status: "error", message: "Danh sách hợp đồng / khách hàng đăng ký rỗng!" };
+    }
+
+    var defaultKyTrich = Number(data.kyTrich) || 1;
+    var defaultTrangThai = data.trangThai || "Hiệu lực";
+    var defaultGhiChu = data.ghiChu || "";
+
+    var lastRow = sheet.getLastRow();
+    var existingRowMap = {}; // cleanMaKH -> rowIndex
+    if (lastRow > 1) {
+      var colMaKH = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var r = 0; r < colMaKH.length; r++) {
+        var cleanKey = String(colMaKH[r][0] || "").replace(/^'/, "").trim();
+        if (cleanKey) {
+          existingRowMap[cleanKey] = r + 2;
+        }
+      }
+    }
+
+    var updatedCount = 0;
+    var newRows = [];
+    var nowTime = new Date();
+
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var rawMaKH = String(item.maKH || "").trim();
+      var cleanMaKH = rawMaKH.replace(/^'/, "");
+      if (!cleanMaKH) continue;
+
+      var cleanGTTT = String(item.gttt || item.cccd || "").replace(/^'/, "").trim();
+      var cleanSoTK = String(item.soTK || "").replace(/^'/, "").trim();
+      var hoTen = String(item.hoTen || "").trim();
+      var diaChi = String(item.diaChi || "").trim();
+      var kyTrich = Number(item.kyTrich || defaultKyTrich) || 1;
+      var trangThai = String(item.trangThai || defaultTrangThai).trim();
+      var ghiChu = String(item.ghiChu || defaultGhiChu).trim();
+
+      if (existingRowMap[cleanMaKH]) {
+        // Đã tồn tại -> Cập nhật thông tin dòng cũ
+        var rowIdx = existingRowMap[cleanMaKH];
+        if (hoTen) sheet.getRange(rowIdx, 2).setValue(hoTen);
+        if (cleanGTTT) sheet.getRange(rowIdx, 3).setValue("'" + cleanGTTT);
+        if (cleanSoTK) sheet.getRange(rowIdx, 4).setValue("'" + cleanSoTK);
+        if (diaChi) sheet.getRange(rowIdx, 5).setValue(diaChi);
+        sheet.getRange(rowIdx, 6).setValue(kyTrich);
+        sheet.getRange(rowIdx, 7).setValue(trangThai);
+        if (ghiChu) sheet.getRange(rowIdx, 8).setValue(ghiChu);
+        updatedCount++;
+      } else {
+        // Chưa có -> Chuẩn bị dòng mới
+        newRows.push([
+          "'" + cleanMaKH,
+          hoTen,
+          "'" + cleanGTTT,
+          "'" + cleanSoTK,
+          diaChi,
+          kyTrich,
+          trangThai,
+          ghiChu,
+          nowTime
+        ]);
+        // Cập nhật map tạm để tránh trùng nếu trong cùng 1 lần submit có 2 HĐTD của cùng 1 KH
+        existingRowMap[cleanMaKH] = lastRow + newRows.length;
+      }
+    }
+
+    if (newRows.length > 0) {
+      sheet.getRange(lastRow + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
+    }
+
     CacheHelper.invalidateModuleCache('debit');
-    return { status: "success", message: "Đăng ký dịch vụ trích nợ tự động thành công!" };
+
+    return {
+      status: "success",
+      message: "Đã thêm mới " + newRows.length + " và cập nhật " + updatedCount + " thỏa thuận trích nợ tự động thành công!",
+      newCount: newRows.length,
+      updatedCount: updatedCount,
+      totalCount: newRows.length + updatedCount
+    };
+  },
+
+  handleUpdateDebitRegister: function(ss, data) {
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return { status: "error", message: "Không tìm thấy dữ liệu đăng ký trích nợ!" };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var maKHInput = String(data.maKH || "").replace(/^'/, "").trim();
+    var soHDTDInput = String(data.soHDTD || "").trim();
+    var lastRow = sheet.getLastRow();
+    var targetRow = -1;
+    var allRows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+
+    for (var i = 0; i < allRows.length; i++) {
+      var curMa = String(HeaderUtils.getCell(allRows[i], colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var curHD = String(HeaderUtils.getCell(allRows[i], colMap, "SoHDTD", "")).trim();
+      if ((soHDTDInput && curHD === soHDTDInput) || (maKHInput && curMa === maKHInput)) {
+        targetRow = i + 2;
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      return { status: "error", message: "Không tìm thấy hồ sơ đăng ký trích nợ!" };
+    }
+
+    if (data.soTK !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoTK", "'" + String(data.soTK).replace(/^'/, "").trim());
+    }
+    if (data.kyTrich !== undefined || data.kyTrichNo !== undefined) {
+      var kt = Number(data.kyTrich || data.kyTrichNo) || 1;
+      HeaderUtils.setCell(sheet, targetRow, colMap, "KyTrichNo", kt);
+      HeaderUtils.setCell(sheet, targetRow, colMap, "KyTrich", kt);
+    }
+    if (data.soTienLai !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoTienLai", Number(data.soTienLai) || 0);
+    }
+    if (data.soTienNo !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoTienNo", Number(data.soTienNo) || 0);
+    }
+    if (data.soGoc !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "SoGoc", Number(data.soGoc) || 0);
+    }
+    if (data.tongTien !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "TongTien", Number(data.tongTien) || 0);
+    }
+    if (data.trangThai !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "TrangThai", String(data.trangThai).trim());
+    }
+    if (data.ghiChu !== undefined) {
+      HeaderUtils.setCell(sheet, targetRow, colMap, "GhiChu", String(data.ghiChu).trim());
+    }
+
+    CacheHelper.invalidateModuleCache('debit');
+    return { status: "success", message: "Cập nhật đăng ký trích nợ thành công!" };
+  },
+
+  handleToggleDebitRegisterStatus: function(ss, data) {
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return { status: "error", message: "Không tìm thấy dữ liệu đăng ký trích nợ!" };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var maKHInput = String(data.maKH || "").replace(/^'/, "").trim();
+    var soHDTDInput = String(data.soHDTD || "").trim();
+    var lastRow = sheet.getLastRow();
+    var targetRow = -1;
+    var currentStatus = "Hiệu lực";
+
+    var allRows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    for (var i = 0; i < allRows.length; i++) {
+      var curMa = String(HeaderUtils.getCell(allRows[i], colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var curHD = String(HeaderUtils.getCell(allRows[i], colMap, "SoHDTD", "")).trim();
+      if ((soHDTDInput && curHD === soHDTDInput) || (maKHInput && curMa === maKHInput)) {
+        targetRow = i + 2;
+        currentStatus = String(HeaderUtils.getCell(allRows[i], colMap, "TrangThai", "Hiệu lực")).trim();
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      return { status: "error", message: "Không tìm thấy hồ sơ đăng ký trích nợ!" };
+    }
+
+    var newStatus = data.newStatus;
+    if (!newStatus) {
+      newStatus = (currentStatus === "Hiệu lực" || currentStatus === "Hieu luc" || currentStatus === "HOAT_DONG") ? "Tạm ngưng" : "Hiệu lực";
+    }
+
+    HeaderUtils.setCell(sheet, targetRow, colMap, "TrangThai", newStatus);
+    CacheHelper.invalidateModuleCache('debit');
+    return { status: "success", message: "Đã chuyển trạng thái sang: " + newStatus, newStatus: newStatus };
+  },
+
+  handleDeleteDebitRegister: function(ss, data) {
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return { status: "error", message: "Không tìm thấy dữ liệu đăng ký trích nợ!" };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var maKHInput = String(data.maKH || "").replace(/^'/, "").trim();
+    var soHDTDInput = String(data.soHDTD || "").trim();
+    var lastRow = sheet.getLastRow();
+    var targetRow = -1;
+
+    var allRows = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    for (var i = 0; i < allRows.length; i++) {
+      var curMa = String(HeaderUtils.getCell(allRows[i], colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var curHD = String(HeaderUtils.getCell(allRows[i], colMap, "SoHDTD", "")).trim();
+      if ((soHDTDInput && curHD === soHDTDInput) || (maKHInput && curMa === maKHInput)) {
+        targetRow = i + 2;
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      return { status: "error", message: "Không tìm thấy hồ sơ đăng ký trích nợ!" };
+    }
+
+    sheet.deleteRow(targetRow);
+    CacheHelper.invalidateModuleCache('debit');
+    return { status: "success", message: "Đã xóa thỏa thuận trích nợ tự động thành công!" };
   },
 
   handleGetDebitBatches: function(ss) {
@@ -2371,19 +2638,25 @@ var DebitController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.min(10, sheet.getLastColumn())).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
+      var row = values[i];
+      var maDot = String(HeaderUtils.getCell(row, colMap, "MaDot", "")).trim();
+      if (!maDot) continue;
+
       results.push({
-        maDot: values[i][0],
-        thangNam: values[i][1],
-        kyTrich: Number(values[i][2]),
-        tongPhaiThu: Number(values[i][3]) || 0,
-        tongDaTrich: Number(values[i][4]) || 0,
-        tongConNo: Number(values[i][5]) || 0,
-        tongSoKH: Number(values[i][6]) || 0,
-        trangThai: values[i][7] || "CHO_TRICH_NO",
-        ngayTao: formatGasDateTime(values[i][8])
+        maDot: maDot,
+        thangNam: String(HeaderUtils.getCell(row, colMap, "ThangNam", "")).trim(),
+        kyTrich: Number(HeaderUtils.getCell(row, colMap, "KyTrichNo", 1) || HeaderUtils.getCell(row, colMap, "KyTrich", 1)) || 1,
+        tongPhaiThu: Number(HeaderUtils.getCell(row, colMap, "TongPhaiThu", 0)) || 0,
+        tongDaTrich: Number(HeaderUtils.getCell(row, colMap, "TongDaTrich", 0)) || 0,
+        tongConNo: Number(HeaderUtils.getCell(row, colMap, "TongConNo", 0)) || 0,
+        tongSoKH: Number(HeaderUtils.getCell(row, colMap, "TongSoKH", 0)) || 0,
+        tongSoHD: Number(HeaderUtils.getCell(row, colMap, "TongSoHD", 0)) || 0,
+        trangThai: String(HeaderUtils.getCell(row, colMap, "TrangThai", "CHO_TRICH_NO")).trim(),
+        ngayTao: HeaderUtils.getCell(row, colMap, "NgayTao", "") ? formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayTao", "")) : ""
       });
     }
 
@@ -2468,6 +2741,115 @@ var DebitController = {
 };
 
 
+
+// ==========================================
+// MODULE FILE: gas_backend/Reconciliation/ReconciliationController.gs
+// ==========================================
+
+/**
+ * ========================================================================================
+ * CREDITCORES - RECONCILIATIONCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module ReconciliationController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
+ */
+
+var ReconciliationController = {
+  handleReconcileUpload: function(ss, data) {
+    var maDot = data.maDot;
+    var items = data.items || [];
+
+    var sLS = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH") || ss.getSheetByName("CHI_TIET_TRICH_NO");
+    var sNoTon = ss.getSheetByName("NO_TON_DONG");
+    var sDot = ss.getSheetByName("DOT_TRICH_NO");
+
+    if (!sNoTon || !sDot) {
+      return { status: "error", message: "Không tìm thấy các bảng CSDL cần thiết để đối soát." };
+    }
+
+    var totalDaTrich = 0;
+    var totalConNo = 0;
+    var countSuccess = 0;
+    var countFailed = 0;
+
+    var noTonColMap = HeaderUtils.getHeaderMap(sNoTon);
+    var noTonDefaultHeaders = [
+      "SoHDTD", "MaKH", "TenKH", "GocTon", "LaiTon", "TongNoTon", "KyPhatSinh", "TrangThai", "GhiChu", "NgayCapNhat"
+    ];
+
+    var newNoTonRows = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var phaiThu = Number(it.phaiThu) || 0;
+      var daTrich = Number(it.daTrich) || 0;
+      var conNo = Math.max(0, phaiThu - daTrich);
+
+      totalDaTrich += daTrich;
+      totalConNo += conNo;
+
+      if (it.ketQua === "THANH_CONG") {
+        countSuccess++;
+      } else {
+        countFailed++;
+        if (conNo > 0) {
+          var dict = {
+            SoHDTD: it.soHDTD || "",
+            MaKH: it.maKH || "",
+            TenKH: it.tenKH || "",
+            GocTon: Number(it.gocTon || 0) || 0,
+            LaiTon: conNo,
+            TongNoTon: conNo,
+            KyPhatSinh: maDot,
+            TrangThai: "CHUA_THU",
+            GhiChu: it.ghiChu || "Đối soát chưa thành công",
+            NgayCapNhat: new Date()
+          };
+          newNoTonRows.push(HeaderUtils.dictToRow(dict, noTonColMap, noTonDefaultHeaders));
+        }
+      }
+    }
+
+    if (newNoTonRows.length > 0) {
+      sNoTon.getRange(sNoTon.getLastRow() + 1, 1, newNoTonRows.length, newNoTonRows[0].length).setValues(newNoTonRows);
+    }
+
+    if (sDot.getLastRow() > 1) {
+      var dotColMap = HeaderUtils.getHeaderMap(sDot);
+      var dotLastCol = sDot.getLastColumn();
+      var dotVals = sDot.getRange(2, 1, sDot.getLastRow() - 1, dotLastCol).getValues();
+      for (var d = 0; d < dotVals.length; d++) {
+        var dMaDot = HeaderUtils.getCell(dotVals[d], dotColMap, "MaDot", "");
+        if (dMaDot === maDot) {
+          var rowIndex = d + 2;
+          HeaderUtils.setCell(sDot, rowIndex, dotColMap, "TongDaTrich", totalDaTrich);
+          HeaderUtils.setCell(sDot, rowIndex, dotColMap, "TongConNo", totalConNo);
+          HeaderUtils.setCell(sDot, rowIndex, dotColMap, "TrangThai", "HOAN_TAT");
+          break;
+        }
+      }
+    }
+
+    CacheHelper.invalidateModuleCache('reconciliation');
+
+    return {
+      status: "success",
+      message: "Đối soát hoàn tất đợt " + maDot + "! Đã trích thành công: " + countSuccess + " món, Nợ tồn chuyển tiếp: " + countFailed + " món.",
+      summary: {
+        totalDaTrich: totalDaTrich,
+        totalConNo: totalConNo,
+        countSuccess: countSuccess,
+        countFailed: countFailed
+      }
+    };
+  }
+};
+
+
+
 // ==========================================
 // MODULE FILE: gas_backend/Debt/DebtWarningController.gs
 // ==========================================
@@ -2494,19 +2876,25 @@ var DebtWarningController = {
       return { status: "success", data: [] };
     }
 
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    var colMap = HeaderUtils.getHeaderMap(sheet);
+    var lastCol = sheet.getLastColumn();
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     var results = [];
     for (var i = 0; i < values.length; i++) {
-      if (values[i][6] === "CHUA_THU") {
+      var row = values[i];
+      var trangThai = HeaderUtils.getCell(row, colMap, "TrangThai", "");
+      if (trangThai === "CHUA_THU") {
         results.push({
-          maKH: values[i][0],
-          soHDTD: values[i][1],
-          gocTon: values[i][2],
-          laiTon: values[i][3],
-          tongNoTon: values[i][4],
-          kyPhatSinh: values[i][5],
-          trangThai: values[i][6],
-          ngayCapNhat: formatGasDateTime(values[i][7])
+          soHDTD: HeaderUtils.getCell(row, colMap, "SoHDTD", ""),
+          maKH: HeaderUtils.getCell(row, colMap, "MaKH", ""),
+          tenKH: HeaderUtils.getCell(row, colMap, "TenKH", ""),
+          gocTon: Number(HeaderUtils.getCell(row, colMap, "GocTon", 0)) || 0,
+          laiTon: Number(HeaderUtils.getCell(row, colMap, "LaiTon", 0)) || 0,
+          tongNoTon: Number(HeaderUtils.getCell(row, colMap, "TongNoTon", 0)) || 0,
+          kyPhatSinh: HeaderUtils.getCell(row, colMap, "KyPhatSinh", ""),
+          trangThai: trangThai,
+          ghiChu: HeaderUtils.getCell(row, colMap, "GhiChu", ""),
+          ngayCapNhat: formatGasDateTime(HeaderUtils.getCell(row, colMap, "NgayCapNhat", ""))
         });
       }
     }
@@ -2516,100 +2904,6 @@ var DebtWarningController = {
   }
 };
 
-
-// ==========================================
-// MODULE FILE: gas_backend/Reconciliation/ReconciliationController.gs
-// ==========================================
-
-/**
- * ========================================================================================
- * CREDITCORES - RECONCILIATIONCONTROLLER
- * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
- * 
- * @description Controller/Module ReconciliationController xử lý nghiệp vụ liên quan
- * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
- * ========================================================================================
- */
-
-var ReconciliationController = {
-  handleReconcileUpload: function(ss, data) {
-    var maDot = data.maDot;
-    var items = data.items || [];
-
-    var sLS = ss.getSheetByName("LICH_SU_GIAO_DICH");
-    var sNoTon = ss.getSheetByName("NO_TON_DONG");
-    var sDot = ss.getSheetByName("DOT_TRICH_NO");
-
-    if (!sLS || !sNoTon || !sDot) {
-      return { status: "error", message: "Không tìm thấy các bảng CSDL cần thiết để đối soát." };
-    }
-
-    var totalDaTrich = 0;
-    var totalConNo = 0;
-    var countSuccess = 0;
-    var countFailed = 0;
-
-    var newNoTonRows = [];
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      var phaiThu = Number(it.phaiThu) || 0;
-      var daTrich = Number(it.daTrich) || 0;
-      var conNo = Math.max(0, phaiThu - daTrich);
-
-      totalDaTrich += daTrich;
-      totalConNo += conNo;
-
-      if (it.ketQua === "THANH_CONG") {
-        countSuccess++;
-      } else {
-        countFailed++;
-        if (conNo > 0) {
-          newNoTonRows.push([
-            it.maKH || "",
-            it.soHDTD || "",
-            0,
-            conNo,
-            conNo,
-            maDot,
-            "CHUA_THU",
-            new Date()
-          ]);
-        }
-      }
-    }
-
-    if (newNoTonRows.length > 0) {
-      sNoTon.getRange(sNoTon.getLastRow() + 1, 1, newNoTonRows.length, 8).setValues(newNoTonRows);
-    }
-
-    if (sDot.getLastRow() > 1) {
-      var dotVals = sDot.getRange(2, 1, sDot.getLastRow() - 1, 8).getValues();
-      for (var d = 0; d < dotVals.length; d++) {
-        if (dotVals[d][0] === maDot) {
-          sDot.getRange(d + 2, 5).setValue(totalDaTrich);
-          sDot.getRange(d + 2, 6).setValue(totalConNo);
-          sDot.getRange(d + 2, 8).setValue("HOAN_TAT");
-          break;
-        }
-      }
-    }
-
-    CacheHelper.invalidateModuleCache('reconciliation');
-
-    return {
-      status: "success",
-      message: "Đối soát hoàn tất đợt " + maDot + "! Đã trích thành công: " + countSuccess + " món, Nợ tồn chuyển tiếp: " + countFailed + " món.",
-      summary: {
-        totalDaTrich: totalDaTrich,
-        totalConNo: totalConNo,
-        countSuccess: countSuccess,
-        countFailed: countFailed
-      }
-    };
-  }
-};
 
 
 // ==========================================
@@ -2621,10 +2915,12 @@ var ReconciliationController = {
  * CREDITCORES - REPORTCONTROLLER
  * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
  * 
- * @description Controller/Module ReportController xử lý nghiệp vụ liên quan
+ * @description Controller xử lý tổng hợp Báo cáo Thống kê Quản trị Tín dụng,
+ *              Phân bổ Địa bàn, Cơ cấu Sản phẩm Vay, Sao Kê Hợp Đồng (BC_DOANH_SO_TD)
+ *              và Bảng Xếp Hạng Top Dư Nợ Bình Quân Toàn Quỹ (TOP_DU_NO_BINH_QUAN).
  * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
+ * @updated     18/09/2026
+ * @version     3.0
  * ========================================================================================
  */
 
@@ -2661,20 +2957,24 @@ var ReportController = {
       };
     }
 
-    // --- Build KH map (1 batch read 16 cols) ---
+    // --- Build KH map (batch read theo tên cột) ---
     var khMap = {};
     if (sKH.getLastRow() > 1) {
-      var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, 16).getValues();
+      var colMapKH = HeaderUtils.getHeaderMap(sKH);
+      var khVals = sKH.getRange(2, 1, sKH.getLastRow() - 1, sKH.getLastColumn()).getValues();
       for (var i = 0; i < khVals.length; i++) {
-        var mKH = String(khVals[i][0]).trim();
-        var hTen = String(khVals[i][1]).trim();
-        var dChi = String(khVals[i][2]).trim();
-        var sTV = String(khVals[i][11]).trim();
-        var diaChiKV = dChi + " " + String(khVals[i][10]).trim();
-        var areaKey = "Khác";
-        if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
-        else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
-        else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        var mKH = String(HeaderUtils.getCell(khVals[i], colMapKH, "MaKH", "")).replace(/^'/, "").trim();
+        var hTen = String(HeaderUtils.getCell(khVals[i], colMapKH, "HoTen", "")).trim();
+        var dChi = String(HeaderUtils.getCell(khVals[i], colMapKH, "DiaChi", "")).trim();
+        var sTV = String(HeaderUtils.getCell(khVals[i], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
+        var directXa = String(HeaderUtils.getCell(khVals[i], colMapKH, "KvXa", "")).trim();
+        var diaChiKV = (dChi + " " + String(HeaderUtils.getCell(khVals[i], colMapKH, "KhuVuc", ""))).trim();
+        var areaKey = directXa || "Khác";
+        if (!directXa) {
+          if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+          else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
+          else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        }
         khMap[mKH] = {
           hoTen: hTen,
           diaChi: dChi,
@@ -2704,27 +3004,28 @@ var ReportController = {
     var statementResult = [];
     var customerDebtMap = {};
 
-    // --- Batch read HDTD_CORE (cols A→P = 1→16) ---
+    // --- Batch read HDTD_CORE (theo tên cột) ---
     if (sHDTD.getLastRow() > 1) {
+      var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
       var hdRows = sHDTD.getLastRow() - 1;
-      var hdVals = sHDTD.getRange(2, 1, hdRows, 16).getValues();
+      var hdVals = sHDTD.getRange(2, 1, hdRows, sHDTD.getLastColumn()).getValues();
 
       for (var j = 0; j < hdVals.length; j++) {
-        var hdSoHDTD    = String(hdVals[j][0]).trim();
-        var hdMaKH      = String(hdVals[j][1]).trim();
-        var hdTienVay   = Number(hdVals[j][2]) || 0;
-        var hdDuNo      = Number(hdVals[j][3]) || 0;
-        var hdLaiSuat   = Number(hdVals[j][4]) || 0;
-        var hdNgayVay   = formatGasDateVN(hdVals[j][5]);
-        var hdDenHan    = formatGasDateVN(hdVals[j][6]);
-        var hdTraLaiDen = formatGasDateVN(hdVals[j][7]);
-        var hdMaLoaiVay = String(hdVals[j][8]).trim();
-        var hdSoThang   = Number(hdVals[j][9]) || 0;
-        var hdMoTa      = String(hdVals[j][10]).trim();
-        var hdCBTD_Code = String(hdVals[j][11]).trim();
-        var hdTenCBTD   = String(hdVals[j][12]).trim();
-        var hdTrangThai = String(hdVals[j][13]).toUpperCase().trim();
-        var hdNgayTatToan = formatGasDateVN(hdVals[j][14]);
+        var hdSoHDTD    = String(HeaderUtils.getCell(hdVals[j], colMapHD, "SoHDTD", "")).trim();
+        var hdMaKH      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaKH", "")).replace(/^'/, "").trim();
+        var hdTienVay   = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "TienVay", 0)) || 0;
+        var hdDuNo      = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "DuNo", 0)) || 0;
+        var hdLaiSuat   = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "LaiSuat", 0)) || 0;
+        var hdNgayVay   = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "NgayVay", ""));
+        var hdDenHan    = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "DenHan", ""));
+        var hdTraLaiDen = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "TraLaiDenNgay", ""));
+        var hdMaLoaiVay = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaLoaiVay", "")).trim();
+        var hdSoThang   = Number(HeaderUtils.getCell(hdVals[j], colMapHD, "SoThangVay", 0)) || 0;
+        var hdMoTa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MoTaVay", "")).trim();
+        var hdCBTD_Code = String(HeaderUtils.getCell(hdVals[j], colMapHD, "CBTD_PhuTrach", "")).trim();
+        var hdTenCBTD   = String(HeaderUtils.getCell(hdVals[j], colMapHD, "Ten_CBTD", "")).trim();
+        var hdTrangThai = String(HeaderUtils.getCell(hdVals[j], colMapHD, "TrangThaiHD", hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).toUpperCase().trim();
+        var hdNgayTatToan = formatGasDateVN(HeaderUtils.getCell(hdVals[j], colMapHD, "NgayTatToan", ""));
 
         var khInfo = khMap[hdMaKH] || {
           hoTen: "Khách hàng " + hdMaKH,
@@ -2781,24 +3082,16 @@ var ReportController = {
           countCASA++;
         }
 
-        // Nhóm nợ xấu N3-N5
+        // Nhóm nợ xấu N3-N5 (nếu có cột chỉ định hoặc quá hạn)
         var hdNhomNo = Number(hdVals[j][8]) || 1;
         if (hdNhomNo >= 3) countNPL++;
 
-        // Area grouping
-        var khInfo = khMap[hdMaKH];
-        var aKey = khInfo ? khInfo.area : "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+        // Thống kê theo địa bàn
         if (!areaStats[aKey]) areaStats[aKey] = { countKH: new Set(), duNo: 0 };
         areaStats[aKey].countKH.add(hdMaKH);
         areaStats[aKey].duNo += hdDuNo;
 
-        // Loan product classification
-        var prodKey = "Nông nghiệp & Chăn nuôi";
-        if (hdMoTa.indexOf("kinh doanh") > -1 || hdMoTa.indexOf("thương mại") > -1 || hdMoTa.indexOf("xe tải") > -1 || hdMoTa.indexOf("buôn bán") > -1) {
-          prodKey = "Thương mại & Dịch vụ";
-        } else if (hdMoTa.indexOf("tiêu dùng") > -1 || hdMoTa.indexOf("nhà ở") > -1 || hdMoTa.indexOf("sửa chữa") > -1) {
-          prodKey = "Tiêu dùng & Đời sống";
-        }
+        // Thống kê theo sản phẩm vay
         loanTypeStats[prodKey].count++;
         loanTypeStats[prodKey].amount += hdDuNo;
 
@@ -2972,10 +3265,242 @@ var ReportController = {
       }
     };
 
-    CacheHelper.setCachedData('reports_data_v2', finalResult, 30);
+    CacheHelper.setCachedData('reports_data_v2', finalResult, CacheHelper.TIERS.WARM);
     return { status: "success", data: finalResult };
   }
 };
+
+
+
+// ==========================================
+// MODULE FILE: gas_backend/Sync/SyncController.gs
+// ==========================================
+
+/**
+ * ========================================================================================
+ * CREDITCORES - SYNCCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module SyncController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
+ */
+
+var SyncController = {
+  handleTriggerSqlSync: function(ss) {
+    var sheet = ss.getSheetByName("SETTING");
+    if (!sheet) return { status: "error", message: "Không tìm thấy Sheet SETTING." };
+
+    sheet.getRange(2, 1).setValue("SYNC_DATA");
+    sheet.getRange(2, 2).setValue("PENDING");
+    sheet.getRange(2, 3).setValue(new Date());
+    sheet.getRange(2, 7).setValue("Yêu cầu đồng bộ từ WebApp. Đang chờ Python Daemon nhận lệnh...");
+
+    CacheHelper.invalidateModuleCache('dashboard');
+    return { status: "success", message: "Đã gửi lệnh SYNC_DATA tới Hàng đợi Lệnh Core!" };
+  },
+
+  handleGetSyncStatus: function(ss) {
+    var sheet = ss.getSheetByName("SETTING");
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return {
+        status: "success",
+        data: {
+          command: "IDLE",
+          status: "SUCCESS",
+          message: "Hệ thống sẵn sàng."
+        }
+      };
+    }
+
+    var row = sheet.getRange(2, 1, 1, 7).getValues()[0];
+    return {
+      status: "success",
+      data: {
+        command: row[0],
+        status: row[1],
+        requestTime: formatGasDateTime(row[2]),
+        startTime: formatGasDateTime(row[3]),
+        finishTime: formatGasDateTime(row[4]),
+        totalRows: row[5],
+        message: row[6]
+      }
+    };
+  }
+};
+
+
+
+// ==========================================
+// MODULE FILE: gas_backend/Modules/DocumentController.gs
+// ==========================================
+
+/**
+ * ========================================================================================
+ * CREDITCORES - DOCUMENTCONTROLLER
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module DocumentController xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
+ */
+
+var DocumentController = (function() {
+  var CONTRACTS_FOLDER_NAME = "CreditCores_Generated_Contracts";
+
+  function getOrCreateFolder() {
+    var customFolderId = '';
+    try {
+      if (typeof ConfigController !== 'undefined') {
+        var settings = ConfigController.getDriveSettings();
+        if (settings && settings.status === 'success' && settings.data && settings.data.contractFolderId) {
+          customFolderId = settings.data.contractFolderId;
+        }
+      }
+    } catch(e) {
+      Logger.log('Cannot read Drive Settings: ' + e.toString());
+    }
+    
+    if (customFolderId) {
+      try {
+        return DriveApp.getFolderById(customFolderId);
+      } catch(e) {
+        Logger.log('Invalid folder ID, fallback to default name: ' + e.toString());
+      }
+    }
+
+    var folders = DriveApp.getFoldersByName(CONTRACTS_FOLDER_NAME);
+    if (folders.hasNext()) {
+      return folders.next();
+    } else {
+      return DriveApp.createFolder(CONTRACTS_FOLDER_NAME);
+    }
+  }
+
+  function handleGenerateContract(ss, payload) {
+    try {
+      var maKH = payload.maKH;
+      var hoTen = payload.hoTen || "Unknown";
+      var templateId = payload.templateId; // Google Doc ID
+      var tenBieuMau = payload.tenBieuMau || "Hợp Đồng Tín Dụng";
+      var truongTronData = payload.truongTronData || {}; // { "{{HoTen}}": "Nguyễn Văn A" }
+      var nguoiLap = payload.username || "Hệ Thống";
+
+      if (!maKH || !templateId) {
+        return { status: "error", message: "Thiếu mã khách hàng hoặc Template ID." };
+      }
+
+      // 1. Tìm hoặc tạo thư mục
+      var folder = getOrCreateFolder();
+
+      // 2. Tạo bản sao từ Template
+      var templateFile = DriveApp.getFileById(templateId);
+      var timeStamp = Utilities.formatDate(new Date(), "GMT+7", "ddMMyyyy_HHmmss");
+      var newFileName = maKH + "_" + tenBieuMau + "_" + timeStamp;
+      var newFile = templateFile.makeCopy(newFileName, folder);
+      var newDocId = newFile.getId();
+
+      // 3. Thực hiện thay thế từ khóa (Mail Merge)
+      var doc = DocumentApp.openById(newDocId);
+      var body = doc.getBody();
+
+      for (var key in truongTronData) {
+        if (truongTronData.hasOwnProperty(key)) {
+          var value = truongTronData[key] || "";
+          body.replaceText(key, value);
+        }
+      }
+      doc.saveAndClose();
+
+      // 4. Mở quyền truy cập để Preview (Iframe) và In ấn
+      newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      // 5. Chuẩn bị URL
+      var docUrl = newFile.getUrl();
+      var pdfUrl = "https://docs.google.com/document/d/" + newDocId + "/export?format=pdf";
+
+      // 6. Lưu lịch sử vào HỢP ĐỒNG LƯU TRỮ
+      var sheet = ss.getSheetByName("DOCUMENT_STORAGE");
+      if (!sheet) {
+        SchemaSetup.ensureDatabaseSchema(ss);
+        sheet = ss.getSheetByName("DOCUMENT_STORAGE");
+      }
+      
+      var newRow = [
+        newDocId,                 // ID_HOP_DONG
+        maKH,                     // MA_KH
+        hoTen,                    // TEN_KHACH_HANG
+        tenBieuMau,               // LOAI_BIEU_MAU
+        nguoiLap,                 // NGUOI_LAP
+        new Date(),               // NGAY_LAP
+        docUrl,                   // LINK_GOOGLE_DOC
+        pdfUrl,                   // LINK_PDF
+        "HOAN_THANH"              // TRANG_THAI
+      ];
+      sheet.appendRow(newRow);
+
+      return {
+        status: "success",
+        message: "Khởi tạo hợp đồng thành công.",
+        data: {
+          docId: newDocId,
+          docUrl: docUrl,
+          pdfUrl: pdfUrl,
+          fileName: newFileName
+        }
+      };
+
+    } catch (e) {
+      Logger.log("Lỗi generateContract: " + e.toString());
+      return { status: "error", message: "Lỗi tạo hợp đồng: " + e.toString() };
+    }
+  }
+
+  function handleGetContracts(ss, payload) {
+    try {
+      var sheet = ss.getSheetByName("DOCUMENT_STORAGE");
+      if (!sheet) return { status: "success", data: [] };
+
+      var lastRow = sheet.getLastRow();
+      if (lastRow < 2) return { status: "success", data: [] };
+
+      var data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+      var result = [];
+      var filterMaKH = payload.maKH;
+
+      for (var i = data.length - 1; i >= 0; i--) { // Lấy từ mới nhất xuống
+        var row = data[i];
+        if (filterMaKH && row[1] !== filterMaKH) continue;
+
+        result.push({
+          idHopDong: row[0],
+          maKH: row[1],
+          tenKhachHang: row[2],
+          loaiBieuMau: row[3],
+          nguoiLap: row[4],
+          ngayLap: row[5],
+          linkGoogleDoc: row[6],
+          linkPdf: row[7],
+          trangThai: row[8]
+        });
+      }
+
+      return { status: "success", data: result };
+
+    } catch (e) {
+      return { status: "error", message: "Lỗi lấy danh sách hợp đồng: " + e.toString() };
+    }
+  }
+
+  return {
+    handleGenerateContract: handleGenerateContract,
+    handleGetContracts: handleGetContracts
+  };
+})();
 
 
 
@@ -3193,235 +3718,6 @@ var ConfigController = {
 };
 
 
-// ==========================================
-// MODULE FILE: gas_backend/Modules/DocumentController.gs
-// ==========================================
-
-/**
- * ========================================================================================
- * CREDITCORES - DOCUMENTCONTROLLER
- * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
- * 
- * @description Controller/Module DocumentController xử lý nghiệp vụ liên quan
- * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
- * ========================================================================================
- */
-
-var DocumentController = (function() {
-  var CONTRACTS_FOLDER_NAME = "CreditCores_Generated_Contracts";
-
-  function getOrCreateFolder() {
-    var customFolderId = '';
-    try {
-      if (typeof ConfigController !== 'undefined') {
-        var settings = ConfigController.getDriveSettings();
-        if (settings && settings.status === 'success' && settings.data && settings.data.contractFolderId) {
-          customFolderId = settings.data.contractFolderId;
-        }
-      }
-    } catch(e) {
-      Logger.log('Cannot read Drive Settings: ' + e.toString());
-    }
-    
-    if (customFolderId) {
-      try {
-        return DriveApp.getFolderById(customFolderId);
-      } catch(e) {
-        Logger.log('Invalid folder ID, fallback to default name: ' + e.toString());
-      }
-    }
-
-    var folders = DriveApp.getFoldersByName(CONTRACTS_FOLDER_NAME);
-    if (folders.hasNext()) {
-      return folders.next();
-    } else {
-      return DriveApp.createFolder(CONTRACTS_FOLDER_NAME);
-    }
-  }
-
-  function handleGenerateContract(ss, payload) {
-    try {
-      var maKH = payload.maKH;
-      var hoTen = payload.hoTen || "Unknown";
-      var templateId = payload.templateId; // Google Doc ID
-      var tenBieuMau = payload.tenBieuMau || "Hợp Đồng Tín Dụng";
-      var truongTronData = payload.truongTronData || {}; // { "{{HoTen}}": "Nguyễn Văn A" }
-      var nguoiLap = payload.username || "Hệ Thống";
-
-      if (!maKH || !templateId) {
-        return { status: "error", message: "Thiếu mã khách hàng hoặc Template ID." };
-      }
-
-      // 1. Tìm hoặc tạo thư mục
-      var folder = getOrCreateFolder();
-
-      // 2. Tạo bản sao từ Template
-      var templateFile = DriveApp.getFileById(templateId);
-      var timeStamp = Utilities.formatDate(new Date(), "GMT+7", "ddMMyyyy_HHmmss");
-      var newFileName = maKH + "_" + tenBieuMau + "_" + timeStamp;
-      var newFile = templateFile.makeCopy(newFileName, folder);
-      var newDocId = newFile.getId();
-
-      // 3. Thực hiện thay thế từ khóa (Mail Merge)
-      var doc = DocumentApp.openById(newDocId);
-      var body = doc.getBody();
-
-      for (var key in truongTronData) {
-        if (truongTronData.hasOwnProperty(key)) {
-          var value = truongTronData[key] || "";
-          body.replaceText(key, value);
-        }
-      }
-      doc.saveAndClose();
-
-      // 4. Mở quyền truy cập để Preview (Iframe) và In ấn
-      newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-      // 5. Chuẩn bị URL
-      var docUrl = newFile.getUrl();
-      var pdfUrl = "https://docs.google.com/document/d/" + newDocId + "/export?format=pdf";
-
-      // 6. Lưu lịch sử vào HỢP ĐỒNG LƯU TRỮ
-      var sheet = ss.getSheetByName("DOCUMENT_STORAGE");
-      if (!sheet) {
-        SchemaSetup.ensureDatabaseSchema(ss);
-        sheet = ss.getSheetByName("DOCUMENT_STORAGE");
-      }
-      
-      var newRow = [
-        newDocId,                 // ID_HOP_DONG
-        maKH,                     // MA_KH
-        hoTen,                    // TEN_KHACH_HANG
-        tenBieuMau,               // LOAI_BIEU_MAU
-        nguoiLap,                 // NGUOI_LAP
-        new Date(),               // NGAY_LAP
-        docUrl,                   // LINK_GOOGLE_DOC
-        pdfUrl,                   // LINK_PDF
-        "HOAN_THANH"              // TRANG_THAI
-      ];
-      sheet.appendRow(newRow);
-
-      return {
-        status: "success",
-        message: "Khởi tạo hợp đồng thành công.",
-        data: {
-          docId: newDocId,
-          docUrl: docUrl,
-          pdfUrl: pdfUrl,
-          fileName: newFileName
-        }
-      };
-
-    } catch (e) {
-      Logger.log("Lỗi generateContract: " + e.toString());
-      return { status: "error", message: "Lỗi tạo hợp đồng: " + e.toString() };
-    }
-  }
-
-  function handleGetContracts(ss, payload) {
-    try {
-      var sheet = ss.getSheetByName("DOCUMENT_STORAGE");
-      if (!sheet) return { status: "success", data: [] };
-
-      var lastRow = sheet.getLastRow();
-      if (lastRow < 2) return { status: "success", data: [] };
-
-      var data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
-      var result = [];
-      var filterMaKH = payload.maKH;
-
-      for (var i = data.length - 1; i >= 0; i--) { // Lấy từ mới nhất xuống
-        var row = data[i];
-        if (filterMaKH && row[1] !== filterMaKH) continue;
-
-        result.push({
-          idHopDong: row[0],
-          maKH: row[1],
-          tenKhachHang: row[2],
-          loaiBieuMau: row[3],
-          nguoiLap: row[4],
-          ngayLap: row[5],
-          linkGoogleDoc: row[6],
-          linkPdf: row[7],
-          trangThai: row[8]
-        });
-      }
-
-      return { status: "success", data: result };
-
-    } catch (e) {
-      return { status: "error", message: "Lỗi lấy danh sách hợp đồng: " + e.toString() };
-    }
-  }
-
-  return {
-    handleGenerateContract: handleGenerateContract,
-    handleGetContracts: handleGetContracts
-  };
-})();
-
-
-// ==========================================
-// MODULE FILE: gas_backend/Sync/SyncController.gs
-// ==========================================
-
-/**
- * ========================================================================================
- * CREDITCORES - SYNCCONTROLLER
- * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
- * 
- * @description Controller/Module SyncController xử lý nghiệp vụ liên quan
- * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
- * ========================================================================================
- */
-
-var SyncController = {
-  handleTriggerSqlSync: function(ss) {
-    var sheet = ss.getSheetByName("SETTING");
-    if (!sheet) return { status: "error", message: "Không tìm thấy Sheet SETTING." };
-
-    sheet.getRange(2, 1).setValue("SYNC_DATA");
-    sheet.getRange(2, 2).setValue("PENDING");
-    sheet.getRange(2, 3).setValue(new Date());
-    sheet.getRange(2, 7).setValue("Yêu cầu đồng bộ từ WebApp. Đang chờ Python Daemon nhận lệnh...");
-
-    CacheHelper.invalidateModuleCache('dashboard');
-    return { status: "success", message: "Đã gửi lệnh SYNC_DATA tới Hàng đợi Lệnh Core!" };
-  },
-
-  handleGetSyncStatus: function(ss) {
-    var sheet = ss.getSheetByName("SETTING");
-    if (!sheet || sheet.getLastRow() <= 1) {
-      return {
-        status: "success",
-        data: {
-          command: "IDLE",
-          status: "SUCCESS",
-          message: "Hệ thống sẵn sàng."
-        }
-      };
-    }
-
-    var row = sheet.getRange(2, 1, 1, 7).getValues()[0];
-    return {
-      status: "success",
-      data: {
-        command: row[0],
-        status: row[1],
-        requestTime: formatGasDateTime(row[2]),
-        startTime: formatGasDateTime(row[3]),
-        finishTime: formatGasDateTime(row[4]),
-        totalRows: row[5],
-        message: row[6]
-      }
-    };
-  }
-};
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Modules/ModuleRegistryController.gs
@@ -3459,6 +3755,55 @@ var ModuleRegistryController = {
     return { status: "success", data: modules };
   }
 };
+
+
+
+// ==========================================
+// MODULE FILE: gas_backend/AutoGeneratGoogleSheets.gs
+// ==========================================
+
+/**
+ * ========================================================================================
+ * CREDITCORES - AUTOGENERATGOOGLESHEETS
+ * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
+ * 
+ * @description Controller/Module AutoGeneratGoogleSheets xử lý nghiệp vụ liên quan
+ * @created     15/08/2026
+ * @updated     20/08/2026
+ * @version     2.1
+ * ========================================================================================
+ */
+
+// var DB_SPREADSHEET_ID = typeof DB_SPREADSHEET_ID !== 'undefined' ? DB_SPREADSHEET_ID : "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
+
+function runSetupDirectly() {
+  Logger.log(">>> Bắt đầu rà soát và khởi tạo 12 sheets CSDL...");
+  var ss;
+  if (DB_SPREADSHEET_ID && DB_SPREADSHEET_ID.length > 10) {
+    try {
+      ss = SpreadsheetApp.openById(DB_SPREADSHEET_ID);
+    } catch(e) {
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    }
+  } else {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  }
+
+  var res = SchemaSetup.ensureDatabaseSchema(ss);
+  Logger.log(">>> Kết quả: " + JSON.stringify(res));
+  return res;
+}
+
+function onOpen() {
+  var ui;
+  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
+  if (ui) {
+    ui.createMenu('⚙️ Quản Trị CSDL CreditCores')
+      .addItem('Khởi tạo / Tự động Nâng cấp 12 Bảng CSDL', 'runSetupDirectly')
+      .addToUi();
+  }
+}
+
 
 
 // ==========================================
@@ -3643,6 +3988,18 @@ function doPost(e) {
       case "saveDebitRegister":
         result = DebitController.handleSaveDebitRegister(ss, data);
         break;
+      case "saveBatchDebitRegister":
+        result = DebitController.handleSaveBatchDebitRegister(ss, data);
+        break;
+      case "updateDebitRegister":
+        result = DebitController.handleUpdateDebitRegister(ss, data);
+        break;
+      case "toggleDebitRegisterStatus":
+        result = DebitController.handleToggleDebitRegisterStatus(ss, data);
+        break;
+      case "deleteDebitRegister":
+        result = DebitController.handleDeleteDebitRegister(ss, data);
+        break;
       case "createDebitBatch":
         result = DebitController.handleCreateDebitBatch(ss, data);
         break;
@@ -3708,20 +4065,7 @@ function doPost(e) {
 
 function runSetupDirectly() {
   var ss = getSpreadsheetInstance();
-  Logger.log(">>> Bắt đầu rà soát, nâng cấp và chuẩn hoá toàn bộ CSDL CreditCores...");
-  var res = SchemaSetup.setupAllSheets(ss);
-  Logger.log(">>> Kết quả: " + JSON.stringify(res));
-  return res;
-}
-
-function onOpen() {
-  var ui;
-  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
-  if (ui) {
-    ui.createMenu('⚙️ Quản Trị CSDL CreditCores')
-      .addItem('⚡ Khởi tạo / Tự động Chuẩn hoá Toàn bộ CSDL', 'runSetupDirectly')
-      .addToUi();
-  }
+  return SchemaSetup.setupAllSheets(ss);
 }
 
 

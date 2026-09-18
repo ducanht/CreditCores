@@ -123,3 +123,31 @@ Nhằm triệt tiêu gánh nặng tính toán trên Google Apps Script và tối
   7. *Bảo toàn lịch sử tất toán*: Cập nhật `DuNo = 0`, `TrangThaiHD = 'DA_TAT_TOAN'` khi khách hàng trả hết nợ (Zero-Record-Loss).
   8. *Chuẩn hóa kiểu dữ liệu & Bảo mật*: Thêm nháy đơn `'` chống nuốt số 0, chống Formula Injection (CWE-1236), định dạng ngày GMT+7.
 
+---
+
+## 🏛️ 5. Chuẩn Mực Ánh Xạ Dữ Liệu Theo Tên Cột (Header-Name Based Mapping & Self-Healing Remap)
+
+Hệ thống đã loại bỏ hoàn toàn việc truy xuất cột theo chỉ số mảng cố định (`row[0]`, `row[11]`, `col 5`...) để chuyển sang **Header-Name Based Mapping**:
+
+### 1. Ở Tầng Backend Google Apps Script (`HeaderUtils.gs`):
+- `HeaderUtils.getHeaderMap(sheet)`: Quét dòng 1 để lập bản đồ vị trí các cột động `{ [headerName]: colIndex }`.
+- `HeaderUtils.getCell(row, colMap, "TenCot", defaultVal)`: Lấy giá trị ô theo tên cột, an toàn khi cột bị dịch chuyển vị trí.
+- `HeaderUtils.setCell(sheet, rowIndex, colMap, "TenCot", value)`: Ghi giá trị ô đơn chính xác vào cột tương ứng.
+- `HeaderUtils.dictToRow(dict, colMap, defaultHeaders)`: Chuyển đổi đối tượng dữ liệu thành mảng dòng theo đúng thứ tự cột thực tế của Sheet.
+
+### 2. Ở Tầng Python Daemon (`sync_daemon.py` & `schema_healer.py`):
+- `sync_records_to_sheet`: Đọc danh sách header thực tế `sheet.row_values(1)`. Duyệt từng cột theo tên `r.get(h, "")` trước khi ghi batch.
+- `init_or_heal_database_schema`: Khi phát hiện sheet thay đổi thứ tự hoặc số lượng cột, script tự động:
+  1. Đọc toàn bộ dữ liệu hiện có kèm header cũ.
+  2. Tạo bản đồ tra cứu theo tên cột.
+  3. Ánh xạ lại từng dòng dữ liệu theo thứ tự cột chuẩn mới.
+  4. Cập nhật header và ghi lại toàn bộ dữ liệu (**Bảo toàn 100% dữ liệu cũ, không mất mát dù chỉ 1 cell**).
+
+### 3. Trình Tự Cột Chuẩn Logic Nghiệp Vụ:
+- **`HDTD_CORE` (22 cột)**: `SoHDTD`, `MaKH`, `HoTen`, `CCCD`, `DienThoai`, `DiaChi`, `KvXa`, `KvThon`, `TienVay`, `DuNo`, `LaiSuat`, `NgayVay`, `DenHan`, `TraLaiDenNgay`, `SoThangVay`, `MaLoaiVay`, `MoTaVay`, `CBTD_PhuTrach`, `Ten_CBTD`, `TrangThaiHD`, `NgayTatToan`, `NgayCapNhat`.
+- **`KH_CORE` (22 cột)**: `MaKH`, `HoTen`, `CCCD`, `NgayCap`, `NoiCap`, `NgaySinh`, `DienThoai`, `DienThoaiDD`, `DiaChi`, `KvXa`, `KvThon`, `KhuVuc`, `SoTK`, `SoTV`, `SoSoCP`, `NgayVaoTV`, `TongTienCP`, `TongDuNoHienTai`, `SoLuongHDVay`, `TrangThaiVay`, `NhomNoCIC`, `NgayCapNhat`.
+- **`DANG_KY_TRICH_NO` (15 cột)**: `SoHDTD`, `MaKH`, `TenKH`, `SoTK`, `NgayVay`, `TraLaiDenNgay`, `LaiSuat`, `SoTienLai`, `SoTienNo`, `SoGoc`, `TongTien`, `KyTrichNo`, `TrangThai`, `GhiChu`, `NgayTao`.
+- **`LICH_SU_TRICH_NO` (11 cột)**: `MaDot`, `SoHDTD`, `MaKH`, `TenKH`, `SoTK`, `TongTienPhaiThu`, `DaTrich`, `ConNo`, `TrangThaiCore`, `MaGiaoDichCore`, `NgayTrich`.
+- **`DOT_TRICH_NO` (10 cột)**: `MaDot`, `ThangNam`, `KyTrichNo`, `TongSoHD`, `TongSoKH`, `TongPhaiThu`, `TongDaTrich`, `TongConNo`, `TrangThai`, `NgayTao`.
+- **`NO_TON_DONG` (10 cột)**: `SoHDTD`, `MaKH`, `TenKH`, `GocTon`, `LaiTon`, `TongNoTon`, `KyPhatSinh`, `TrangThai`, `GhiChu`, `NgayCapNhat`.
+

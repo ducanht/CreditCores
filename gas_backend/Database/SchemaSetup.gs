@@ -71,30 +71,37 @@ var SchemaSetup = {
     },
     KH_CORE: {
       headers: [
-        "MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat",
-        "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "KvXa", "KvThon"
+        "MaKH", "HoTen", "CCCD", "NgayCap", "NoiCap", "NgaySinh",
+        "DienThoai", "DienThoaiDD", "DiaChi", "KvXa", "KvThon", "KhuVuc", "SoTK",
+        "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP",
+        "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "NgayCapNhat"
       ],
       color: "#004D40",
-      formats: { "D:D": "dd/MM/yyyy", "E:E": "@", "F:F": "dd/MM/yyyy", "H:J": "@", "N:N": "dd/MM/yyyy", "O:O": "#,##0", "P:P": "dd/MM/yyyy HH:mm:ss", "Q:R": "#,##0", "S:V": "@" },
-      colWidths: { 1: 100, 2: 180, 3: 220, 4: 110, 5: 130, 6: 110, 7: 160, 8: 110, 9: 110, 10: 140, 11: 140, 12: 100, 13: 100, 14: 110, 15: 130, 16: 160, 17: 140, 18: 110, 19: 120, 20: 120, 21: 140, 22: 140 }
+      formats: { "A:C": "@", "D:D": "dd/MM/yyyy", "E:E": "@", "F:F": "dd/MM/yyyy", "G:M": "@", "N:O": "@", "P:P": "dd/MM/yyyy", "Q:S": "#,##0", "T:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 100, 2: 180, 3: 130, 4: 110, 5: 160, 6: 110, 7: 110, 8: 110, 9: 220, 10: 130, 11: 130, 12: 140, 13: 140, 14: 100, 15: 100, 16: 110, 17: 130, 18: 140, 19: 110, 20: 120, 21: 110, 22: 160 }
     },
     HDTD_CORE: {
       headers: [
-        "SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat",
-        "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon"
+        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+        "SoThangVay", "MaLoaiVay", "MoTaVay",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
       ],
       color: "#1B365D",
-      formats: { "C:D": "#,##0", "E:E": "0.00", "F:H": "dd/MM/yyyy", "J:J": "#,##0", "L:M": "@", "N:N": "@", "O:O": "dd/MM/yyyy", "P:P": "dd/MM/yyyy HH:mm:ss", "Q:V": "@" },
-      colWidths: { 1: 130, 2: 100, 3: 130, 4: 130, 5: 90, 6: 110, 7: 110, 8: 120, 9: 140, 10: 90, 11: 220, 12: 140, 13: 160, 14: 120, 15: 120, 16: 160, 17: 180, 18: 130, 19: 120, 20: 220, 21: 140, 22: 140 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:T": "@", "U:U": "dd/MM/yyyy", "V:V": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 120, 22: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
       headers: [
-        "SoHDTD", "NgayVay", "TraLaiDenNgay", "LaiSuat", "MaKH", "TenKH", "SoTK", "SoTienLai", "SoTienNo", "SoGoc", "TongTien", "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
+        "SoHDTD", "MaKH", "TenKH", "SoTK",
+        "NgayVay", "TraLaiDenNgay", "LaiSuat",
+        "SoTienLai", "SoTienNo", "SoGoc", "TongTien",
+        "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
       ],
       color: "#0F5132",
-      formats: { "A:A": "@", "B:C": "dd/MM/yyyy", "D:D": "0.00", "E:G": "@", "H:K": "#,##0", "L:L": "#,##0", "M:N": "@", "O:O": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 110, 3: 110, 4: 90, 5: 100, 6: 180, 7: 140, 8: 120, 9: 120, 10: 120, 11: 140, 12: 90, 13: 120, 14: 200, 15: 160 }
+      formats: { "A:D": "@", "E:F": "dd/MM/yyyy", "G:G": "0.00", "H:K": "#,##0", "L:L": "#,##0", "M:N": "@", "O:O": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 140, 5: 110, 6: 120, 7: 90, 8: 120, 9: 120, 10: 120, 11: 140, 12: 90, 13: 120, 14: 200, 15: 160 }
     },
     LICH_SU_TRICH_NO: {
       aliases: ["CHI_TIET_TRICH_NO", "LICH_SU_GIAO_DICH"],

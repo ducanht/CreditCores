@@ -7,11 +7,23 @@ Mục đích: Module chuyên trách khởi tạo & tự động chữa lành c�
 ========================================================================================
 """
 
+import os
+import sys
+import json
 import logging
+from google.oauth2.service_account import Credentials
 import gspread
 
-# Cấu hình logger mặc định
-logger = logging.getLogger("CreditCoreSchemaHealer")
+# Bảo vệ mã hóa UTF-8 trên Windows Terminal khi in Emoji
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("SchemaHealer")
 
 # ========================================================================================
 # CẤU TRÚC 13+ BẢNG CHUẨN MỰC HỆ THỐNG CREDITCORES
@@ -47,26 +59,28 @@ ALL_SCHEMAS = {
     },
     "KH_CORE": {
         "headers": [
-            "MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap",
-            "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP",
-            "NgayVaoTV", "TongTienCP", "NgayCapNhat",
-            "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "KvXa", "KvThon"
+            "MaKH", "HoTen", "CCCD", "NgayCap", "NoiCap", "NgaySinh",
+            "DienThoai", "DienThoaiDD", "DiaChi", "KvXa", "KvThon", "KhuVuc", "SoTK",
+            "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP",
+            "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "NgayCapNhat"
         ],
         "color": {"red": 0.0, "green": 0.30, "blue": 0.25}
     },
     "HDTD_CORE": {
         "headers": [
-            "SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-            "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach",
-            "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat",
-            "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon"
+            "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+            "SoThangVay", "MaLoaiVay", "MoTaVay",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
         ],
         "color": {"red": 0.11, "green": 0.21, "blue": 0.36}
     },
     "DANG_KY_TRICH_NO": {
         "headers": [
-            "SoHDTD", "NgayVay", "TraLaiDenNgay", "LaiSuat", "MaKH", "TenKH", "SoTK",
-            "SoTienLai", "SoTienNo", "SoGoc", "TongTien", "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
+            "SoHDTD", "MaKH", "TenKH", "SoTK",
+            "NgayVay", "TraLaiDenNgay", "LaiSuat",
+            "SoTienLai", "SoTienNo", "SoGoc", "TongTien",
+            "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
         ],
         "color": {"red": 0.06, "green": 0.32, "blue": 0.20}
     },
@@ -164,7 +178,7 @@ def init_or_heal_database_schema(spreadsheet, log=None):
     """
     Rà soát toàn bộ các bảng trong CSDL Google Sheets:
     - Nếu bảng chưa tồn tại -> Tạo mới, thiết lập tiêu đề cột và màu sắc nhận diện.
-    - Nếu bảng đã tồn tại -> Kiểm tra và bổ sung cột còn thiếu (Zero Data Loss).
+    - Nếu bảng đã tồn tại -> Kiểm tra và remap dữ liệu theo tên cột (Zero Data Loss).
     """
     active_log = log or logger
     active_log.info("🔧 Bắt đầu rà soát và Self-Healing cấu trúc CSDL 13+ Bảng trên Google Sheets...")
@@ -206,12 +220,51 @@ def init_or_heal_database_schema(spreadsheet, log=None):
             active_log.info(f"✅ Đã tạo thành công bảng '{sheet_name}'.")
         else:
             ws = existing_worksheets[sheet_name]
-            cur_headers = ws.row_values(1)
+            all_vals = ws.get_all_values()
+            cur_headers = all_vals[0] if all_vals else []
+
             if not cur_headers:
                 ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
-            elif len(cur_headers) < len(headers):
-                active_log.info(f"🔄 Bảng '{sheet_name}' thiếu {len(headers) - len(cur_headers)} cột -> Tự động bổ sung...")
-                ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
+            elif cur_headers != headers:
+                active_log.info(f"🔄 Bảng '{sheet_name}' thay đổi thứ tự hoặc số lượng cột -> Tự động remap dữ liệu theo TÊN CỘT...")
+                old_map = {str(h).strip(): idx for idx, h in enumerate(cur_headers) if str(h).strip()}
+                
+                # Đảm bảo sheet có đủ số cột
+                if ws.col_count < len(headers):
+                    ws.add_cols(len(headers) - ws.col_count + 2)
+
+                if len(all_vals) > 1:
+                    new_data = []
+                    for row in all_vals[1:]:
+                        new_row = []
+                        for h in headers:
+                            old_idx = old_map.get(h)
+                            if old_idx is not None and old_idx < len(row):
+                                new_row.append(row[old_idx])
+                            else:
+                                new_row.append("")
+                        new_data.append(new_row)
+
+                    ws.clear()
+                    ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
+                    ws.update(
+                        values=new_data,
+                        range_name=f"A2:{gspread.utils.rowcol_to_a1(len(new_data) + 1, len(headers))}",
+                        value_input_option="USER_ENTERED"
+                    )
+                else:
+                    ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
+
+                try:
+                    if color:
+                        ws.format(f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}", {
+                            "backgroundColor": color,
+                            "horizontalAlignment": "CENTER",
+                            "textFormat": {"foregroundColor": {"red": 1, "green": 1, "blue": 1}, "bold": True}
+                        })
+                except Exception:
+                    pass
+                active_log.info(f"✅ Đã chuẩn hoá và sắp xếp lại cột thành công cho bảng '{sheet_name}'.")
 
     active_log.info("✨ Hoàn tất kiểm tra và đồng bộ cấu trúc CSDL Google Sheets!")
 
@@ -234,13 +287,29 @@ def get_or_create_worksheet(spreadsheet, title, headers, log=None):
 
 
 if __name__ == "__main__":
-    import sys
     print("=" * 70)
     print("🚀 CREDITCORES - CHƯƠNG TRÌNH TỰ ĐỘNG KHỞI TẠO & NÂNG CẤP CSDL GOOGLE SHEETS")
     print("   (Self-Healing Schema - Bảo toàn 100% dữ liệu cũ)")
     print("=" * 70)
     try:
-        init_or_heal_database_schema()
+        cfg = {}
+        if os.path.exists("config.json"):
+            with open("config.json", "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+
+        sheet_id = os.getenv("SHEET_ID") or cfg.get("google_sheet_id") or "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw"
+        cred_path = os.getenv("JSON_PATH") or cfg.get("credentials_file") or "credentials.json"
+
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = Credentials.from_service_account_file(cred_path, scopes=scopes)
+        gc = gspread.authorize(creds)
+        spreadsheet = gc.open_by_key(sheet_id)
+        print(f"📊 Đã kết nối thành công Spreadsheet: {spreadsheet.title} ({sheet_id})")
+
+        init_or_heal_database_schema(spreadsheet)
         print("\n✅ THÀNH CÔNG: Toàn bộ cấu trúc CSDL đã được đồng bộ chuẩn xác!")
     except Exception as e:
         print(f"\n❌ LỖI KHỞI TẠO: {e}", file=sys.stderr)
