@@ -480,7 +480,7 @@ var DashboardController = {
       loanGroups: Object.values(loanGroups)
     };
 
-    CacheHelper.setCachedData('dashboard_stats', result, 15);
+    CacheHelper.setCachedData('dashboard_stats', result, CacheHelper.TIERS.HOT);
     return { status: "success", data: result };
   }
 };

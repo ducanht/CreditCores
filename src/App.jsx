@@ -1,23 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
 import Dashboard from './components/Dashboard';
-import Customer360 from './components/Customer360';
-import Appraisal from './components/Appraisal';
-import LoanInspection from './components/LoanInspection';
-import DebitManager from './components/DebitManager';
-import Reconciliation from './components/Reconciliation';
-import DebtWarning from './components/DebtWarning';
-import Reports from './components/Reports';
-import Settings from './components/Settings';
-import UserManagement from './components/UserManagement';
-import TemplateManager from './components/TemplateManager';
 import LoginModal from './components/LoginModal';
-import ChangePasswordModal from './components/ChangePasswordModal';
-import CustomerQuickModal from './components/CustomerQuickModal';
-import CollateralManager from './components/CollateralManager';
 import { api } from './services/api';
 import { AuthService } from './services/auth';
+
+// Tối ưu Code-Splitting: Lazy loading các phân hệ để khởi chạy trang Tổng Quan tức thì
+const Customer360 = lazy(() => import('./components/Customer360'));
+const CollateralManager = lazy(() => import('./components/CollateralManager'));
+const Appraisal = lazy(() => import('./components/Appraisal'));
+const LoanInspection = lazy(() => import('./components/LoanInspection'));
+const DebitManager = lazy(() => import('./components/DebitManager'));
+const Reconciliation = lazy(() => import('./components/Reconciliation'));
+const DebtWarning = lazy(() => import('./components/DebtWarning'));
+const Reports = lazy(() => import('./components/Reports'));
+const TemplateManager = lazy(() => import('./components/TemplateManager'));
+const UserManagement = lazy(() => import('./components/UserManagement'));
+const Settings = lazy(() => import('./components/Settings'));
+const ChangePasswordModal = lazy(() => import('./components/ChangePasswordModal'));
+const CustomerQuickModal = lazy(() => import('./components/CustomerQuickModal'));
+
+// Dynamic Prefetching Map
+const TAB_PREFETCHERS = {
+  customer360: () => import('./components/Customer360'),
+  collateral: () => import('./components/CollateralManager'),
+  appraisal: () => import('./components/Appraisal'),
+  inspection: () => import('./components/LoanInspection'),
+  debit_register: () => import('./components/DebitManager'),
+  debit_batch: () => import('./components/DebitManager'),
+  reconciliation: () => import('./components/Reconciliation'),
+  debt_warning: () => import('./components/DebtWarning'),
+  reports: () => import('./components/Reports'),
+  templates: () => import('./components/TemplateManager'),
+  user_management: () => import('./components/UserManagement'),
+  settings: () => import('./components/Settings')
+};
+
+// UI Skeleton khi chuyển đổi phân hệ (0 layout shift)
+function TabLoadingSkeleton({ title = 'Đang nạp phân hệ...' }) {
+  return (
+    <div className="tab-loading-skeleton p-4 animate-fade-in">
+      <div className="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+        <div>
+          <div className="placeholder-glow">
+            <span className="placeholder col-5 placeholder-lg mb-2 rounded bg-secondary opacity-25"></span>
+          </div>
+          <div className="d-flex align-items-center gap-2 text-muted" style={{ fontSize: '0.85rem' }}>
+            <span className="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true"></span>
+            <span>{title}</span>
+          </div>
+        </div>
+        <div className="placeholder-glow">
+          <span className="placeholder rounded px-4 py-2 bg-secondary opacity-25" style={{ width: 130, height: 36, display: 'inline-block' }}></span>
+        </div>
+      </div>
+      <div className="row g-3 mb-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="col-12 col-md-3">
+            <div className="card border-0 shadow-sm p-3" style={{ borderRadius: 12 }}>
+              <div className="placeholder-glow">
+                <span className="placeholder col-6 mb-2 bg-secondary opacity-25 rounded"></span>
+                <span className="placeholder col-10 placeholder-lg bg-secondary opacity-25 rounded"></span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="card border-0 shadow-sm p-4" style={{ borderRadius: 12 }}>
+        <div className="placeholder-glow">
+          <span className="placeholder col-12 mb-3 py-3 rounded bg-secondary opacity-25"></span>
+          <span className="placeholder col-12 mb-2 rounded bg-secondary opacity-25"></span>
+          <span className="placeholder col-12 mb-2 rounded bg-secondary opacity-25"></span>
+          <span className="placeholder col-8 rounded bg-secondary opacity-25"></span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const TAB_TITLES = {
   dashboard: 'Tổng Quan',
@@ -120,8 +180,27 @@ export default function App() {
           }).catch(err => console.error('Background SQL Sync error:', err));
         }, { timeout: 10000 });
       }
+
+      // Prefetch các tab thường dùng nhất khi trình duyệt nhàn rỗi (Customer 360 & Reports)
+      const idlePrefetch = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500));
+      const idleId = idlePrefetch(() => {
+        if (TAB_PREFETCHERS.customer360) TAB_PREFETCHERS.customer360();
+        if (TAB_PREFETCHERS.reports) TAB_PREFETCHERS.reports();
+      });
+
+      return () => {
+        if (window.cancelIdleCallback && idleId) {
+          window.cancelIdleCallback(idleId);
+        }
+      };
     }
   }, [currentUser]);
+
+  const handlePrefetchTab = (tabId) => {
+    if (TAB_PREFETCHERS[tabId]) {
+      TAB_PREFETCHERS[tabId]();
+    }
+  };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -204,6 +283,7 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={handleSelectTab}
+        onPrefetchTab={handlePrefetchTab}
         currentUser={currentUser}
         onOpenChangePass={() => setShowChangePassModal(true)}
         onLogout={handleLogout}
@@ -228,99 +308,103 @@ export default function App() {
         />
 
         <main className="content-area">
-          {activeTab === 'dashboard' && (
-            <Dashboard 
-              stats={stats} 
-              onNavigate={handleSelectTab} 
-              onRefresh={fetchInitialData}
-              syncStatus={syncStatus}
-              currentUser={currentUser}
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+          <Suspense fallback={<TabLoadingSkeleton title={`Đang tải ${TAB_TITLES[activeTab] || 'phân hệ'}...`} />}>
+            {activeTab === 'dashboard' && (
+              <Dashboard 
+                stats={stats} 
+                onNavigate={handleSelectTab} 
+                onRefresh={fetchInitialData}
+                syncStatus={syncStatus}
+                currentUser={currentUser}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'customer360' && (
-            <Customer360
-              currentUser={currentUser}
-              onNavigateToAppraisal={handleNavigateToAppraisal}
-              onNavigateToInspection={handleNavigateToInspection}
-              onNavigateToDebit={handleNavigateToDebit}
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+            {activeTab === 'customer360' && (
+              <Customer360
+                currentUser={currentUser}
+                onNavigateToAppraisal={handleNavigateToAppraisal}
+                onNavigateToInspection={handleNavigateToInspection}
+                onNavigateToDebit={handleNavigateToDebit}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'collateral' && (
-            <CollateralManager
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+            {activeTab === 'collateral' && (
+              <CollateralManager
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'appraisal' && (
-            <Appraisal 
-              currentUser={currentUser}
-              prefilledCustomer={prefilledCustomer} 
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+            {activeTab === 'appraisal' && (
+              <Appraisal 
+                currentUser={currentUser}
+                prefilledCustomer={prefilledCustomer} 
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'inspection' && (
-            <LoanInspection 
-              prefilledContract={prefilledContract}
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+            {activeTab === 'inspection' && (
+              <LoanInspection 
+                prefilledContract={prefilledContract}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'debit_register' && (
-            <DebitManager 
-              initialSubTab="register"
-              prefilledCustomer={prefilledCustomer}
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+            {activeTab === 'debit_register' && (
+              <DebitManager 
+                initialSubTab="register"
+                prefilledCustomer={prefilledCustomer}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'debit_batch' && (
-            <DebitManager 
-              initialSubTab="batch"
-              prefilledCustomer={null}
-              onOpenCustomerQuickView={handleOpenCustomerQuickView}
-            />
-          )}
+            {activeTab === 'debit_batch' && (
+              <DebitManager 
+                initialSubTab="batch"
+                prefilledCustomer={null}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
-          {activeTab === 'reconciliation' && <Reconciliation />}
+            {activeTab === 'reconciliation' && <Reconciliation />}
 
-          {activeTab === 'debt_warning' && (
-            <DebtWarning onOpenCustomerQuickView={handleOpenCustomerQuickView} />
-          )}
+            {activeTab === 'debt_warning' && (
+              <DebtWarning onOpenCustomerQuickView={handleOpenCustomerQuickView} />
+            )}
 
-          {activeTab === 'reports' && <Reports />}
+            {activeTab === 'reports' && <Reports />}
 
-          {activeTab === 'templates' && <TemplateManager />}
+            {activeTab === 'templates' && <TemplateManager />}
 
-          {activeTab === 'user_management' && <UserManagement />}
+            {activeTab === 'user_management' && <UserManagement />}
 
-          {activeTab === 'settings' && (
-            <Settings
-              syncStatus={syncStatus}
-              isSyncing={isSyncing}
-              onTriggerSync={handleTriggerSync}
-            />
-          )}
+            {activeTab === 'settings' && (
+              <Settings
+                syncStatus={syncStatus}
+                isSyncing={isSyncing}
+                onTriggerSync={handleTriggerSync}
+              />
+            )}
+          </Suspense>
         </main>
       </div>
 
-      {showChangePassModal && (
-        <ChangePasswordModal onClose={() => setShowChangePassModal(false)} />
-      )}
+      <Suspense fallback={null}>
+        {showChangePassModal && (
+          <ChangePasswordModal onClose={() => setShowChangePassModal(false)} />
+        )}
 
-      {quickViewCustomer && (
-        <CustomerQuickModal
-          customer={quickViewCustomer}
-          onClose={() => setQuickViewCustomer(null)}
-          onNavigateToAppraisal={handleNavigateToAppraisal}
-          onNavigateToInspection={handleNavigateToInspection}
-          onNavigateToDebit={handleNavigateToDebit}
-        />
-      )}
+        {quickViewCustomer && (
+          <CustomerQuickModal
+            customer={quickViewCustomer}
+            onClose={() => setQuickViewCustomer(null)}
+            onNavigateToAppraisal={handleNavigateToAppraisal}
+            onNavigateToInspection={handleNavigateToInspection}
+            onNavigateToDebit={handleNavigateToDebit}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

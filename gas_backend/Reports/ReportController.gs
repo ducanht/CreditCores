@@ -348,7 +348,7 @@ var ReportController = {
       }
     };
 
-    CacheHelper.setCachedData('reports_data_v2', finalResult, 30);
+    CacheHelper.setCachedData('reports_data_v2', finalResult, CacheHelper.TIERS.WARM);
     return { status: "success", data: finalResult };
   }
 };

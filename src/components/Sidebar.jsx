@@ -25,6 +25,7 @@ import { AuthService, ROLE_LABELS } from '../services/auth';
 export default function Sidebar({
   activeTab,
   setActiveTab,
+  onPrefetchTab,
   currentUser,
   onOpenChangePass,
   onLogout,
@@ -154,6 +155,8 @@ export default function Sidebar({
                 )}
                 <div
                   onClick={() => handleSelectTab(item.id)}
+                  onMouseEnter={() => onPrefetchTab && onPrefetchTab(item.id)}
+                  onFocus={() => onPrefetchTab && onPrefetchTab(item.id)}
                   title={isCollapsed ? item.label : undefined}
                   style={{
                     display: 'flex',
