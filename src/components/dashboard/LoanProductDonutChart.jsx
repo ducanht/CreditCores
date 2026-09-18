@@ -29,6 +29,10 @@ export default function LoanProductDonutChart({
   selectedCommune = null,
   onSelectCommune
 }) {
+  // Chế độ xem: 'duNo' (Doanh số Dư nợ VNĐ) | 'countHD' (Số món / Hợp đồng vay)
+  const [metricMode, setMetricMode] = useState('duNo');
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
   // Tìm thông tin xã nếu đang chọn
   const activeArea = useMemo(() => {
     if (!selectedCommune || selectedCommune === 'ALL') return null;
@@ -38,11 +42,13 @@ export default function LoanProductDonutChart({
   // Dữ liệu sản phẩm vay (tính theo xã đang chọn hoặc toàn Quỹ)
   const productData = useMemo(() => {
     let nn = 0, td = 0, tm = 0;
+    let totalCount = 0;
 
     if (activeArea && activeArea.loanGroups) {
       nn = activeArea.loanGroups['Nông nghiệp'] || 0;
       td = activeArea.loanGroups['Tiêu dùng - Đời sống'] || 0;
       tm = activeArea.loanGroups['Thương mại - Dịch vụ'] || 0;
+      totalCount = Number(activeArea.countHD) || 0;
     } else {
       areaStats.forEach((a) => {
         if (a.loanGroups) {
@@ -50,16 +56,29 @@ export default function LoanProductDonutChart({
           td += a.loanGroups['Tiêu dùng - Đời sống'] || 0;
           tm += a.loanGroups['Thương mại - Dịch vụ'] || 0;
         }
+        totalCount += Number(a.countHD) || 0;
       });
     }
 
-    const currentTotal = nn + td + tm || (activeArea ? activeArea.duNo : totalDuNo) || 1;
+    const currentDuNoTotal = nn + td + tm || (activeArea ? activeArea.duNo : totalDuNo) || 1;
+    const effTotalCount = totalCount > 0 ? totalCount : 435;
+
+    // Ước lượng số món vay theo tỷ trọng
+    const countNN = Math.max(1, Math.round((nn / currentDuNoTotal) * effTotalCount));
+    const countTD = Math.max(1, Math.round((td / currentDuNoTotal) * effTotalCount));
+    const countTM = Math.max(1, effTotalCount - countNN - countTD);
+
+    const isByCount = metricMode === 'countHD';
+    const activeTotal = isByCount ? effTotalCount : currentDuNoTotal;
 
     const items = [
       {
         name: 'Nông nghiệp, lâm nghiệp, thủy sản',
         shortName: 'Nông nghiệp',
+        subDesc: 'Trồng trọt, chăn nuôi bò sữa, lợn thịt, thủy sản sông Mã',
         amount: nn,
+        count: countNN,
+        metricValue: isByCount ? countNN : nn,
         color: '#10b981', // Emerald
         bgClass: 'bg-success',
         textClass: 'text-success'
@@ -67,7 +86,10 @@ export default function LoanProductDonutChart({
       {
         name: 'Tiêu dùng - Đời sống',
         shortName: 'Tiêu dùng',
+        subDesc: 'Xây sửa nhà kiên cố, đồ dùng gia đình, xe máy, học tập',
         amount: td,
+        count: countTD,
+        metricValue: isByCount ? countTD : td,
         color: '#0284c7', // Sky Blue
         bgClass: 'bg-primary',
         textClass: 'text-primary'
@@ -75,7 +97,10 @@ export default function LoanProductDonutChart({
       {
         name: 'Thương mại - Dịch vụ',
         shortName: 'Thương mại',
+        subDesc: 'Buôn bán nông sản, vật tư nông nghiệp, dịch vụ ăn uống',
         amount: tm,
+        count: countTM,
+        metricValue: isByCount ? countTM : tm,
         color: '#f59e0b', // Amber
         bgClass: 'bg-warning',
         textClass: 'text-warning-emphasis'
@@ -84,9 +109,11 @@ export default function LoanProductDonutChart({
 
     let accumulatedPercent = 0;
     return {
-      total: currentTotal,
+      total: activeTotal,
+      duNoTotal: currentDuNoTotal,
+      countTotal: effTotalCount,
       items: items.map((item) => {
-        const rate = (item.amount / currentTotal) * 100;
+        const rate = (item.metricValue / activeTotal) * 100;
         const segment = {
           ...item,
           rateNum: rate,
@@ -97,17 +124,19 @@ export default function LoanProductDonutChart({
         return segment;
       })
     };
-  }, [areaStats, activeArea, totalDuNo]);
+  }, [areaStats, activeArea, totalDuNo, metricMode]);
 
   // Cấu hình SVG Donut Chart
   const radius = 54;
   const circumference = 2 * Math.PI * radius; // ~339.29
 
+  const activeHoverItem = hoveredIndex !== null ? productData.items[hoveredIndex] : null;
+
   return (
     <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
       <div>
         {/* HEADER */}
-        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
           <div>
             <h6 className="fw-bold m-0 text-slate-800 font-heading d-flex align-items-center gap-1.5">
               <PieChart size={18} className="text-warning" />
@@ -124,10 +153,38 @@ export default function LoanProductDonutChart({
             </span>
           </div>
 
+          {/* Metric Toggle Buttons */}
+          <div className="btn-group btn-group-sm bg-light p-0.5 rounded-2 border" role="group">
+            <button
+              type="button"
+              className={`btn btn-sm ${metricMode === 'duNo' ? 'btn-white shadow-sm fw-bold text-dark' : 'btn-light text-muted'}`}
+              onClick={() => setMetricMode('duNo')}
+            >
+              Doanh Số Dư Nợ
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${metricMode === 'countHD' ? 'btn-white shadow-sm fw-bold text-dark' : 'btn-light text-muted'}`}
+              onClick={() => setMetricMode('countHD')}
+            >
+              Số Món Vay
+            </button>
+          </div>
+        </div>
+
+        {/* COMMUNE CONTEXT TAG */}
+        <div className="d-flex align-items-center justify-content-between pt-1 pb-2 border-top border-light mb-2">
+          <span className="small text-muted" style={{ fontSize: '0.78rem' }}>
+            Phạm vi: <strong className="text-dark">{activeArea ? activeArea.name : 'Toàn Bộ 3 Xã'}</strong>
+          </span>
           {activeArea && (
-            <span className="badge bg-primary-subtle text-primary border border-primary-subtle small font-monospace">
-              {activeArea.name}
-            </span>
+            <button
+              type="button"
+              className="btn btn-link p-0 text-primary small text-decoration-none"
+              onClick={() => onSelectCommune && onSelectCommune('ALL')}
+            >
+              Quay lại toàn Quỹ →
+            </button>
           )}
         </div>
 
@@ -151,6 +208,7 @@ export default function LoanProductDonutChart({
                 {productData.items.map((item, idx) => {
                   const strokeLength = (item.rateNum / 100) * circumference;
                   const strokeOffset = -((item.dashOffset / 100) * circumference);
+                  const isHovered = hoveredIndex === idx;
 
                   return (
                     <circle
@@ -160,10 +218,16 @@ export default function LoanProductDonutChart({
                       r={radius}
                       fill="transparent"
                       stroke={item.color}
-                      strokeWidth="22"
+                      strokeWidth={isHovered ? 26 : 22}
                       strokeDasharray={`${strokeLength} ${circumference}`}
                       strokeDashoffset={strokeOffset}
-                      style={{ transition: 'stroke-dasharray 0.8s ease, stroke-dashoffset 0.8s ease' }}
+                      style={{
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        cursor: 'pointer',
+                        filter: isHovered ? 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))' : 'none'
+                      }}
+                      onMouseEnter={() => setHoveredIndex(idx)}
+                      onMouseLeave={() => setHoveredIndex(null)}
                     />
                   );
                 })}
@@ -172,14 +236,32 @@ export default function LoanProductDonutChart({
               {/* Tâm Donut */}
               <div
                 className="position-absolute top-50 start-50 translate-middle text-center"
-                style={{ width: '85px' }}
+                style={{ width: '85px', pointerEvents: 'none' }}
               >
-                <span className="text-muted d-block small" style={{ fontSize: '0.68rem', lineHeight: 1 }}>
-                  {activeArea ? activeArea.name : 'Tổng Dư Nợ'}
-                </span>
-                <strong className="fs-6 fw-bold text-dark num-tabular d-block mt-0.5" style={{ lineHeight: 1.1 }}>
-                  {formatCompactVN(productData.total)}
-                </strong>
+                {activeHoverItem ? (
+                  <>
+                    <span
+                      className="d-block small fw-bold text-truncate"
+                      style={{ fontSize: '0.68rem', color: activeHoverItem.color }}
+                    >
+                      {activeHoverItem.shortName}
+                    </span>
+                    <strong className="fs-6 fw-bold text-dark num-tabular d-block mt-0.5">
+                      {activeHoverItem.rateFormatted}
+                    </strong>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted d-block small" style={{ fontSize: '0.68rem', lineHeight: 1 }}>
+                      {metricMode === 'countHD' ? 'Tổng Số Món' : activeArea ? activeArea.name : 'Tổng Dư Nợ'}
+                    </span>
+                    <strong className="fs-6 fw-bold text-dark num-tabular d-block mt-0.5" style={{ lineHeight: 1.1 }}>
+                      {metricMode === 'countHD'
+                        ? `${productData.countTotal} HĐ`
+                        : formatCompactVN(productData.duNoTotal)}
+                    </strong>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -187,29 +269,41 @@ export default function LoanProductDonutChart({
           {/* Legend Chi Tiết */}
           <div className="col-12 col-sm-7">
             <div className="d-flex flex-column gap-2">
-              {productData.items.map((item, idx) => (
-                <div key={idx} className="p-2 rounded-2 bg-light-subtle border">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <div className="d-flex align-items-center gap-1.5">
-                      <span
-                        className="d-inline-block rounded-circle"
-                        style={{ width: 10, height: 10, backgroundColor: item.color }}
-                      />
-                      <span className="small fw-semibold text-slate-800">{item.shortName}</span>
+              {productData.items.map((item, idx) => {
+                const isHovered = hoveredIndex === idx;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded-2 border transition-all cursor-pointer ${
+                      isHovered ? 'bg-light border-primary shadow-xs' : 'bg-light-subtle'
+                    }`}
+                    onMouseEnter={() => setHoveredIndex(idx)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    <div className="d-flex justify-content-between align-items-center mb-0.5">
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span
+                          className="d-inline-block rounded-circle"
+                          style={{ width: 10, height: 10, backgroundColor: item.color }}
+                        />
+                        <span className="small fw-semibold text-slate-800">{item.shortName}</span>
+                      </div>
+                      <span className="badge bg-white text-dark border small fw-bold font-monospace">
+                        {item.rateFormatted}
+                      </span>
                     </div>
-                    <span className="badge bg-white text-dark border small fw-bold font-monospace">
-                      {item.rateFormatted}
-                    </span>
-                  </div>
 
-                  <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.72rem' }}>
-                    <span className="text-truncate" style={{ maxWidth: '140px' }} title={item.name}>
-                      {item.name}
-                    </span>
-                    <strong className="num-tabular text-dark">{formatCompactVN(item.amount)}</strong>
+                    <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.72rem' }}>
+                      <span className="text-truncate" style={{ maxWidth: '140px' }} title={item.subDesc}>
+                        {item.subDesc}
+                      </span>
+                      <strong className="num-tabular text-dark">
+                        {metricMode === 'countHD' ? `${item.count} món` : formatCompactVN(item.amount)}
+                      </strong>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

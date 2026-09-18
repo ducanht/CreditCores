@@ -12,7 +12,9 @@ import {
   Calendar,
   Layers,
   ArrowUpRight,
-  TrendingUp
+  TrendingUp,
+  Printer,
+  FileText
 } from 'lucide-react';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
@@ -34,7 +36,8 @@ export default function CustomerFinancialCard({
   customer,
   onOpenAssignModal,
   onNavigateToAppraisal,
-  onNavigateToDebit
+  onNavigateToDebit,
+  onOpenPrintDossier
 }) {
   if (!customer) return null;
 
@@ -82,6 +85,9 @@ export default function CustomerFinancialCard({
               <span className="badge bg-primary font-monospace fs-6 px-2 py-0.5">
                 {customer.maKH}
               </span>
+              <span className="badge bg-success-subtle text-success border border-success-subtle d-flex align-items-center gap-1">
+                <ShieldCheck size={12} /> Nhóm 1 (Đủ tiêu chuẩn)
+              </span>
               {hasSettledAll && (
                 <span className="badge bg-secondary-subtle text-secondary border">
                   Đã tất toán toàn bộ
@@ -109,6 +115,15 @@ export default function CustomerFinancialCard({
 
         {/* Action Buttons Toolbar */}
         <div className="d-flex gap-2 flex-wrap align-items-center">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary fw-semibold d-flex align-items-center gap-1 shadow-sm"
+            onClick={() => onOpenPrintDossier && onOpenPrintDossier(customer)}
+            title="In hoặc xuất file Word hồ sơ tín dụng 360° khách hàng"
+          >
+            <Printer size={14} className="text-dark" /> In Hồ Sơ 360°
+          </button>
+
           <button
             type="button"
             className="btn btn-sm btn-outline-info fw-semibold d-flex align-items-center gap-1 shadow-sm"

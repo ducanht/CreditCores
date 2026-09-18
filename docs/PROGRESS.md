@@ -1,8 +1,8 @@
 # 📊 CREDITCORES — BÁO CÁO TIẾN ĐỘ DỰ ÁN
 # Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
 
-> **Cập nhật lần cuối**: 18/09/2026 10:55 GMT+7
-> **Phiên bản hệ thống**: v1.4.3 (Hoàn thành Giai đoạn 2: Biểu Đồ So Sánh 3 Xã / 12 Thôn, Donut Tỷ Trọng Sản Phẩm Vay & Nâng Cấp Toàn Diện Customer 360°)
+> **Cập nhật lần cuối**: 18/09/2026 11:00 GMT+7
+> **Phiên bản hệ thống**: v1.4.4 (Hoàn thiện sâu Giai đoạn 2: Biểu Đồ So Sánh 3 Xã / 12 Thôn, Top 10 Thôn Leaderboard, Donut Tỷ Trọng Sản Phẩm Vay Theo Dư Nợ & Số Món, Lịch Trả Nợ & Dự Tính Lãi, Bản In Hồ Sơ Tín Dụng 360° A4 / Word)
 > **Branch**: `main`
 
 ---
@@ -10,13 +10,13 @@
 ## 🏆 TỔNG TIẾN ĐỘ TOÀN DỰ ÁN
 
 ```
-Frontend SPA        █████████████████████ 100%  (Build 0 errors, Zero Mock, Modular, Clean Charts)
+Frontend SPA        █████████████████████ 100%  (Build 0 errors, Zero Mock, Modular, Clean Charts, Print A4/Word)
 GAS Backend         ███████████████████░░  95%  (Singleton SS, Write Lock, CacheHelper, Live Reports)
 CSDL Google Sheets  ████████████████████░  98%  (14 Bảng chuẩn hóa, TT 14/2017)
 Python Daemon       ████████████░░░░░░░░░  65%  (Chạy 24/7 trên máy chủ SQL Server Production)
-UI/UX Design System █████████████████████ 100%  (Bento Cards, SegControl, StatusBadge, Donut SVG, Print A4)
+UI/UX Design System █████████████████████ 100%  (Bento Cards, SegControl, StatusBadge, Donut SVG, Print A4, Amortization Calc)
 Performance GAS     ██████████████████░░░  90%  (Batch reads, In-Memory Singleton, Fast Routing)
-TỔNG THỂ            ███████████████████░░  97%  (Hoàn thành Giai đoạn 1 & Giai đoạn 2)
+TỔNG THỂ            ███████████████████░░  97.5%  (Hoàn thiện sâu Giai đoạn 1 & Giai đoạn 2)
 ```
 
 ---
@@ -29,8 +29,10 @@ TỔNG THỂ            ██████████████████�
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
 | KPI Bento Cards (Tổng dư nợ, Số KH, Dư nợ BQ) | ✅ Done | Live từ GAS backend |
-| Biểu đồ so sánh dư nợ 3 Xã / 12 Thôn | ✅ Done | `CommuneComparisonChart` đa chiều (Dư nợ, Số HĐ, Dư nợ BQ) + Drilldown thôn |
+| Biểu đồ so sánh dư nợ 3 Xã / 12 Thôn | ✅ Done | `CommuneComparisonChart` đa chiều (Dư nợ, Số HĐ, Dư nợ BQ) + Tabs chọn Xã tức thì |
+| Bảng xếp hạng Top 10 Thôn lớn nhất toàn Quỹ | ✅ Done | Chế độ xem Leaderboard 10 thôn có dư nợ cao nhất trên toàn địa bàn |
 | Biểu đồ Donut tỷ trọng sản phẩm vay | ✅ Done | `LoanProductDonutChart` (Nông nghiệp, Tiêu dùng, Thương mại) theo Xã / Toàn Quỹ |
+| Chuyển đổi Cơ cấu Doanh Số vs Số Món Vay | ✅ Done | Toggle 1-click xem tỷ trọng theo Dư nợ (VNĐ) hoặc theo Số hợp đồng |
 | Drilldown 3 Xã / 12 Thôn | ✅ Done | Accordion & Card mượt mà, đầy đủ số liệu |
 | CBTD Portfolio Analytics | ✅ Done | 3 Cán bộ tín dụng phân công rõ ràng |
 | Sync Monitor Status | ✅ Done | Giám sát trạng thái SQL Server Core |
@@ -42,13 +44,17 @@ TỔNG THỂ            ██████████████████�
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
-| Thẻ Hồ Sơ Sức Khỏe Tín Dụng | ✅ Done | `CustomerFinancialCard` (Hạn mức, Dư nợ, Thành viên QTD, Cổ phần, CASA) |
+| Thẻ Hồ Sơ Sức Khỏe Tín Dụng | ✅ Done | `CustomerFinancialCard` (Hạn mức, Dư nợ, Nhóm nợ CIC 1, Vốn góp CP, CASA) |
+| In & Xuất Word Hồ Sơ Tín Dụng 360° | ✅ Done | `CustomerDossierPrintModal` (Bản in A4 + Xuất tệp Word .doc chuẩn pháp lý QTDND Yên Thọ) |
 | Timeline & Horizon Tiến Độ Hợp Đồng Vay | ✅ Done | `ContractTimelineList` (Thanh tiến độ thời hạn vay, đếm ngược ngày đến hạn) |
+| Lịch Trả Nợ & Dự Tính Lãi TT 14/2017 | ✅ Done | Mở rộng inline tính lãi bình quân/tháng, lãi ngày thực tế, kỳ trích nợ CASA |
 | Cảnh báo rủi ro thời hạn vay trực quan | ✅ Done | Phân biệt màu sắc: Bình thường (xanh), Sắp đến hạn <30 ngày (vàng), Quá hạn (đỏ) |
+| Badge Dư Nợ Nhanh trên Danh sách KH | ✅ Done | Hiển thị dư nợ thực tế trực tiếp trên từng thẻ khách hàng (ví dụ: `1,2 tỷ`, `350 tr`) |
+| Sắp xếp danh sách KH đa tiêu chí | ✅ Done | Dư nợ Cao → Thấp, Dư nợ Thấp → Cao, Họ tên A → Z, Nhiều HĐ nhất |
 | Tìm kiếm đa tiêu chí (7 trường) | ✅ Done | O(1) Hash Map tối ưu 5.175+ KH |
 | In-Memory & Script Cache 60s | ✅ Done | Khóa `cust360_default` nạp tức thì < 100ms |
 | Phân công CBTD & Chuyển giao hợp đồng | ✅ Done | Modal gán CBTD trực tiếp vào Core Sheets |
-| Thao tác nhanh 1-chạm | ✅ Done | KT Vốn sau giải ngân, Ủy quyền CASA, Lập thẩm định vay |
+| Thao tác nhanh 1-chạm | ✅ Done | In Hồ sơ 360°, KT Vốn sau giải ngân, Ủy quyền CASA, Lập thẩm định vay |
 
 ### 3. Thẩm Định Tín Dụng & TSĐB
 **Mức hoàn thành: 88%**

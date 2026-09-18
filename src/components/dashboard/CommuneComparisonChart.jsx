@@ -32,6 +32,8 @@ export default function CommuneComparisonChart({
 }) {
   // Metric so sánh: 'duNo' (Dư nợ VNĐ) | 'countHD' (Số hợp đồng) | 'avgLoan' (Dư nợ bình quân)
   const [metric, setMetric] = useState('duNo');
+  // Chế độ xem: 'standard' (3 Xã hoặc các Thôn của Xã đã chọn) | 'top_thons' (Bảng xếp hạng Top 10 Thôn toàn Quỹ)
+  const [viewMode, setViewMode] = useState('standard');
   const [hoveredBar, setHoveredBar] = useState(null);
 
   // Danh sách xã hiện tại
@@ -42,8 +44,36 @@ export default function CommuneComparisonChart({
     );
   }, [areaStats, selectedCommune]);
 
-  // Dataset hiển thị: hoặc 3 Xã, hoặc các Thôn của Xã đang chọn
+  // Dataset hiển thị: hoặc 3 Xã, hoặc các Thôn của Xã đang chọn, hoặc Top 10 Thôn toàn Quỹ
   const displayItems = useMemo(() => {
+    // 1. Chế độ Top Thôn toàn Quỹ
+    if (viewMode === 'top_thons') {
+      const allThons = [];
+      areaStats.forEach((a) => {
+        (a.thons || []).forEach((th) => {
+          const duNo = Number(th.duNo) || 0;
+          const countHD = Number(th.countHD) || 0;
+          const countKH = Number(th.countKH) || 0;
+          const avgLoan = countHD > 0 ? duNo / countHD : 0;
+          allThons.push({
+            id: `${a.name}_${th.name}`,
+            label: th.name,
+            subLabel: `${a.name} • ${countHD} HĐ`,
+            duNo,
+            countHD,
+            countKH,
+            avgLoan,
+            parentCommune: a.name
+          });
+        });
+      });
+
+      return allThons
+        .sort((a, b) => (b[metric] || 0) - (a[metric] || 0))
+        .slice(0, 10);
+    }
+
+    // 2. Chế độ Xem Thôn của Xã đang chọn
     if (selectedAreaData && selectedAreaData.thons && selectedAreaData.thons.length > 0) {
       return selectedAreaData.thons.map((th) => {
         const duNo = Number(th.duNo) || 0;
@@ -63,6 +93,7 @@ export default function CommuneComparisonChart({
       });
     }
 
+    // 3. Chế độ So sánh 3 Xã
     return areaStats.map((a, idx) => {
       const duNo = Number(a.duNo) || 0;
       const countHD = Number(a.countHD) || 0;
@@ -79,7 +110,7 @@ export default function CommuneComparisonChart({
         colorIndex: idx
       };
     });
-  }, [areaStats, selectedAreaData]);
+  }, [areaStats, selectedAreaData, viewMode, metric]);
 
   // Tìm giá trị max để vẽ tỷ lệ thanh bar
   const maxVal = useMemo(() => {
@@ -100,12 +131,14 @@ export default function CommuneComparisonChart({
     <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
       {/* HEADER BIỂU ĐỒ & BỘ LỌC CHỈ SỐ */}
       <div>
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
           <div>
             <div className="d-flex align-items-center gap-2">
               <h6 className="fw-bold m-0 text-slate-800 font-heading d-flex align-items-center gap-1.5">
                 <BarChart3 size={18} className="text-primary" />
-                {selectedAreaData ? (
+                {viewMode === 'top_thons' ? (
+                  'Top 10 Thôn Có Dư Nợ Tín Dụng Lớn Nhất Toàn Quỹ'
+                ) : selectedAreaData ? (
                   <>
                     So Sánh Dư Nợ Các Thôn Thuộc <span className="text-primary">{selectedAreaData.name}</span>
                   </>
@@ -113,21 +146,13 @@ export default function CommuneComparisonChart({
                   'Biểu Đồ So Sánh Dư Nợ Tín Dụng Giữa 3 Xã'
                 )}
               </h6>
-              {selectedAreaData && (
-                <button
-                  type="button"
-                  className="btn btn-xs btn-outline-secondary d-flex align-items-center gap-1 py-0.5 px-2"
-                  onClick={() => onSelectCommune && onSelectCommune('ALL')}
-                  title="Quay lại xem so sánh toàn bộ 3 xã"
-                >
-                  <ArrowLeft size={12} /> Quay lại 3 xã
-                </button>
-              )}
             </div>
             <span className="text-muted small">
-              {selectedAreaData
+              {viewMode === 'top_thons'
+                ? 'Xếp hạng các thôn trọng điểm trên toàn bộ địa bàn hoạt động của Quỹ'
+                : selectedAreaData
                 ? `Chi tiết ${displayItems.length} thôn trên địa bàn ${selectedAreaData.name}`
-                : 'Bấm vào cột xã để xem drill-down phân tích chi tiết từng thôn'}
+                : 'Bấm vào cột xã hoặc chọn tab để đào sâu phân tích chi tiết từng thôn'}
             </span>
           </div>
 
@@ -158,6 +183,56 @@ export default function CommuneComparisonChart({
               Dư Nợ BQ
             </button>
           </div>
+        </div>
+
+        {/* COMMUNE & VIEW SELECTOR TABS */}
+        <div className="d-flex align-items-center gap-1.5 mb-3 flex-wrap pt-1 border-top border-light">
+          <button
+            type="button"
+            className={`btn btn-xs fw-semibold px-2.5 py-1 rounded-2 ${
+              viewMode === 'standard' && (!selectedCommune || selectedCommune === 'ALL')
+                ? 'btn-primary text-white shadow-xs'
+                : 'btn-outline-secondary'
+            }`}
+            onClick={() => {
+              setViewMode('standard');
+              if (onSelectCommune) onSelectCommune('ALL');
+            }}
+          >
+            Toàn Bộ 3 Xã
+          </button>
+
+          {areaStats.map((a) => {
+            const isAct = viewMode === 'standard' && selectedCommune === a.name;
+            return (
+              <button
+                key={a.name}
+                type="button"
+                className={`btn btn-xs fw-semibold px-2.5 py-1 rounded-2 ${
+                  isAct ? 'btn-primary text-white shadow-xs' : 'btn-outline-secondary'
+                }`}
+                onClick={() => {
+                  setViewMode('standard');
+                  if (onSelectCommune) onSelectCommune(a.name);
+                }}
+              >
+                {a.name} ({(a.thons || []).length} Thôn)
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            className={`btn btn-xs fw-semibold px-2.5 py-1 rounded-2 ${
+              viewMode === 'top_thons'
+                ? 'btn-warning text-dark fw-bold shadow-xs'
+                : 'btn-outline-warning text-dark'
+            }`}
+            onClick={() => setViewMode('top_thons')}
+            title="Bảng xếp hạng 10 thôn có dư nợ cao nhất toàn Quỹ"
+          >
+            ★ Top 10 Thôn Lớn Nhất
+          </button>
         </div>
 
         {/* THÂN BIỂU ĐỒ CỘT (HORIZONTAL RESPONSIVE SVG & CSS BARS) */}

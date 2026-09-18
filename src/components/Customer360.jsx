@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { MapPin, Search,
   User,
   CreditCard,
@@ -14,11 +14,27 @@ import { MapPin, Search,
   UserCog,
   AlertTriangle,
   FileCheck2,
-  Calendar } from 'lucide-react';
+  Calendar,
+  ArrowUpDown } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatCurrencyVN } from '../utils/dateUtils';
 import CustomerFinancialCard from './customer/CustomerFinancialCard';
 import ContractTimelineList from './customer/ContractTimelineList';
+import CustomerDossierPrintModal from './modals/CustomerDossierPrintModal';
+
+// Helper rút gọn tiền tệ sang Tỷ / Triệu
+const formatCompactVN = (amount) => {
+  const num = Number(amount) || 0;
+  if (Math.abs(num) >= 1e9) {
+    const val = (num / 1e9).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+    return `${val} tỷ`;
+  }
+  if (Math.abs(num) >= 1e6) {
+    const val = (num / 1e6).toFixed(1).replace(/\.?0+$/, '').replace('.', ',');
+    return `${val} tr`;
+  }
+  return num.toLocaleString('vi-VN') + ' đ';
+};
 
 export default function Customer360({
   currentUser,
@@ -33,12 +49,17 @@ export default function Customer360({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCBTD, setSelectedCBTD] = useState(defaultCBTD);
   const [selectedStatus, setSelectedStatus] = useState('ALL'); // 'ALL' | 'DANG_VAY' | 'DA_TAT_TOAN'
+  const [sortBy, setSortBy] = useState('duno_desc'); // 'duno_desc' | 'duno_asc' | 'name_asc' | 'contracts_desc'
 
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // Print Customer Dossier 360 State
+  const [showPrintDossier, setShowPrintDossier] = useState(false);
+  const [printCustomer, setPrintCustomer] = useState(null);
 
   // Assign CBTD Modal State
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -49,6 +70,26 @@ export default function Customer360({
   const [cbtdOfficers, setCbtdOfficers] = useState([]);
 
   const searchTimeoutRef = useRef(null);
+
+  // Sắp xếp danh sách khách hàng
+  const sortedCustomers = useMemo(() => {
+    return [...customers].sort((a, b) => {
+      const aDuNo = (a.contracts || []).reduce(
+        (sum, c) => sum + (c.trangThaiHD === 'DANG_VAY' || Number(c.duNo) > 0 ? Number(c.duNo) || 0 : 0),
+        0
+      );
+      const bDuNo = (b.contracts || []).reduce(
+        (sum, c) => sum + (c.trangThaiHD === 'DANG_VAY' || Number(c.duNo) > 0 ? Number(c.duNo) || 0 : 0),
+        0
+      );
+
+      if (sortBy === 'duno_desc') return bDuNo - aDuNo;
+      if (sortBy === 'duno_asc') return aDuNo - bDuNo;
+      if (sortBy === 'name_asc') return (a.hoTen || '').localeCompare(b.hoTen || '', 'vi');
+      if (sortBy === 'contracts_desc') return (b.contracts?.length || 0) - (a.contracts?.length || 0);
+      return 0;
+    });
+  }, [customers, sortBy]);
 
   // Fetch KPI Portfolio stats
   const fetchStats = async (cbtd = selectedCBTD) => {
@@ -117,6 +158,7 @@ export default function Customer360({
     setSearchTerm('');
     setSelectedCBTD(defaultCBTD);
     setSelectedStatus('ALL');
+    setSortBy('duno_desc');
     fetchCustomers('', defaultCBTD, 'ALL');
     fetchStats(defaultCBTD);
   };
@@ -276,7 +318,7 @@ export default function Customer360({
       <div className="card-modern p-3">
         <form onSubmit={handleSearchSubmit} className="row g-2 align-items-center">
           {/* Ô tìm kiếm thông tin */}
-          <div className="col-lg-5 col-md-12">
+          <div className="col-lg-4 col-md-12">
             <div className="input-group">
               <span className="input-group-text bg-light border-end-0">
                 <Search size={18} className="text-muted" />
@@ -292,7 +334,7 @@ export default function Customer360({
           </div>
 
           {/* Bộ lọc CBTD Quản Lý */}
-          <div className="col-lg-3 col-md-6">
+          <div className="col-lg-3 col-md-4">
             <div className="input-group">
               <span className="input-group-text bg-light small fw-bold text-muted">
                 <User size={14} className="me-1" /> CBTD
@@ -328,14 +370,29 @@ export default function Customer360({
             </select>
           </div>
 
+          {/* Bộ lọc Sắp Xếp */}
+          <div className="col-lg-2 col-md-3">
+            <select
+              className="form-select fw-semibold"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              title="Sắp xếp danh sách khách hàng"
+            >
+              <option value="duno_desc">Dư nợ: Cao → Thấp</option>
+              <option value="duno_asc">Dư nợ: Thấp → Cao</option>
+              <option value="name_asc">Họ tên: A → Z</option>
+              <option value="contracts_desc">Nhiều HĐ nhất</option>
+            </select>
+          </div>
+
           {/* Nút bấm */}
-          <div className="col-lg-2 col-md-3 d-flex gap-2">
-            <button type="submit" className="btn btn-brand fw-semibold w-100" disabled={loading}>
-              {loading ? 'Đang lọc...' : 'Tìm Kiếm'}
+          <div className="col-lg-1 col-md-2 d-flex gap-1">
+            <button type="submit" className="btn btn-brand fw-semibold w-100 p-2" disabled={loading} title="Tìm kiếm">
+              {loading ? '...' : <Search size={16} className="inline" />}
             </button>
             <button
               type="button"
-              className="btn btn-outline-secondary"
+              className="btn btn-outline-secondary p-2"
               onClick={handleResetFilters}
               title="Đặt lại bộ lọc"
             >
@@ -352,16 +409,20 @@ export default function Customer360({
           <div className="card-modern p-3" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h6 className="fw-bold m-0 text-slate-700">
-                Danh Sách Khách Hàng ({customers.length})
+                Danh Sách Khách Hàng ({sortedCustomers.length})
               </h6>
               {loading && <span className="spinner-border spinner-border-sm text-primary"></span>}
             </div>
 
             <div className="d-flex flex-column gap-2">
-              {customers.map((c) => {
+              {sortedCustomers.map((c) => {
                 const isSelected = selectedCustomer?.maKH === c.maKH;
-                const activeContractCount = (c.contracts || []).filter(ct => ct.trangThaiHD === 'DANG_VAY' || ct.duNo > 0).length;
-                const settledContractCount = (c.contracts || []).filter(ct => ct.trangThaiHD === 'DA_TAT_TOAN' || ct.duNo === 0).length;
+                const activeContractCount = (c.contracts || []).filter(ct => ct.trangThaiHD === 'DANG_VAY' || Number(ct.duNo) > 0).length;
+                const settledContractCount = (c.contracts || []).filter(ct => ct.trangThaiHD === 'DA_TAT_TOAN' || Number(ct.duNo) === 0).length;
+                const custDuNo = (c.contracts || []).reduce(
+                  (sum, ct) => sum + (ct.trangThaiHD === 'DANG_VAY' || Number(ct.duNo) > 0 ? Number(ct.duNo) || 0 : 0),
+                  0
+                );
 
                 return (
                   <div
@@ -376,13 +437,26 @@ export default function Customer360({
                   >
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <span className="fw-bold text-dark">{c.hoTen}</span>
-                      <span className="badge bg-secondary small">{c.maKH}</span>
+                      <span className="badge bg-secondary small font-monospace">{c.maKH}</span>
                     </div>
-                    <div className="text-muted small mb-1">
-                      <CreditCard size={14} className="me-1 text-secondary" /> CCCD: {c.cccd}
+
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <span className="text-muted small">
+                        <CreditCard size={13} className="me-1 text-secondary inline" /> {c.cccd || '---'}
+                      </span>
+                      {custDuNo > 0 ? (
+                        <span className="badge bg-danger-subtle text-danger fw-bold num-tabular">
+                          {formatCompactVN(custDuNo)}
+                        </span>
+                      ) : (
+                        <span className="badge bg-secondary-subtle text-secondary small">
+                          0 ₫ (Tất toán)
+                        </span>
+                      )}
                     </div>
+
                     <div className="text-muted small mb-2 text-truncate">
-                      <MapPin size={14} className="me-1 text-secondary" /> {c.diaChi}
+                      <MapPin size={13} className="me-1 text-secondary inline" /> {c.diaChi || 'Quý Lộc'}
                     </div>
 
                     <div className="d-flex justify-content-between align-items-center pt-2 border-top border-slate-100 small">
@@ -406,7 +480,7 @@ export default function Customer360({
                 );
               })}
 
-              {customers.length === 0 && !loading && (
+              {sortedCustomers.length === 0 && !loading && (
                 <div className="text-center py-5 text-muted">
                   <User size={36} className="mb-2 opacity-50" />
                   <div>Không tìm thấy khách hàng nào phù hợp với bộ lọc.</div>
@@ -426,6 +500,10 @@ export default function Customer360({
                 onOpenAssignModal={handleOpenAssignModal}
                 onNavigateToAppraisal={onNavigateToAppraisal}
                 onNavigateToDebit={onNavigateToDebit}
+                onOpenPrintDossier={(c) => {
+                  setPrintCustomer(c);
+                  setShowPrintDossier(true);
+                }}
               />
 
               {/* Loan Contracts Timeline & Horizon Portfolio */}
@@ -446,6 +524,17 @@ export default function Customer360({
           )}
         </div>
       </div>
+
+      {/* MODAL IN HỒ SƠ TÍN DỤNG 360° */}
+      {showPrintDossier && printCustomer && (
+        <CustomerDossierPrintModal
+          customer={printCustomer}
+          onClose={() => {
+            setShowPrintDossier(false);
+            setPrintCustomer(null);
+          }}
+        />
+      )}
 
       {/* 4. MODAL PHÂN CÔNG / CHUYỂN GIAO CÁN BỘ TÍN DỤNG */}
       {showAssignModal && (

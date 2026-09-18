@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Landmark,
   Clock,
@@ -9,7 +9,11 @@ import {
   Calendar,
   Layers,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Calculator,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
 
@@ -56,6 +60,15 @@ export default function ContractTimelineList({
   onNavigateToDebit,
   onOpenAssignModal
 }) {
+  const [expandedSchedules, setExpandedSchedules] = useState({});
+
+  const toggleSchedule = (soHDTD) => {
+    setExpandedSchedules((prev) => ({
+      ...prev,
+      [soHDTD]: !prev[soHDTD]
+    }));
+  };
+
   if (!contracts || contracts.length === 0) {
     return (
       <div className="card-modern p-4 text-center text-muted">
@@ -88,6 +101,14 @@ export default function ContractTimelineList({
         {contracts.map((c) => {
           const isSettled = c.trangThaiHD === 'DA_TAT_TOAN' || Number(c.duNo || 0) === 0;
           const timeline = calculateLoanTimeline(c.ngayVay, c.denHan);
+          const isScheduleOpen = !!expandedSchedules[c.soHDTD];
+
+          // Tính toán lãi dự kiến
+          const rate = Number(c.laiSuat) || 10.46;
+          const duNo = Number(c.duNo) || 0;
+          const monthlyEstInterest = Math.round((duNo * (rate / 100)) / 12);
+          const dailyActualInterest = Math.round((duNo * (rate / 100)) / 365);
+          const thirtyDayInterest = Math.round((duNo * rate * 30) / 36500);
 
           let barColor = '#10b981'; // Xanh lá
           let statusBadgeClass = 'bg-success-subtle text-success border border-success-subtle';
@@ -211,6 +232,45 @@ export default function ContractTimelineList({
                 </div>
               )}
 
+              {/* HÀNG MỞ RỘNG: MÔ PHỎNG LỊCH TRẢ NỢ VÀ DỰ TÍNH LÃI */}
+              {isScheduleOpen && !isSettled && (
+                <div className="p-3 bg-light-subtle rounded-3 border mb-3 content-fade-in">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="fw-bold m-0 text-slate-800 d-flex align-items-center gap-1.5" style={{ fontSize: '0.85rem' }}>
+                      <Calculator size={15} className="text-primary" />
+                      Dự Tính Phân Kỳ & Tiền Lãi Theo TT 14/2017/TT-NHNN
+                    </h6>
+                    <span className="badge bg-primary-subtle text-primary small">
+                      Dư nợ giảm dần
+                    </span>
+                  </div>
+
+                  <div className="row g-2 small">
+                    <div className="col-12 col-md-4">
+                      <div className="p-2 bg-white rounded border">
+                        <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>Lãi Bình Quân / Tháng</span>
+                        <strong className="text-danger num-tabular fs-6">{formatCurrencyVN(monthlyEstInterest)}</strong>
+                        <div className="text-xs text-muted mt-0.5">Khoảng {formatCurrencyVN(dailyActualInterest)} / ngày</div>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <div className="p-2 bg-white rounded border">
+                        <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>Kỳ Thu Lãi Tự Động CASA</span>
+                        <strong className="text-success fs-6">Kỳ 1 (05) • Kỳ 2 (15) • Kỳ 3 (25)</strong>
+                        <div className="text-xs text-muted mt-0.5">Trích trực tiếp từ tài khoản {customer?.soTK || 'CASA'}</div>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <div className="p-2 bg-white rounded border">
+                        <span className="text-muted d-block" style={{ fontSize: '0.72rem' }}>Dự Tính 30 Ngày Tới</span>
+                        <strong className="text-primary num-tabular fs-6">{formatCurrencyVN(thirtyDayInterest)}</strong>
+                        <div className="text-xs text-muted mt-0.5">Theo công thức (Dư nợ x Lãi suất x 30) / 36500</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* HÀNG 4: THAO TÁC NHANH TRÊN HỢP ĐỒNG */}
               <div className="d-flex justify-content-between align-items-center pt-2 border-top border-light flex-wrap gap-2">
                 <span className="text-muted small" style={{ fontSize: '0.72rem' }}>
@@ -220,6 +280,19 @@ export default function ContractTimelineList({
                 <div className="d-flex align-items-center gap-2">
                   {!isSettled && (
                     <>
+                      <button
+                        type="button"
+                        className={`btn btn-xs fw-semibold d-flex align-items-center gap-1 py-1 px-2.5 shadow-xs ${
+                          isScheduleOpen ? 'btn-secondary text-white' : 'btn-outline-info text-info'
+                        }`}
+                        onClick={() => toggleSchedule(c.soHDTD)}
+                        title="Xem dự tính tiền lãi và kế hoạch trả nợ định kỳ"
+                      >
+                        <Calculator size={13} />
+                        {isScheduleOpen ? 'Ẩn Lịch Trả Nợ' : 'Lịch Trả Nợ & Lãi'}
+                        {isScheduleOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+
                       <button
                         type="button"
                         className="btn btn-xs btn-outline-warning fw-semibold d-flex align-items-center gap-1 py-1 px-2.5 shadow-xs"
