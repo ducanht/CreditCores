@@ -272,6 +272,7 @@ export default function App() {
 
           {activeTab === 'debit_register' && (
             <DebitManager 
+              initialSubTab="register"
               prefilledCustomer={prefilledCustomer}
               onOpenCustomerQuickView={handleOpenCustomerQuickView}
             />
@@ -279,6 +280,7 @@ export default function App() {
 
           {activeTab === 'debit_batch' && (
             <DebitManager 
+              initialSubTab="batch"
               prefilledCustomer={null}
               onOpenCustomerQuickView={handleOpenCustomerQuickView}
             />

@@ -32,6 +32,9 @@ import pyodbc
 import gspread
 from google.oauth2.service_account import Credentials
 
+# Nhập khẩu module khởi tạo & chữa lành cấu trúc CSDL Google Sheets tách riêng
+from schema_healer import ALL_SCHEMAS, init_or_heal_database_schema, get_or_create_worksheet
+
 # --- 0. BẢO VỆ MÃ HÓA UTF-8 TRÊN WINDOWS TERMINAL ---
 if sys.platform == "win32":
     try:
@@ -251,15 +254,37 @@ def get_sql_connection(sql_cfg):
 # --- 6. HÀM CHUẨN HÓA DỮ LIỆU ĐẶC THÙ NG-eFUND & TRUY VẤN COREBANKING ---
 def format_efund_date(val):
     """
-    Chuyển đổi ngày tháng từ định dạng NG-eFUND (YYYYMMDD) sang dd/MM/yyyy.
-    Ví dụ: 19630224 -> 24/02/1963, 20210812 -> 12/08/2021, 20031231 -> 31/12/2003.
+    Chuyển đổi ngày tháng từ nhiều nguồn (CoreBanking NG-eFUND, SQL Server 103, ISO)
+    sang định dạng chuẩn Việt Nam dd/MM/yyyy.
+    Ví dụ:
+      - '20260817' -> '17/08/2026'
+      - '17/08/2026' -> '17/08/2026'
+      - '2026-08-17' -> '17/08/2026'
     """
     if not val:
         return ""
-    s = str(val).strip().replace("-", "").replace("/", "")
+    import re
+    val_str = str(val).strip()
+
+    # 1. Đã là dạng dd/MM/yyyy hoặc d/M/yyyy
+    if re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", val_str):
+        parts = val_str.split("/")
+        return f"{int(parts[0]):02d}/{int(parts[1]):02d}/{parts[2]}"
+
+    # 2. Dạng ISO yyyy-MM-dd
+    if re.match(r"^\d{4}-\d{1,2}-\d{1,2}$", val_str):
+        parts = val_str.split("-")
+        return f"{int(parts[2]):02d}/{int(parts[1]):02d}/{parts[0]}"
+
+    # 3. Chuỗi số 8 ký tự (YYYYMMDD hoặc DDMMYYYY)
+    s = val_str.replace("-", "").replace("/", "")
     if len(s) == 8 and s.isdigit():
-        return f"{s[6:8]}/{s[4:6]}/{s[0:4]}"
-    return str(val).strip()
+        if s.startswith("19") or s.startswith("20"):
+            return f"{s[6:8]}/{s[4:6]}/{s[0:4]}"
+        else:
+            return f"{s[0:2]}/{s[2:4]}/{s[4:8]}"
+
+    return val_str
 
 def clean_address(val):
     """
@@ -388,41 +413,38 @@ def fetch_customer_core_data(sql_conn, sync_timestamp_str):
 
 def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     """
-    Truy vấn bảng Khế ước & Hợp đồng Tín dụng từ CSDL NG-eFUND.
-    Tự động chuẩn hóa:
-    - Ngày tháng YYYYMMDD -> dd/MM/yyyy (NgayVay, DenHan, TraLaiDenNgay).
-    - Chuẩn hóa số tiền vay, dư nợ (bỏ phần thập phân .00).
-    - Chuẩn hóa lãi suất (10.4600 -> 10.46).
-    - Bảo toàn số 0 ở đầu Mã khách hàng để liên kết chính xác với KH_CORE.
-    - Làm sạch mô tả mục đích vay.
+    Truy vấn bảng Khế ước & Hợp đồng Tín dụng từ CSDL NG-eFUND theo chuẩn xác thực:
+    - SoHDTD: Mã khế ước A.MA_KHE_UOC (Ví dụ: 2026-1-00294).
+    - MaKH: Mã khách hàng D.MA_KHACH_HANG (Ví dụ: '0100010 kèm nháy đơn).
+    - TienVay, DuNo: Làm tròn loại bỏ .00 thành số nguyên.
+    - LaiSuat: Số thực 2 chữ số thập phân (Ví dụ: 10.46).
+    - NgayVay, DenHan, TraLaiDenNgay: Định dạng dd/MM/yyyy GMT+7.
+    - MaLoaiVay: SP.TEN_SAN_PHAM.
+    - SoThangVay: D.SO_THANG_VAY.
+    - MoTaVay: D.MO_TA_MUC_DICH_VAY.
     """
     query = """
     SELECT 
-        D.SO_HDTD AS SoHDTD,
-        D.MA_KHACH_HANG AS MaKH,
+        A.MA_KHE_UOC AS SoHDTD,
+        D.MA_KHACH_HANG AS MAKH,
         D.SO_TIEN_VAY AS TienVay,
-        A.SO_DU AS DuNo,
-        A.LAI_SUAT AS LaiSuat,
-        D.NGAY_VAY AS NgayVay,
-        D.NGAY_DAO_HAN AS DenHan,
-        A.THU_LAI_DEN_NGAY AS TraLaiDenNgay,
+        C.SO_DU AS DuNo,
+        FORMAT(A.LAI_SUAT, 'N2') AS LaiSuat,
+        CONVERT(VARCHAR(10), D.NGAY_VAY, 103) AS NgayVay,
+        CONVERT(VARCHAR(10), D.NGAY_DAO_HAN, 103) AS DenHan,
+        CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TraLaiDenNgay,
         SP.TEN_SAN_PHAM AS MaLoaiVay,
         D.SO_THANG_VAY AS SoThangVay,
-        D.MO_TA_MUC_DICH_VAY AS MoTaVay
-    FROM dbo.TD_KHE_UOC A
-    INNER JOIN dbo.TD_HOP_DONG_TD D
-        ON A.MA_HDTD = D.MA_HDTD
-    INNER JOIN dbo.DC_KHACH_HANG B
-        ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
-    INNER JOIN dbo.KT_TAI_KHOAN C
-        ON C.SO_TAI_KHOAN = A.SO_TAI_KHOAN
-    INNER JOIN dbo.DC_KHU_VUC KV
-        ON B.MA_KHU_VUC = KV.MA_KHU_VUC
-    INNER JOIN dbo.vwTD_SAN_PHAM SP
-        ON SP.MA_SAN_PHAM = A.MA_SAN_PHAM
-    INNER JOIN dbo.DC_LOAI_VAY LV
-        ON LV.MA_LOAI_VAY = SP.MA_LOAI_VAY
-    WHERE C.SO_DU > 0 
+        D.MO_TA_MUC_DICH_VAY AS MucDichVay
+    FROM dbo.TD_KHE_UOC A 
+    INNER JOIN dbo.TD_HOP_DONG_TD D ON A.MA_HDTD = D.MA_HDTD
+    INNER JOIN dbo.DC_KHACH_HANG B ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
+    INNER JOIN dbo.DC_THANH_VIEN TV ON B.MA_KHACH_HANG = TV.MA_KHACH_HANG
+    INNER JOIN dbo.DC_KHU_VUC KV ON B.MA_KHU_VUC = KV.MA_KHU_VUC
+    INNER JOIN dbo.KT_TAI_KHOAN C ON C.SO_TAI_KHOAN = A.SO_TAI_KHOAN
+    INNER JOIN dbo.vwTD_SAN_PHAM SP ON SP.MA_SAN_PHAM = A.MA_SAN_PHAM
+    INNER JOIN dbo.DC_LOAI_VAY LV ON LV.MA_LOAI_VAY = SP.MA_LOAI_VAY
+    WHERE C.SO_DU > 0
     ORDER BY D.MA_KHACH_HANG, D.NGAY_VAY DESC;
     """
     logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Hợp đồng Tín dụng & Dư nợ từ NG-eFUND...")
@@ -434,9 +456,15 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     for row in cursor.fetchall():
         row_map = {col: (val if val is not None else "") for col, val in zip(columns, row)}
 
+        # Chuẩn hóa Mã khách hàng: luôn có nháy đơn ' ở đầu nếu có ký tự số để chống nuốt số 0
+        raw_makh = str(row_map.get("MAKH") or row_map.get("MaKH", "")).strip()
+        clean_makh = clean_number_code(raw_makh)
+        if clean_makh and not clean_makh.startswith("'"):
+            clean_makh = "'" + clean_makh
+
         record = {
             "SoHDTD": str(row_map.get("SoHDTD", "")).strip(),
-            "MaKH": clean_number_code(row_map.get("MaKH")),
+            "MaKH": clean_makh,
             "TienVay": clean_currency(row_map.get("TienVay")),
             "DuNo": clean_currency(row_map.get("DuNo")),
             "LaiSuat": clean_interest_rate(row_map.get("LaiSuat")),
@@ -445,9 +473,9 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
             "TraLaiDenNgay": format_efund_date(row_map.get("TraLaiDenNgay")),
             "MaLoaiVay": str(row_map.get("MaLoaiVay", "")).strip(),
             "SoThangVay": clean_currency(row_map.get("SoThangVay")) or 12,
-            "MoTaVay": clean_address(row_map.get("MoTaVay")),
-            "CBTD_PhuTrach": "qtdyentho.cbtd",
-            "Ten_CBTD": "Lê Văn Tín (CBTD)",
+            "MoTaVay": clean_address(row_map.get("MucDichVay") or row_map.get("MoTaVay")),
+            "CBTD_PhuTrach": "qtdyentho.huyennhu",
+            "Ten_CBTD": "Trần Như Huyền",
             "TrangThaiHD": "DANG_VAY",
             "NgayTatToan": "",
             "NgayCapNhat": sync_timestamp_str
@@ -458,158 +486,10 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} hợp đồng tín dụng từ NG-eFUND.")
     return records
 
-# --- 8. TỰ ĐỘNG KHỞI TẠO & CHỮA LÀNH CSDL 12 BẢNG (SELF-HEALING SCHEMA) ---
-ALL_SCHEMAS = {
-    "ROLES": {
-        "headers": ["RoleCode", "RoleName", "Permissions", "Description", "UpdatedAt"],
-        "color": {"red": 0.12, "green": 0.24, "blue": 0.38},
-        "defaultData": [
-            ["ADMIN", "Quản Trị Viên Toàn Quyền", '["dashboard","customer360","appraisal","inspection","debit_register","debit_batch","reconciliation","debt_warning","reports","templates","user_management","settings"]', "Toàn quyền quản trị hệ thống và người dùng", "15/08/2026 08:00:00"],
-            ["CBTD", "Cán Bộ Tín Dụng", '["dashboard","customer360","appraisal","inspection","debit_register","debt_warning","reports","templates"]', "Thẩm định, kiểm tra vốn và theo dõi khách hàng", "15/08/2026 08:00:00"],
-            ["KETOAN", "Kế Toán Viên / Thủ Quỹ", '["dashboard","customer360","debit_register","debit_batch","reconciliation","debt_warning","reports","templates"]', "Quản lý trích nợ, đối soát và sổ theo dõi nợ", "15/08/2026 08:00:00"],
-            ["BKS", "Ban Kiểm Soát", '["dashboard","customer360","appraisal","inspection","debt_warning","reports","templates"]', "Kiểm soát, giám sát rủi ro và báo cáo", "15/08/2026 08:00:00"],
-            ["LANHDAO", "Ban Giám Đốc / HĐQT", '["dashboard","customer360","appraisal","inspection","debit_batch","reconciliation","debt_warning","reports","templates"]', "Giám sát tổng quan báo cáo và phê duyệt rủi ro", "15/08/2026 08:00:00"]
-        ]
-    },
-    "USERS": {
-        "headers": ["Username", "PasswordHash", "FullName", "Role", "CustomPermissions", "Status", "CreatedAt", "LastLogin"],
-        "color": {"red": 0.04, "green": 0.10, "blue": 0.17},
-        "defaultData": [
-            ["qtdyentho.admin", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Quản Trị Viên Hệ Thống", "ADMIN", "[]", "ACTIVE", "15/08/2026 08:00:00", ""],
-            ["qtdyentho.cbtd", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Lê Văn Tín (CBTD)", "CBTD", "[]", "ACTIVE", "15/08/2026 08:00:00", ""],
-            ["qtdyentho.ketoan", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Nguyễn Thị Hương (Kế toán)", "KETOAN", "[]", "ACTIVE", "15/08/2026 08:00:00", ""],
-            ["qtdyentho.bks", "ce107479430b15226e0030258772341aef968b92d1f34fde638e4fce39116ce9", "Ban Kiểm Soát", "BKS", "[]", "ACTIVE", "15/08/2026 08:00:00", ""]
-        ]
-    },
-    "SETTING": {
-        "headers": ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE"],
-        "color": {"red": 0.12, "green": 0.16, "blue": 0.23},
-        "defaultData": [["IDLE", "SUCCESS", "15/08/2026 08:00:00", "15/08/2026 08:00:00", "15/08/2026 08:00:00", 0, "Hệ thống sẵn sàng đồng bộ."]]
-    },
-    "KH_CORE": {
-        "headers": ["MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap", "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP", "NgayVaoTV", "TongTienCP", "NgayCapNhat"],
-        "color": {"red": 0.0, "green": 0.30, "blue": 0.25}
-    },
-    "HDTD_CORE": {
-        "headers": ["SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"],
-        "color": {"red": 0.11, "green": 0.21, "blue": 0.36}
-    },
-    "DANG_KY_TRICH_NO": {
-        "headers": ["MaKH", "HoTen", "GTTT", "SoTK", "DiaChi", "KyTrich", "TrangThai", "GhiChu", "NgayTao"],
-        "color": {"red": 0.06, "green": 0.32, "blue": 0.20}
-    },
-    "DOT_TRICH_NO": {
-        "headers": ["MaDot", "ThangNam", "KyTrich", "TongPhaiThu", "TongDaTrich", "TongConNo", "TongSoKH", "TrangThai", "NgayTao", "NgayHoanTat"],
-        "color": {"red": 0.29, "green": 0.08, "blue": 0.55}
-    },
-    "CHI_TIET_TRICH_NO": {
-        "headers": ["MaDot", "MaKH", "HoTen", "SoCCCD", "SoTK_CASA", "SoHDTD", "DuNoGoc_Snap", "LaiDuKien", "GocDuKien", "SoTienTrichThucTe", "DaTrich", "ConNo", "TrangThai", "MaGiaoDichCore", "NgayCapNhat"],
-        "color": {"red": 0.72, "green": 0.11, "blue": 0.11}
-    },
-    "NO_TON_DONG": {
-        "headers": ["MaKH", "SoHDTD", "GocTon", "LaiTon", "TongNoTon", "KyPhatSinh", "TrangThai", "GhiChu", "NgayCapNhat"],
-        "color": {"red": 0.90, "green": 0.32, "blue": 0.0}
-    },
-    "THAM_DINH_TD": {
-        "headers": [
-            "MaBCTD", "MaKH", "HoTen", "SoCCCD", "NgaySinh", "GioiTinh", "DienThoai", "DiaChi", "TinhTrangHonNhan", "NguoiDongVay",
-            "HinhAnhKH", "NganhNghe", "TrinhDo", "ThuNhapNguoiVay", "NguonThuNguoiVay", "ThuNhapDongVay", "NguonThuDongVay", "ChungMinhThuNhap", "ThuNhapRong",
-            "DeXuatVay", "MucDichVay", "ThoiHanVay", "PhuongThucTraNo", "CoTSBD", "HinhThucBaoDam", "LoaiTSBD", "SoGCN", "ThuaDatSo", "ToBanDoSo",
-            "DienTich", "DiaChiTSBD", "ChuSoHuuTSBD", "QuanHeVoiNguoiVay", "GiaTriTSBD", "NguonGocTSBD", "GiaTriThiTruong", "HinhAnhTSBD", "ChiTietLoaiDat", "GiaTriCongTrinh", "TinhTrangPhapLyTSBD", "MoTaTSBD",
-            "ThuNhapChinh", "ThuNhapPhu", "TongThuNhapThang", "ChiPhiSinhHoat", "ChiPhiSXKD", "TongChiPhiThang", "ThangDuThang",
-            "XepHangCIC", "SoTCTDQuanHe", "DuNoCICNgoai", "LichSuTraNo", "GhiChuCIC", "DiaDiemThamDinh", "HienTrangSXKD", "TuCachKhachHang",
-            "DuyetVay", "ThoiHanThang", "LaiSuatDuyet", "PhuongThucGiaiNgan", "PhuongThucTraGoc", "PhuongAnToiUu", "BienPhapBaoDam", "TyLeLTV", "NghiaVuTraNoThang", "TyLeDSR",
-            "HeSoBuDap", "DieuKienGiaiNgan", "MucDoRuiRo", "KetLuan", "CanBoThamDinh", "CanBoLapUsername", "DanhSachYKien", "NgayLap"
-        ],
-        "color": {"red": 0.10, "green": 0.14, "blue": 0.49}
-    },
-    "KIEM_TRA_VON": {
-        "headers": ["MaBBKT", "SoHDTD", "MaKH", "HoTen", "LoaiDoanKT", "ThanhPhanDoan", "NgayKiemTra", "LanKiemTra", "NgayKTNext", "HinhThuc", "DiaDiemKT", "DanhGiaMucDich", "TienDoSuDungVon", "MucDoRuiRo", "MoTaThucTe", "KienNghi", "FileBienBanUrl", "HinhAnhKiemTra", "TrangThai", "NgayTao"],
-        "color": {"red": 0.22, "green": 0.28, "blue": 0.31}
-    },
-    "TSBD_CORE": {
-        "headers": [
-            "MaTSBD", "SoGCN", "SoVaoSoCapGCN", "NgayCapGCN", "NoiCapGCN", "MaKH", "ChuSoHuu", "CCCD_ChuTS",
-            "QuanHeChuTS", "NguoiDongSoHuu", "ThuaDatSo", "ToBanDoSo", "DiaChiThuaDat", "DienTich", "HinhThucSuDung",
-            "ChiTietPhanLoaiDat", "NguonGocSuDung", "GiaTriDinhGiaQTD", "GiaTriThiTruong", "TyLeChoVayToiDa",
-            "SoTienDamBaoToiDa", "TrangThaiTheChap", "SoHDTD_LienKet", "SoCongChung", "NgayCongChung",
-            "VanPhongCongChung", "SoDangKyGDBD", "NgayDangKyGDBD", "HinhAnhGCN", "HinhAnhThucDia", "NgayCapNhat"
-        ],
-        "color": {"red": 0.0, "green": 0.41, "blue": 0.36}
-    },
-    "CAU_HINH_BIEU_MAU": {
-        "headers": ["Id", "MaBM", "TenBM", "PhanHe", "LoaiNguon", "LinkNguon", "MoTa", "TruongTron", "TrangThai", "NgayCapNhat"],
-        "color": {"red": 0.26, "green": 0.22, "blue": 0.79}
-    },
-    "DOCUMENT_STORAGE": {
-        "headers": ["ID_HOP_DONG", "MA_KH", "TEN_KHACH_HANG", "LOAI_BIEU_MAU", "NGUOI_LAP", "NGAY_LAP", "LINK_GOOGLE_DOC", "LINK_PDF", "TRANG_THAI"],
-        "color": {"red": 0.15, "green": 0.68, "blue": 0.38}
-    }
-}
-
-def init_or_heal_database_schema(spreadsheet):
-    """
-    Rà soát toàn bộ các bảng trong CSDL Google Sheets.
-    Nếu bảng chưa tồn tại -> Tự động tạo mới, thiết lập tiêu đề cột và màu sắc nhận diện.
-    Nếu bảng đã tồn tại -> Kiểm tra và bổ sung cột còn thiếu (Zero Data Loss).
-    """
-    logger.info("🔧 Bắt đầu rà soát và Self-Healing cấu trúc CSDL 12 Bảng trên Google Sheets...")
-    existing_worksheets = {ws.title: ws for ws in spreadsheet.worksheets()}
-
-    for sheet_name, schema in ALL_SCHEMAS.items():
-        headers = schema["headers"]
-        color = schema.get("color")
-        default_data = schema.get("defaultData")
-
-        if sheet_name not in existing_worksheets:
-            logger.info(f"⚡ Bảng '{sheet_name}' chưa có -> Đang tạo mới...")
-            ws = spreadsheet.add_worksheet(title=sheet_name, rows=max(100, len(default_data or []) + 10), cols=len(headers) + 2)
-            # Ghi tiêu đề
-            ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
-
-            # Định dạng hàng tiêu đề (Tô màu nền, chữ trắng đậm)
-            try:
-                if color:
-                    ws.format(f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}", {
-                        "backgroundColor": color,
-                        "horizontalAlignment": "CENTER",
-                        "textFormat": {"foregroundColor": {"red": 1, "green": 1, "blue": 1}, "bold": True}
-                    })
-            except Exception as fmt_err:
-                logger.debug(f"Không thể định dạng màu cho '{sheet_name}': {fmt_err}")
-
-            # Ghi dữ liệu mẫu mặc định nếu có
-            if default_data:
-                ws.update(values=default_data, range_name=f"A2:{gspread.utils.rowcol_to_a1(1 + len(default_data), len(headers))}", value_input_option="USER_ENTERED")
-            logger.info(f"✅ Đã tạo thành công bảng '{sheet_name}'.")
-        else:
-            ws = existing_worksheets[sheet_name]
-            cur_headers = ws.row_values(1)
-            if not cur_headers:
-                ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
-            elif len(cur_headers) < len(headers):
-                logger.info(f"🔄 Bảng '{sheet_name}' thiếu {len(headers) - len(cur_headers)} cột -> Tự động bổ sung...")
-                ws.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
-
-    logger.info("✨ Hoàn tất kiểm tra và đồng bộ cấu trúc CSDL Google Sheets!")
+# --- 8. KHỞI TẠO & CHỮA LÀNH CSDL 13+ BẢNG (ĐÃ TÁCH SANG schema_healer.py) ---
+# Module schema_healer.py đảm nhiệm: ALL_SCHEMAS, init_or_heal_database_schema, get_or_create_worksheet
 
 # --- 9. GHI DỮ LIỆU BATCH LÊN GOOGLE SHEETS CÓ RETRY & EXPONENTIAL BACKOFF ---
-def get_or_create_worksheet(spreadsheet, title, headers):
-    """
-    Tự động tìm hoặc tạo mới worksheet nếu chưa tồn tại trên Google Spreadsheet.
-    """
-    try:
-        sheet = spreadsheet.worksheet(title)
-        cur_headers = sheet.row_values(1)
-        if not cur_headers or len(cur_headers) < len(headers):
-            sheet.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
-        return sheet
-    except gspread.exceptions.WorksheetNotFound:
-        logger.info(f"⚡ Sheet '{title}' chưa có, tự động tạo mới...")
-        sheet = spreadsheet.add_worksheet(title=title, rows=100, cols=len(headers) + 5)
-        sheet.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
-        return sheet
-
 def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
     """
     Ghi danh sách bản ghi (list of dicts) vào sheet bằng 1 lệnh batch duy nhất.

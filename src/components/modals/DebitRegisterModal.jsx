@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, AlertCircle } from 'lucide-react';
+import { UserCheck, Edit3, AlertCircle } from 'lucide-react';
 import { isValidCCCD } from '../../utils/validators';
 
 export default function DebitRegisterModal({
   show,
   onClose,
   onSubmit,
+  editingItem = null,
   prefilledCustomer = null,
   allCustomers = [],
   allContracts = []
 }) {
+  const isEdit = Boolean(editingItem);
+
   const [formData, setFormData] = useState({
     maKH: '',
     hoTen: '',
@@ -43,10 +46,37 @@ export default function DebitRegisterModal({
   };
 
   useEffect(() => {
-    if (prefilledCustomer) {
+    if (editingItem) {
+      setFormData({
+        maKH: editingItem.maKH || '',
+        hoTen: editingItem.hoTen || '',
+        gttt: editingItem.gttt || '',
+        soTK: editingItem.soTK || '',
+        diaChi: editingItem.diaChi || '',
+        kyTrich: Number(editingItem.kyTrich) || 1,
+        trangThai: editingItem.trangThai || 'Hiệu lực',
+        ghiChu: editingItem.ghiChu || ''
+      });
+      const custContracts = allContracts.filter((c) => c.maKH === editingItem.maKH && (c.duNo > 0 || c.trangThai !== 'Đã tất toán'));
+      setContractList(custContracts);
+      setFormError('');
+    } else if (prefilledCustomer) {
       handleSelectCustomer(prefilledCustomer.maKH, prefilledCustomer);
+    } else {
+      setFormData({
+        maKH: '',
+        hoTen: '',
+        gttt: '',
+        soTK: '',
+        diaChi: '',
+        kyTrich: 1,
+        trangThai: 'Hiệu lực',
+        ghiChu: ''
+      });
+      setContractList([]);
+      setFormError('');
     }
-  }, [prefilledCustomer]);
+  }, [editingItem, prefilledCustomer, show]);
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -71,7 +101,15 @@ export default function DebitRegisterModal({
         <div className="modal-content card-modern p-4">
           <div className="modal-header border-0 pb-0">
             <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-              <UserCheck size={20} className="text-primary" /> Đăng Ký Thỏa Thuận Trích Nợ Tự Động CASA
+              {isEdit ? (
+                <>
+                  <Edit3 size={20} className="text-primary" /> Chỉnh Sửa Thỏa Thuận Trích Nợ Tự Động CASA
+                </>
+              ) : (
+                <>
+                  <UserCheck size={20} className="text-primary" /> Đăng Ký Thỏa Thuận Trích Nợ Tự Động CASA
+                </>
+              )}
             </h5>
             <button type="button" className="btn-close" onClick={onClose} />
           </div>
@@ -85,26 +123,28 @@ export default function DebitRegisterModal({
                 </div>
               )}
 
-              {/* Khối Chọn Khách Hàng Từ KH_CORE */}
-              <div className="p-3 bg-light rounded-3 border mb-3">
-                <label className="form-label small fw-bold text-primary mb-1.5 d-flex justify-content-between">
-                  <span>Chọn Thành Viên / Khách Hàng từ CSDL KH_CORE (*):</span>
-                  <span className="badge bg-primary-subtle text-primary small">KH_CORE Single Source</span>
-                </label>
-                <select
-                  className="form-select form-select-sm fw-bold border-primary"
-                  value={formData.maKH}
-                  onChange={(e) => handleSelectCustomer(e.target.value)}
-                  required
-                >
-                  <option value="">-- Bấm để chọn Khách Hàng từ KH_CORE ({allCustomers.length} KH) --</option>
-                  {allCustomers.map((c) => (
-                    <option key={c.maKH} value={c.maKH}>
-                      {c.hoTen} • Mã: {c.maKH} • CCCD: {c.cccd || c.gttt} • TK CASA: {c.soTK || 'Chưa có'}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Khối Chọn Khách Hàng (chỉ hiện khi Đăng ký mới) */}
+              {!isEdit && (
+                <div className="p-3 bg-light rounded-3 border mb-3">
+                  <label className="form-label small fw-bold text-primary mb-1.5 d-flex justify-content-between">
+                    <span>Chọn Thành Viên / Khách Hàng:</span>
+                    <span className="badge bg-primary-subtle text-primary small">Danh bạ {allCustomers.length} KH</span>
+                  </label>
+                  <select
+                    className="form-select form-select-sm fw-bold border-primary"
+                    value={formData.maKH}
+                    onChange={(e) => handleSelectCustomer(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Bấm để chọn Khách Hàng ({allCustomers.length} KH) --</option>
+                    {allCustomers.map((c) => (
+                      <option key={c.maKH} value={c.maKH}>
+                        {c.hoTen} • Mã: {c.maKH} • CCCD: {c.cccd || c.gttt} • TK CASA: {c.soTK || 'Chưa có'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="row g-3">
                 <div className="col-12 col-md-4">
@@ -142,11 +182,11 @@ export default function DebitRegisterModal({
                 </div>
 
                 <div className="col-12 col-md-6">
-                  <label className="form-label small fw-bold text-dark">Số Tài Khoản Thanh Toán CASA (*)</label>
+                  <label className="form-label small fw-bold text-dark">Số Tài Khoản CASA</label>
                   <input
                     type="text"
                     className="form-control form-control-sm font-monospace fw-bold text-success"
-                    placeholder="3500205123456"
+                    placeholder="010000001888"
                     value={formData.soTK}
                     onChange={(e) => setFormData({ ...formData, soTK: e.target.value })}
                     required
@@ -190,9 +230,20 @@ export default function DebitRegisterModal({
                   </select>
                 </div>
 
+                <div className="col-12">
+                  <label className="form-label small fw-bold text-dark">Ghi Chú Nghiệp Vụ</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="Ghi chú chi tiết hoặc thỏa thuận riêng..."
+                    value={formData.ghiChu}
+                    onChange={(e) => setFormData({ ...formData, ghiChu: e.target.value })}
+                  />
+                </div>
+
                 {/* Danh sách HĐTD đang vay */}
                 {contractList.length > 0 && (
-                  <div className="col-12 mt-3">
+                  <div className="col-12 mt-2">
                     <div className="p-3 bg-light rounded-3 border">
                       <strong className="text-dark small mb-2 d-block">
                         Các Hợp Đồng Tín Dụng Hiện Hữu Của Khách Hàng:
@@ -217,10 +268,10 @@ export default function DebitRegisterModal({
 
             <div className="modal-footer border-0 pt-0">
               <button type="button" className="btn btn-light" onClick={onClose}>
-                Hủy
+                Đóng
               </button>
               <button type="submit" className="btn btn-brand fw-bold">
-                Lưu Thỏa Thuận Trích Nợ
+                {isEdit ? 'Cập Nhật Thỏa Thuận' : 'Lưu Thỏa Thuận Trích Nợ'}
               </button>
             </div>
           </form>

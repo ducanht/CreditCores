@@ -8,7 +8,12 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
-  Filter
+  Filter,
+  Edit3,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api';
 import { formatDateVN, formatDateTimeVN, formatCurrencyVN } from '../utils/dateUtils';
@@ -17,8 +22,8 @@ import DebitBatchCreateModal from './modals/DebitBatchCreateModal';
 import DebitRegisterModal from './modals/DebitRegisterModal';
 import DebitBatchDetailModal from './modals/DebitBatchDetailModal';
 
-export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickView }) {
-  const [activeSubTab, setActiveSubTab] = useState('register'); // 'register' | 'batch'
+export default function DebitManager({ initialSubTab = 'register', prefilledCustomer, onOpenCustomerQuickView }) {
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'register'); // 'register' | 'batch'
   const [registrations, setRegistrations] = useState([]);
   const [batches, setBatches] = useState([]);
   const [allCustomers, setAllCustomers] = useState([]);
@@ -26,6 +31,9 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
   const [debtWarnings, setDebtWarnings] = useState([]);
 
   const [showRegModal, setShowRegModal] = useState(false);
+  const [editingRegistration, setEditingRegistration] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedBatchDetail, setSelectedBatchDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,12 +49,18 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
   const [batchPage, setBatchPage] = useState(1);
   const [batchPageSize, setBatchPageSize] = useState(15);
 
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       const [resReg, resBatch, resCust, resWarn] = await Promise.all([
-        api.getDebitRegistrations(),
-        api.getDebitBatches(),
+        api.getDebitRegistrations(true),
+        api.getDebitBatches(true),
         api.searchCustomer360(''),
         api.getDebtWarnings()
       ]);
@@ -86,22 +100,69 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
 
   useEffect(() => {
     if (prefilledCustomer) {
+      setEditingRegistration(null);
       setShowRegModal(true);
     }
   }, [prefilledCustomer]);
 
   const handleSaveRegisterSubmit = async (formData) => {
     try {
-      const res = await api.saveDebitRegister(formData);
+      let res;
+      if (editingRegistration) {
+        res = await api.updateDebitRegister(formData);
+      } else {
+        res = await api.saveDebitRegister(formData);
+      }
       if (res.status === 'success') {
-        alert('Đăng ký dịch vụ trích nợ tự động thành công!');
+        alert(res.message || 'Lưu thỏa thuận trích nợ tự động thành công!');
         setShowRegModal(false);
+        setEditingRegistration(null);
         fetchData();
       } else {
         alert('Lỗi: ' + res.message);
       }
     } catch (err) {
       alert('Lỗi hệ thống: ' + err.message);
+    }
+  };
+
+  const handleToggleStatus = async (r) => {
+    const isCurrentActive = r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc';
+    const nextStatus = isCurrentActive ? 'Tạm ngưng' : 'Hiệu lực';
+    if (!window.confirm(`Xác nhận chuyển trạng thái thỏa thuận của khách hàng "${r.hoTen}" sang "${nextStatus}"?`)) {
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const res = await api.toggleDebitRegisterStatus({ maKH: r.maKH, newStatus: nextStatus });
+      if (res.status === 'success') {
+        fetchData();
+      } else {
+        alert('Lỗi: ' + res.message);
+      }
+    } catch (err) {
+      alert('Lỗi kết nối: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteRegister = async (r) => {
+    if (!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA thỏa thuận trích nợ của khách hàng "${r.hoTen}" (Mã: ${r.maKH}) khỏi hệ thống?`)) {
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const res = await api.deleteDebitRegister({ maKH: r.maKH });
+      if (res.status === 'success') {
+        fetchData();
+      } else {
+        alert('Lỗi: ' + res.message);
+      }
+    } catch (err) {
+      alert('Lỗi kết nối: ' + err.message);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -163,12 +224,26 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
 
         <div className="d-flex gap-2">
           {activeSubTab === 'register' ? (
-            <button
-              className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
-              onClick={() => setShowRegModal(true)}
-            >
-              <Plus size={15} /> Đăng Ký Mới
-            </button>
+            <div className="d-flex gap-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1 shadow-sm"
+                onClick={fetchData}
+                disabled={loading}
+                title="Tải lại danh sách"
+              >
+                <RefreshCw size={13} className={loading ? 'fa-spin' : ''} />
+              </button>
+              <button
+                className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
+                onClick={() => {
+                  setEditingRegistration(null);
+                  setShowRegModal(true);
+                }}
+              >
+                <Plus size={15} /> Đăng Ký Mới
+              </button>
+            </div>
           ) : (
             <button
               className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
@@ -183,6 +258,46 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
       {/* SUB-TAB 1: DANH SÁCH ĐĂNG KÝ TRÍCH NỢ */}
       {activeSubTab === 'register' && (
         <div className="card-modern p-4">
+          {/* KHỐI THỐNG KÊ KPI ĐĂNG KÝ TRÍCH NỢ */}
+          <div className="row g-3 mb-3">
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-light rounded-3 border h-100">
+                <div className="text-muted small fw-medium">Tổng Thỏa Thuận</div>
+                <div className="fs-4 fw-bold text-slate-800">{registrations.length}</div>
+                <div className="text-xs text-muted mt-1">Ủy quyền trích CASA</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-success-subtle rounded-3 border border-success-subtle h-100">
+                <div className="text-success small fw-medium">Đang Hiệu Lực</div>
+                <div className="fs-4 fw-bold text-success">
+                  {registrations.filter(r => r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc').length}
+                </div>
+                <div className="text-xs text-success mt-1">Sẵn sàng trích nợ</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-warning-subtle rounded-3 border border-warning-subtle h-100">
+                <div className="text-warning-emphasis small fw-medium">Tạm Ngưng</div>
+                <div className="fs-4 fw-bold text-warning-emphasis">
+                  {registrations.filter(r => r.trangThai === 'Tạm ngưng' || r.trangThai === 'Tam ngung').length}
+                </div>
+                <div className="text-xs text-muted mt-1">Đang tạm hoãn trích</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle h-100">
+                <div className="text-primary small fw-medium">Phân Bổ Theo Kỳ</div>
+                <div className="d-flex gap-1.5 align-items-center mt-1 font-monospace fw-bold flex-wrap">
+                  <span className="badge bg-primary">K1 (05): {registrations.filter(r => Number(r.kyTrich) === 1).length}</span>
+                  <span className="badge bg-info text-dark">K2 (15): {registrations.filter(r => Number(r.kyTrich) === 2).length}</span>
+                  <span className="badge bg-secondary">K3 (25): {registrations.filter(r => Number(r.kyTrich) === 3).length}</span>
+                </div>
+                <div className="text-xs text-muted mt-1">3 kỳ trích nợ định kỳ</div>
+              </div>
+            </div>
+          </div>
+
           <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <h6 className="fw-bold text-slate-800 m-0 font-heading">
               Danh Sách Khách Hàng Ủy Quyền Trích Nợ Tự Động ({filteredRegs.length})
@@ -246,7 +361,9 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                   <th>Số TK CASA</th>
                   <th>Địa Chỉ</th>
                   <th className="text-center">Kỳ Trích</th>
+                  <th>Ngày Đăng Ký</th>
                   <th className="text-center">Trạng Thái</th>
+                  <th className="text-center" style={{ width: 110 }}>Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,18 +384,52 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
                       <td className="font-monospace fw-semibold text-success">{r.soTK}</td>
                       <td className="small text-muted">{r.diaChi}</td>
                       <td className="text-center">
-                        <span className="badge bg-primary-subtle text-primary">Kỳ {r.kyTrich}</span>
+                        <span className="badge bg-primary-subtle text-primary fw-bold">Kỳ {r.kyTrich}</span>
                       </td>
+                      <td className="small text-muted">{r.ngayTao ? formatDateVN(r.ngayTao) : '---'}</td>
                       <td className="text-center">
                         <span className={`badge-status ${r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? 'badge-success-soft' : 'badge-warning-soft'}`}>
                           {r.trangThai}
                         </span>
                       </td>
+                      <td className="text-center">
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary py-1 px-1.5"
+                            title="Chỉnh sửa thỏa thuận"
+                            onClick={() => {
+                              setEditingRegistration(r);
+                              setShowRegModal(true);
+                            }}
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-sm py-1 px-1.5 ${r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                            title={r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? 'Tạm ngưng trích nợ' : 'Kích hoạt lại'}
+                            disabled={actionLoading}
+                            onClick={() => handleToggleStatus(r)}
+                          >
+                            {r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger py-1 px-1.5"
+                            title="Xóa thỏa thuận"
+                            disabled={actionLoading}
+                            onClick={() => handleDeleteRegister(r)}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="text-center text-muted py-4">
+                    <td colSpan="9" className="text-center text-muted py-4">
                       {loading ? 'Đang tải dữ liệu...' : 'Không có dữ liệu đăng ký trích nợ phù hợp.'}
                     </td>
                   </tr>
@@ -373,8 +524,12 @@ export default function DebitManager({ prefilledCustomer, onOpenCustomerQuickVie
       {/* EXTRACTED MODALS */}
       <DebitRegisterModal
         show={showRegModal}
-        onClose={() => setShowRegModal(false)}
+        onClose={() => {
+          setShowRegModal(false);
+          setEditingRegistration(null);
+        }}
         onSubmit={handleSaveRegisterSubmit}
+        editingItem={editingRegistration}
         prefilledCustomer={prefilledCustomer}
         allCustomers={allCustomers}
         allContracts={allContracts}
