@@ -156,6 +156,9 @@ function doPost(e) {
       case "saveDebitRegister":
         result = DebitController.handleSaveDebitRegister(ss, data);
         break;
+      case "saveBatchDebitRegister":
+        result = DebitController.handleSaveBatchDebitRegister(ss, data);
+        break;
       case "updateDebitRegister":
         result = DebitController.handleUpdateDebitRegister(ss, data);
         break;

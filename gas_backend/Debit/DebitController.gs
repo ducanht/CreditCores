@@ -105,6 +105,96 @@ var DebitController = {
     }
   },
 
+  handleSaveBatchDebitRegister: function(ss, data) {
+    var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    if (!sheet) {
+      SchemaSetup.ensureDatabaseSchema(ss);
+      sheet = ss.getSheetByName("DANG_KY_TRICH_NO");
+    }
+
+    var items = data.items || (Array.isArray(data) ? data : []);
+    if (!items || items.length === 0) {
+      return { status: "error", message: "Danh sách hợp đồng / khách hàng đăng ký rỗng!" };
+    }
+
+    var defaultKyTrich = Number(data.kyTrich) || 1;
+    var defaultTrangThai = data.trangThai || "Hiệu lực";
+    var defaultGhiChu = data.ghiChu || "";
+
+    var lastRow = sheet.getLastRow();
+    var existingRowMap = {}; // cleanMaKH -> rowIndex
+    if (lastRow > 1) {
+      var colMaKH = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var r = 0; r < colMaKH.length; r++) {
+        var cleanKey = String(colMaKH[r][0] || "").replace(/^'/, "").trim();
+        if (cleanKey) {
+          existingRowMap[cleanKey] = r + 2;
+        }
+      }
+    }
+
+    var updatedCount = 0;
+    var newRows = [];
+    var nowTime = new Date();
+
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var rawMaKH = String(item.maKH || "").trim();
+      var cleanMaKH = rawMaKH.replace(/^'/, "");
+      if (!cleanMaKH) continue;
+
+      var cleanGTTT = String(item.gttt || item.cccd || "").replace(/^'/, "").trim();
+      var cleanSoTK = String(item.soTK || "").replace(/^'/, "").trim();
+      var hoTen = String(item.hoTen || "").trim();
+      var diaChi = String(item.diaChi || "").trim();
+      var kyTrich = Number(item.kyTrich || defaultKyTrich) || 1;
+      var trangThai = String(item.trangThai || defaultTrangThai).trim();
+      var ghiChu = String(item.ghiChu || defaultGhiChu).trim();
+
+      if (existingRowMap[cleanMaKH]) {
+        // Đã tồn tại -> Cập nhật thông tin dòng cũ
+        var rowIdx = existingRowMap[cleanMaKH];
+        if (hoTen) sheet.getRange(rowIdx, 2).setValue(hoTen);
+        if (cleanGTTT) sheet.getRange(rowIdx, 3).setValue("'" + cleanGTTT);
+        if (cleanSoTK) sheet.getRange(rowIdx, 4).setValue("'" + cleanSoTK);
+        if (diaChi) sheet.getRange(rowIdx, 5).setValue(diaChi);
+        sheet.getRange(rowIdx, 6).setValue(kyTrich);
+        sheet.getRange(rowIdx, 7).setValue(trangThai);
+        if (ghiChu) sheet.getRange(rowIdx, 8).setValue(ghiChu);
+        updatedCount++;
+      } else {
+        // Chưa có -> Chuẩn bị dòng mới
+        newRows.push([
+          "'" + cleanMaKH,
+          hoTen,
+          "'" + cleanGTTT,
+          "'" + cleanSoTK,
+          diaChi,
+          kyTrich,
+          trangThai,
+          ghiChu,
+          nowTime
+        ]);
+        // Cập nhật map tạm để tránh trùng nếu trong cùng 1 lần submit có 2 HĐTD của cùng 1 KH
+        existingRowMap[cleanMaKH] = lastRow + newRows.length;
+      }
+    }
+
+    if (newRows.length > 0) {
+      sheet.getRange(lastRow + 1, 1, newRows.length, newRows[0].length).setValues(newRows);
+    }
+
+    CacheHelper.invalidateModuleCache('debit');
+
+    return {
+      status: "success",
+      message: "Đã thêm mới " + newRows.length + " và cập nhật " + updatedCount + " thỏa thuận trích nợ tự động thành công!",
+      newCount: newRows.length,
+      updatedCount: updatedCount,
+      totalCount: newRows.length + updatedCount
+    };
+  },
+
   handleUpdateDebitRegister: function(ss, data) {
     var sheet = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
     if (!sheet || sheet.getLastRow() <= 1) {

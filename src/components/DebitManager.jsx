@@ -61,7 +61,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
       const [resReg, resBatch, resCust, resWarn] = await Promise.all([
         api.getDebitRegistrations(true),
         api.getDebitBatches(true),
-        api.searchCustomer360(''),
+        api.searchCustomer360({ query: '', limit: 1000 }),
         api.getDebtWarnings()
       ]);
 
@@ -76,7 +76,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
               ...ct,
               maKH: c.maKH,
               hoTen: c.hoTen,
-              cccd: c.cccd,
+              cccd: c.cccd || c.gttt,
               dienThoai: c.dienThoaiDD || c.dienThoai,
               soTK: c.soTK,
               diaChi: c.diaChi
@@ -115,6 +115,22 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
       }
       if (res.status === 'success') {
         alert(res.message || 'Lưu thỏa thuận trích nợ tự động thành công!');
+        setShowRegModal(false);
+        setEditingRegistration(null);
+        fetchData();
+      } else {
+        alert('Lỗi: ' + res.message);
+      }
+    } catch (err) {
+      alert('Lỗi hệ thống: ' + err.message);
+    }
+  };
+
+  const handleBatchRegisterSubmit = async (batchPayload) => {
+    try {
+      const res = await api.saveBatchDebitRegister(batchPayload);
+      if (res.status === 'success') {
+        alert(res.message || 'Đăng ký thỏa thuận trích nợ tự động hàng loạt thành công!');
         setShowRegModal(false);
         setEditingRegistration(null);
         fetchData();
@@ -529,10 +545,12 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
           setEditingRegistration(null);
         }}
         onSubmit={handleSaveRegisterSubmit}
+        onBatchSubmit={handleBatchRegisterSubmit}
         editingItem={editingRegistration}
         prefilledCustomer={prefilledCustomer}
         allCustomers={allCustomers}
         allContracts={allContracts}
+        registrations={registrations}
       />
 
       <DebitBatchCreateModal

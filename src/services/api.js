@@ -6,7 +6,7 @@
 
 import { formatDateVN, formatDateTimeVN, getTodayVN } from '../utils/dateUtils.js';
 
-const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyeFdb58_YqyxMXEyBlopMGwDZK6iXBSSjigyDWJR6fwA8wSY8EmY4aTaNbmaDTaSL-/exec';
+const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbyhfULEPWGnh_P4SPyswMwFdMStLXdDd2jPD5pliRQFlqZ1VjMsRf5CB1JcnBhj8HvG/exec';
 const STORAGE_KEY_GAS_URL = 'CREDITCORES_GAS_API_URL';
 
 export function getGasApiUrl() {
@@ -172,6 +172,7 @@ export const api = {
   saveLoanInspection: (data) => sendRequest('saveLoanInspection', data, 'POST'),
   getDebitRegistrations: (forceFresh = false) => sendRequest('getDebitRegistrations', null, 'GET', !forceFresh),
   saveDebitRegister: (data) => sendRequest('saveDebitRegister', data, 'POST'),
+  saveBatchDebitRegister: (data) => sendRequest('saveBatchDebitRegister', data, 'POST'),
   updateDebitRegister: (data) => sendRequest('updateDebitRegister', data, 'POST'),
   toggleDebitRegisterStatus: (data) => sendRequest('toggleDebitRegisterStatus', data, 'POST'),
   deleteDebitRegister: (data) => sendRequest('deleteDebitRegister', data, 'POST'),
