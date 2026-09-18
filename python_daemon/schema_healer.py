@@ -49,7 +49,8 @@ ALL_SCHEMAS = {
         "headers": [
             "MaKH", "HoTen", "DiaChi", "NgaySinh", "CCCD", "NgayCap", "NoiCap",
             "DienThoai", "DienThoaiDD", "SoTK", "KhuVuc", "SoTV", "SoSoCP",
-            "NgayVaoTV", "TongTienCP", "NgayCapNhat"
+            "NgayVaoTV", "TongTienCP", "NgayCapNhat",
+            "TongDuNoHienTai", "SoLuongHDVay", "TrangThaiVay", "NhomNoCIC", "KvXa", "KvThon"
         ],
         "color": {"red": 0.0, "green": 0.30, "blue": 0.25}
     },
@@ -57,37 +58,46 @@ ALL_SCHEMAS = {
         "headers": [
             "SoHDTD", "MaKH", "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
             "TraLaiDenNgay", "MaLoaiVay", "SoThangVay", "MoTaVay", "CBTD_PhuTrach",
-            "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat"
+            "Ten_CBTD", "TrangThaiHD", "NgayTatToan", "NgayCapNhat",
+            "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon"
         ],
         "color": {"red": 0.11, "green": 0.21, "blue": 0.36}
     },
     "DANG_KY_TRICH_NO": {
         "headers": [
-            "MaKH", "HoTen", "GTTT", "SoTK", "DiaChi", "KyTrich", "TrangThai", "GhiChu", "NgayTao"
+            "SoHDTD", "NgayVay", "TraLaiDenNgay", "LaiSuat", "MaKH", "TenKH", "SoTK",
+            "SoTienLai", "SoTienNo", "SoGoc", "TongTien", "KyTrichNo", "TrangThai", "GhiChu", "NgayTao"
         ],
         "color": {"red": 0.06, "green": 0.32, "blue": 0.20}
     },
-    "DOT_TRICH_NO": {
+    "LICH_SU_TRICH_NO": {
         "headers": [
-            "MaDot", "ThangNam", "KyTrich", "TongPhaiThu", "TongDaTrich", "TongConNo",
-            "TongSoKH", "TrangThai", "NgayTao", "NgayHoanTat"
-        ],
-        "color": {"red": 0.29, "green": 0.08, "blue": 0.55}
-    },
-    "CHI_TIET_TRICH_NO": {
-        "headers": [
-            "MaDot", "MaKH", "HoTen", "SoCCCD", "SoTK_CASA", "SoHDTD", "DuNoGoc_Snap",
-            "LaiDuKien", "GocDuKien", "SoTienTrichThucTe", "DaTrich", "ConNo",
-            "TrangThai", "MaGiaoDichCore", "NgayCapNhat"
+            "MaDot", "SoHDTD", "MaKH", "TenKH", "SoTK", "TongTienPhaiThu", "DaTrich",
+            "ConNo", "TrangThaiCore", "MaGiaoDichCore", "NgayTrich"
         ],
         "color": {"red": 0.72, "green": 0.11, "blue": 0.11}
     },
+    "DOT_TRICH_NO": {
+        "headers": [
+            "MaDot", "ThangNam", "KyTrichNo", "TongSoHD", "TongSoKH", "TongPhaiThu",
+            "TongDaTrich", "TongConNo", "TrangThai", "NgayTao"
+        ],
+        "color": {"red": 0.29, "green": 0.08, "blue": 0.55}
+    },
     "NO_TON_DONG": {
         "headers": [
-            "MaKH", "SoHDTD", "GocTon", "LaiTon", "TongNoTon", "KyPhatSinh",
+            "SoHDTD", "MaKH", "TenKH", "GocTon", "LaiTon", "TongNoTon", "KyPhatSinh",
             "TrangThai", "GhiChu", "NgayCapNhat"
         ],
         "color": {"red": 0.90, "green": 0.32, "blue": 0.0}
+    },
+    "DASHBOARD_SNAPSHOT": {
+        "headers": [
+            "MaKhuVuc", "TenKhuVuc", "CapKhuVuc", "TongDuNo", "TongTienVay", "SoLuongHD",
+            "SoLuongKH", "DuNoBinhQuan", "DuNo_NongNghiep", "DuNo_TieuDung", "DuNo_ThuongMai",
+            "DuNo_CBTD_Huyen", "DuNo_CBTD_Dinh", "DuNo_CBTD_Nhan", "DuNo_QuaHan", "NgayCapNhat"
+        ],
+        "color": {"red": 0.02, "green": 0.59, "blue": 0.41}
     },
     "THAM_DINH_TD": {
         "headers": [
@@ -221,3 +231,18 @@ def get_or_create_worksheet(spreadsheet, title, headers, log=None):
         sheet = spreadsheet.add_worksheet(title=title, rows=100, cols=len(headers) + 5)
         sheet.update(values=[headers], range_name=f"A1:{gspread.utils.rowcol_to_a1(1, len(headers))}")
         return sheet
+
+
+if __name__ == "__main__":
+    import sys
+    print("=" * 70)
+    print("🚀 CREDITCORES - CHƯƠNG TRÌNH TỰ ĐỘNG KHỞI TẠO & NÂNG CẤP CSDL GOOGLE SHEETS")
+    print("   (Self-Healing Schema - Bảo toàn 100% dữ liệu cũ)")
+    print("=" * 70)
+    try:
+        init_or_heal_database_schema()
+        print("\n✅ THÀNH CÔNG: Toàn bộ cấu trúc CSDL đã được đồng bộ chuẩn xác!")
+    except Exception as e:
+        print(f"\n❌ LỖI KHỞI TẠO: {e}", file=sys.stderr)
+        sys.exit(1)
+
