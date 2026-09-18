@@ -5,7 +5,8 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
-  Filter
+  Filter,
+  Printer
 } from 'lucide-react';
 import { formatDateVN } from '../../utils/dateUtils';
 import Pagination from '../Pagination';
@@ -30,7 +31,8 @@ export default function DebitRegisterTable({
   onOpenCustomerQuickView,
   onEditRegistration,
   onToggleStatus,
-  onDeleteRegistration
+  onDeleteRegistration,
+  onPrintRegistration
 }) {
   const activeCount = registrations.filter(
     (r) => r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc'
@@ -176,6 +178,14 @@ export default function DebitRegisterTable({
                   </td>
                   <td className="text-center">
                     <div className="d-flex justify-content-center align-items-center gap-1">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-info py-1 px-1.5"
+                        title="In văn bản thỏa thuận ủy quyền trích nợ (A4/Word)"
+                        onClick={() => onPrintRegistration && onPrintRegistration(r)}
+                      >
+                        <Printer size={13} />
+                      </button>
                       <button
                         type="button"
                         className="btn btn-sm btn-outline-primary py-1 px-1.5"

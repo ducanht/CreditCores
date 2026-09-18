@@ -51,6 +51,7 @@ export default function DebitBatchDetailModal({
   const totalDaTrich = items.reduce((sum, i) => sum + (i.daTrich || 0), 0);
   const totalConNo = Math.max(0, totalPhaiThu - totalDaTrich);
 
+  // 1. XUẤT CSV ĐẦY ĐỦ THÔNG TIN NỘI BỘ
   const handleExportCSV = () => {
     const headers = ['Mã KH', 'Họ Tên', 'Số TK CASA', 'Số HĐTD', 'Dư Nợ Gốc', 'Lãi Phải Thu', 'Gốc Đến Hạn', 'Nợ Tồn', 'Tổng Phải Thu', 'Đã Trích', 'Trạng Thái'];
     const rows = items.map((i) => [
@@ -77,6 +78,154 @@ export default function DebitBatchDetailModal({
     URL.revokeObjectURL(url);
   };
 
+  // 2. XUẤT TỆP LỆNH TRÍCH NỢ CHO COREBANKING / CO-OPBANK
+  const handleExportCoreBankingCSV = () => {
+    const headers = ['STT', 'Số Tài Khoản CASA', 'Tên Chủ Tài Khoản', 'Số Tiền Trích Nợ (VNĐ)', 'Nội Dung Trích Nợ', 'Số Hợp Đồng Vay'];
+    const rows = items.map((i, idx) => [
+      idx + 1,
+      `"\t${i.soTK || ''}"`,
+      `"${i.hoTen || ''}"`,
+      i.soTienTrich || i.tongDuKien || 0,
+      `"TRICH NO KY ${batch.kyTrich || 1} THANG ${batch.thangNam || ''} HD ${i.soHDTD || ''}"`,
+      `"${i.soHDTD || ''}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `LENH_TRICH_COREBANKING_${batch.maDot || 'DOT'}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 3. XUẤT BẢNG KÊ WORD (.DOC) CHUẨN A4 HÀNH CHÍNH
+  const handleExportWord = () => {
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>Bảng Kê Trích Nợ - ${batch.maDot}</title>
+        <style>
+          @page Section1 { size: 595.3pt 841.9pt; margin: 1.8cm 1.5cm 1.8cm 1.5cm; }
+          div.Section1 { page: Section1; }
+          body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.35; color: #000; }
+          .header-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          .title { text-align: center; font-size: 14pt; font-weight: bold; margin: 10px 0 3px; text-transform: uppercase; }
+          .subtitle { text-align: center; font-size: 11pt; font-style: italic; margin-bottom: 15px; }
+          .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          .data-table th, .data-table td { border: 1px solid #000; padding: 5px 6px; font-size: 10pt; }
+          .data-table th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .fw-bold { font-weight: bold; }
+          .sig-table { width: 100%; margin-top: 30px; border-collapse: collapse; page-break-inside: avoid; }
+          .sig-table td { width: 33.33%; text-align: center; vertical-align: top; font-size: 11pt; }
+        </style>
+      </head>
+      <body>
+        <div class="Section1">
+          <table class="header-table">
+            <tr>
+              <td style="width: 50%; text-align: center; vertical-align: top;">
+                <strong>QUỸ TÍN DỤNG NHÂN DÂN YÊN THỌ</strong><br/>
+                Địa chỉ: Thôn Tân Lộc, xã Quý Lộc, tỉnh Thanh Hoá<br/>
+                Số: ....../BK-TN-YENTHO
+              </td>
+              <td style="width: 50%; text-align: center; vertical-align: top;">
+                <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br/>
+                <strong>Độc lập - Tự do - Hạnh phúc</strong><br/>
+                -------------------<br/>
+                <em>Quý Lộc, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}</em>
+              </td>
+            </tr>
+          </table>
+
+          <div class="title">BẢNG KÊ THU HỒI NỢ TỰ ĐỘNG TÀI KHOẢN THANH TOÁN (CASA)</div>
+          <div class="subtitle">Đợt trích: <strong>${batch.maDot}</strong> • Kỳ trích: <strong>Kỳ ${batch.kyTrich}</strong> • Tháng thu nợ: <strong>${batch.thangNam}</strong></div>
+
+          <p><strong>I. TỔNG HỢP KẾT QUẢ ĐỢT TRÍCH NỢ:</strong></p>
+          <ul>
+            <li>Tổng số món trích thu: <strong>${items.length} món</strong></li>
+            <li>Tổng số tiền phải thu theo kế hoạch: <strong>${formatCurrencyVN(totalPhaiThu)}</strong></li>
+            <li>Tổng số tiền đã trích thu thành công: <strong>${formatCurrencyVN(totalDaTrich)}</strong> (Tỷ lệ: ${totalPhaiThu > 0 ? ((totalDaTrich / totalPhaiThu) * 100).toFixed(1) : 0}%)</li>
+            <li>Tổng số tiền nợ tồn đọng chuyển kỳ sau: <strong>${formatCurrencyVN(totalConNo)}</strong></li>
+          </ul>
+
+          <p><strong>II. BẢNG CHI TIẾT CÁC MÓN TRÍCH NỢ TỰ ĐỘNG:</strong></p>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 5%;">STT</th>
+                <th style="width: 10%;">Mã KH</th>
+                <th style="width: 22%;">Họ Và Tên Khách Hàng</th>
+                <th style="width: 15%;">Số TK CASA</th>
+                <th style="width: 14%;">Số HĐTD</th>
+                <th style="width: 17%;" class="text-right">Số Tiền Phải Thu</th>
+                <th style="width: 17%;" class="text-right">Đã Trích</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((it, idx) => `
+                <tr>
+                  <td class="text-center">${idx + 1}</td>
+                  <td class="text-center">${it.maKH || ''}</td>
+                  <td><strong>${it.hoTen || ''}</strong></td>
+                  <td class="text-center">${it.soTK || ''}</td>
+                  <td class="text-center">${it.soHDTD || ''}</td>
+                  <td class="text-right fw-bold">${formatCurrencyVN(it.soTienTrich || it.tongDuKien || 0)}</td>
+                  <td class="text-right">${formatCurrencyVN(it.daTrich || 0)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" class="text-right">TỔNG CỘNG:</th>
+                <th class="text-right">${formatCurrencyVN(totalPhaiThu)}</th>
+                <th class="text-right">${formatCurrencyVN(totalDaTrich)}</th>
+              </tr>
+            </tfoot>
+          </table>
+
+          <table class="sig-table">
+            <tr>
+              <td>
+                <strong>NGƯỜI LẬP BẢNG</strong><br/>
+                <em>(Ký, ghi rõ họ tên)</em>
+                <br/><br/><br/><br/>
+                <strong>Cán bộ tín dụng</strong>
+              </td>
+              <td>
+                <strong>KẾ TOÁN TRƯỞNG</strong><br/>
+                <em>(Ký, ghi rõ họ tên)</em>
+                <br/><br/><br/><br/>
+                <strong>.....................................</strong>
+              </td>
+              <td>
+                <strong>GIÁM ĐỐC QUỸ</strong><br/>
+                <em>(Ký, đóng dấu)</em>
+                <br/><br/><br/><br/>
+                <strong>.....................................</strong>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\uFEFF' + htmlContent], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BANG_KE_TRICH_NO_${batch.maDot || 'DOT'}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -86,7 +235,7 @@ export default function DebitBatchDetailModal({
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content card-modern p-4">
           {/* Header */}
-          <div className="modal-header border-0 pb-0 d-flex justify-content-between align-items-center">
+          <div className="modal-header border-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
               <h5 className="modal-title fw-bold text-slate-900 font-heading d-flex align-items-center gap-2">
                 <Zap size={20} className="text-warning" />
@@ -96,17 +245,34 @@ export default function DebitBatchDetailModal({
                 Kỳ {batch.kyTrich} • Tháng {batch.thangNam} • Ngày tạo: {batch.ngayTao || getTodayVN()}
               </div>
             </div>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center flex-wrap gap-2">
               <button
                 type="button"
-                className="btn btn-outline-success btn-sm fw-semibold d-flex align-items-center gap-1"
-                onClick={handleExportCSV}
+                className="btn btn-outline-success btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                onClick={handleExportCoreBankingCSV}
+                title="Xuất file lệnh trích nợ tự động nộp CoreBanking / Co-opBank"
               >
-                <Download size={14} /> Xuất CSV / Excel
+                <Download size={14} /> File CoreBanking
               </button>
               <button
                 type="button"
-                className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1"
+                className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                onClick={handleExportWord}
+                title="Xuất bản in Microsoft Word (.doc) có khối ký duyệt"
+              >
+                <FileSpreadsheet size={14} /> Xuất Word
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                onClick={handleExportCSV}
+                title="Xuất dữ liệu Excel / CSV toàn diện"
+              >
+                <Download size={14} /> CSV Chi Tiết
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
                 onClick={handlePrint}
               >
                 <Printer size={14} /> In Bảng Kê

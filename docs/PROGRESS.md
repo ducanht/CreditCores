@@ -1,8 +1,8 @@
 # 📊 CREDITCORES — BÁO CÁO TIẾN ĐỘ DỰ ÁN
 # Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
 
-> **Cập nhật lần cuối**: 18/09/2026 10:38 GMT+7
-> **Phiên bản hệ thống**: v1.4.1 (Hoàn thành Giai đoạn 1: Phân rã Shared Components & Tái cấu trúc Module Auto-Debit)
+> **Cập nhật lần cuối**: 18/09/2026 10:45 GMT+7
+> **Phiên bản hệ thống**: v1.4.2 (Hoàn thành sâu Giai đoạn 1: In Thỏa Thuận A4/Word, Xuất Lệnh CoreBanking, Tách Sub-modules Auto-Debit)
 > **Branch**: `main`
 
 ---
@@ -10,13 +10,13 @@
 ## 🏆 TỔNG TIẾN ĐỘ TOÀN DỰ ÁN
 
 ```
-Frontend SPA        █████████████████████  98%  (Build 0 errors, Zero Mock, Modular)
+Frontend SPA        █████████████████████  99%  (Build 0 errors, Zero Mock, Modular)
 GAS Backend         ███████████████████░░  95%  (Singleton SS, Write Lock, CacheHelper, Live Reports)
 CSDL Google Sheets  ████████████████████░  98%  (14 Bảng chuẩn hóa, TT 14/2017)
 Python Daemon       ████████████░░░░░░░░░  65%  (Chạy 24/7 trên máy chủ SQL Server Production)
-UI/UX Design System ████████████████████░  96%  (Shared Catalog: SegControl, StatusBadge, EmptyState)
+UI/UX Design System ████████████████████░  97%  (Shared Catalog: SegControl, StatusBadge, EmptyState, Print A4)
 Performance GAS     ██████████████████░░░  90%  (Batch reads, In-Memory Singleton, Fast Routing)
-TỔNG THỂ            ██████████████████░░░  92%  (Đã phân rã Shared Catalog & Auto-Debit)
+TỔNG THỂ            ███████████████████░░  94%  (Hoàn thành sâu Shared Catalog & Auto-Debit)
 ```
 
 ---
@@ -71,25 +71,28 @@ TỔNG THỂ            ██████████████████�
 | Nhắc nhở chu kỳ 30 ngày | 🔲 Todo | Kế hoạch Q4/2026 |
 
 ### 5. Đăng Ký Thỏa Thuận Trích Nợ Tự Động
-**Mức hoàn thành: 98%**
+**Mức hoàn thành: 100%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
 | Phân rã Component `DebitRegisterTable` | ✅ Done | Tách riêng bảng dữ liệu, KPI cards, bộ lọc kỳ & trạng thái |
 | CRUD đầy đủ (Thêm/Sửa/Xóa/Tạm ngưng) | ✅ Done | Lưu tức thì vào sheet `DANG_KY_TRICH_NO` |
 | Batch selection nhiều hợp đồng | ✅ Done | Chọn nhanh nhiều HĐ cùng khách hàng |
-| In văn bản thỏa thuận ủy quyền | ✅ Done | Biểu mẫu thỏa thuận trích nợ tự động |
+| In văn bản thỏa thuận ủy quyền A4 | ✅ Done | `DebitAgreementPrintModal` chuẩn mẫu pháp lý QTDND Yên Thọ |
+| Xuất tệp Word (.doc) Thỏa thuận | ✅ Done | Hỗ trợ tải file Word chuẩn form để chỉnh sửa & lưu trữ |
+| Nút In 1-click trên bảng & trong modal | ✅ Done | Tích hợp icon Printer trên từng dòng và footer modal sửa |
 
 ### 6. Khởi Tạo & Quản Lý Đợt Trích Nợ
-**Mức hoàn thành: 95%**
+**Mức hoàn thành: 100%**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
-| Phân rã Component `DebitBatchTable` | ✅ Done | Tách riêng sổ theo dõi các đợt trích nợ & phân trang |
+| Phân rã Component `DebitBatchTable` | ✅ Done | Tách riêng sổ theo dõi các đợt trích nợ & phân trang & nút Xem |
 | Engine tính lãi thực tế TT 14/2017 | ✅ Done | Tính ngày đầu bỏ ngày cuối, mẫu số 36500 |
 | Snapshot bất biến Master-Detail | ✅ Done | `DOT_TRICH_NO` + `CT_DOT_TRICH_NO` |
 | LockService chống race condition | ✅ Done | Khóa an toàn 15s cho giao dịch ghi |
-| Export Excel danh sách đợt | 🔲 Todo | Roadmap Q4/2026 |
+| Xuất tệp lệnh CoreBanking / Co-opBank | ✅ Done | CSV định dạng lệnh trích tài khoản thanh toán nộp ngân hàng |
+| Xuất Bảng kê Word (.doc) A4 3 chữ ký | ✅ Done | Chuẩn văn bản kế toán (CBTD, Kế toán trưởng, Giám đốc) |
 
 ### 7. Đối Soát & Phân Loại Kết Quả
 **Mức hoàn thành: 88%**
@@ -190,7 +193,8 @@ TỔNG THỂ            ██████████████████�
 ## ✅ CHANGELOG
 
 | Ngày | Version | Chi Tiết |
-| **18/09/2026** | **v1.4.1** | **Hoàn thành Giai đoạn 1: Phân rã Shared Catalog (SegControl, StatusBadge, EmptyState, ActionToolbar), tách sub-modules DebitRegisterTable & DebitBatchTable, nâng cấp Reconciliation & DebtWarning** |
+| **18/09/2026** | **v1.4.2** | **Hoàn thành sâu Giai đoạn 1: Biểu mẫu in Giấy Thỏa Thuận Trích Nợ A4 & Xuất Word (.doc) `DebitAgreementPrintModal`, 1-click in ấn trên bảng & modal, nâng cấp xuất file lệnh CoreBanking / Co-opBank và Bảng kê A4 có 3 khối ký duyệt** |
+| 18/09/2026 | v1.4.1 | Hoàn thành Giai đoạn 1: Phân rã Shared Catalog (SegControl, StatusBadge, EmptyState, ActionToolbar), tách sub-modules DebitRegisterTable & DebitBatchTable, nâng cấp Reconciliation & DebtWarning |
 | 18/09/2026 | v1.4.0 | Tối ưu toàn diện GAS Performance (Singleton SS, Write Lock, Cache 60s), UI/UX Redesign (TopHeader breadcrumbs & bell, Skeleton loader, SegControl), nâng cấp Reports Live Data 100% |
 | 17/09/2026 | v1.3.1 | Batch contract selection workflow |
 | 16/09/2026 | v1.3.0 | DebitRegister CRUD hoàn chỉnh |

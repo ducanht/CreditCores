@@ -12,6 +12,7 @@ import { DebitRegisterTable, DebitBatchTable } from './debit';
 import DebitBatchCreateModal from './modals/DebitBatchCreateModal';
 import DebitRegisterModal from './modals/DebitRegisterModal';
 import DebitBatchDetailModal from './modals/DebitBatchDetailModal';
+import DebitAgreementPrintModal from './modals/DebitAgreementPrintModal';
 
 export default function DebitManager({ initialSubTab = 'register', prefilledCustomer, onOpenCustomerQuickView }) {
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'register');
@@ -23,6 +24,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
 
   const [showRegModal, setShowRegModal] = useState(false);
   const [editingRegistration, setEditingRegistration] = useState(null);
+  const [printingRegistration, setPrintingRegistration] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -279,6 +281,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
           }}
           onToggleStatus={handleToggleStatus}
           onDeleteRegistration={handleDeleteRegister}
+          onPrintRegistration={(r) => setPrintingRegistration(r)}
         />
       )}
 
@@ -311,6 +314,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         allCustomers={allCustomers}
         allContracts={allContracts}
         registrations={registrations}
+        onPrintAgreement={(item) => setPrintingRegistration(item)}
       />
 
       <DebitBatchCreateModal
@@ -327,6 +331,12 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         onClose={() => setSelectedBatchDetail(null)}
         batch={selectedBatchDetail}
         onOpenCustomerQuickView={onOpenCustomerQuickView}
+      />
+
+      <DebitAgreementPrintModal
+        registration={printingRegistration}
+        contracts={allContracts}
+        onClose={() => setPrintingRegistration(null)}
       />
     </div>
   );

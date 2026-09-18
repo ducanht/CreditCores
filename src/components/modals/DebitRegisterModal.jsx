@@ -10,7 +10,8 @@ import {
   Calendar,
   Filter,
   FileText,
-  CreditCard
+  CreditCard,
+  Printer
 } from 'lucide-react';
 import { isValidCCCD } from '../../utils/validators';
 import { formatCurrencyVN, formatDateVN } from '../../utils/dateUtils';
@@ -24,7 +25,8 @@ export default function DebitRegisterModal({
   prefilledCustomer = null,
   allCustomers = [],
   allContracts = [],
-  registrations = []
+  registrations = [],
+  onPrintAgreement
 }) {
   const isEdit = Boolean(editingItem);
 
@@ -385,13 +387,27 @@ export default function DebitRegisterModal({
                 </div>
               </div>
 
-              <div className="modal-footer border-0 pt-0">
-                <button type="button" className="btn btn-light" onClick={onClose}>
-                  Đóng
-                </button>
-                <button type="submit" className="btn btn-brand fw-bold">
-                  Cập Nhật Thỏa Thuận
-                </button>
+              <div className="modal-footer border-0 pt-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  {onPrintAgreement && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-info btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                      onClick={() => onPrintAgreement(editFormData)}
+                      title="Xem trước và in Giấy thỏa thuận ủy quyền trích nợ A4"
+                    >
+                      <Printer size={15} /> In Thỏa Thuận A4
+                    </button>
+                  )}
+                </div>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light btn-sm" onClick={onClose}>
+                    Đóng
+                  </button>
+                  <button type="submit" className="btn btn-brand btn-sm fw-bold shadow-sm">
+                    Cập Nhật Thỏa Thuận
+                  </button>
+                </div>
               </div>
             </form>
           </div>

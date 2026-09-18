@@ -1,4 +1,5 @@
 import React from 'react';
+import { Eye } from 'lucide-react';
 import { formatCurrencyVN } from '../../utils/dateUtils';
 import Pagination from '../Pagination';
 import { StatusBadge, EmptyState } from '../shared';
@@ -34,6 +35,7 @@ export default function DebitBatchTable({
               <th className="text-end">Còn Nợ</th>
               <th className="text-center">Trạng Thái</th>
               <th>Thời Gian Tạo</th>
+              <th className="text-center" style={{ width: 100 }}>Thao Tác</th>
             </tr>
           </thead>
           <tbody>
@@ -68,11 +70,25 @@ export default function DebitBatchTable({
                     <StatusBadge status={b.trangThai || 'DA_CHOT'} />
                   </td>
                   <td className="small text-muted">{b.ngayTao || '---'}</td>
+                  <td className="text-center">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary py-1 px-2 d-inline-flex align-items-center gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectBatchDetail(b);
+                      }}
+                      title="Xem chi tiết đợt trích nợ"
+                    >
+                      <Eye size={13} />
+                      <span className="small">Chi tiết</span>
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="text-center py-4">
+                <td colSpan="9" className="text-center py-4">
                   <EmptyState
                     title="Chưa có đợt trích nợ nào"
                     description={
