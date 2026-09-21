@@ -242,7 +242,15 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
 }
 
 export const api = {
-  getDashboardStats: (forceFresh = false) => sendRequest('getDashboardStats', null, 'GET', !forceFresh),
+  getDashboardStats: (params = {}, forceFresh = false) => {
+    let p = params;
+    let fresh = forceFresh;
+    if (typeof params === 'boolean') {
+      fresh = params;
+      p = {};
+    }
+    return sendRequest('getDashboardStats', p, 'GET', !fresh);
+  },
   searchCustomer360: (params, forceFresh = false) => {
     const payload = typeof params === 'object' ? params : { query: params };
     return sendRequest('searchCustomer360', payload, 'GET', !forceFresh);

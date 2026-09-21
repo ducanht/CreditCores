@@ -91,20 +91,34 @@ Tài liệu này định nghĩa chi tiết **14 bảng CSDL chuẩn** và **2 b�
 | :--- | :--- | :---: | :---: | :--- |
 | A | `SoHDTD` | String | `@` | Số hợp đồng / khế ước tín dụng (PK) |
 | B | `MaKH` | String | `@` | Mã khách hàng (FK `KH_CORE`) |
-| C | `TienVay` | Number | `#,##0` | Số tiền giải ngân ban đầu (VNĐ) |
-| D | `DuNo` | Number | `#,##0` | Dư nợ gốc hiện tại (VNĐ, = 0 nếu đã tất toán) |
-| E | `LaiSuat` | Number | `0.00` | Lãi suất cho vay (%/năm) |
-| F | `NgayVay` | Date | `dd/MM/yyyy` | Ngày giải ngân nhận nợ |
-| G | `DenHan` | Date | `dd/MM/yyyy` | Ngày đáo hạn hợp đồng |
-| H | `TraLaiDenNgay` | Date | `dd/MM/yyyy` | Ngày đã thanh toán lãi gần nhất |
-| I | `MaLoaiVay` | String | `@` | Mã/Tên sản phẩm cho vay (`LV01`, `Nông nghiệp`...) |
-| J | `SoThangVay` | Number | `#,##0` | Thời hạn vay (tháng) |
-| K | `MoTaVay` | String | `@` | Phương án sản xuất kinh doanh |
-| L | `CBTD_PhuTrach` | String | `@` | Username Cán bộ Tín dụng quản lý HĐ (Bảo toàn khi sync) |
-| M | `Ten_CBTD` | String | `@` | Họ tên đầy đủ CBTD phụ trách (Bảo toàn khi sync) |
-| N | `TrangThaiHD` | Enum | `@` | Trạng thái hợp đồng (`DANG_VAY`, `DA_TAT_TOAN`) |
-| O | `MaLoaiHD` | Enum / String | `@` | Mã loại HĐ theo hình thức bảo đảm: `THCDBTNMT`, `THBLCDBTNMT`, `NHCDBTNMT`, `THCDB`, `NHCDB`, `NHKDB`, `THKDB` |
-| P | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server hoặc phân công |
+| C | `HoTen` | String | `@` | Họ và tên khách hàng vay |
+| D | `CCCD` | String | `@` | Số CCCD / CMND |
+| E | `DienThoai` | String | `@` | Số điện thoại liên hệ |
+| F | `DiaChi` | String | `@` | Địa chỉ cư trú |
+| G | `KvXa` | String | `@` | Địa bàn Xã (`Xã Quý Lộc`, `Xã Yên Trường`, `Xã Vĩnh Lộc`) |
+| H | `KvThon` | String | `@` | Địa bàn Thôn (12 thôn) |
+| I | `TienVay` | Number | `#,##0` | Số tiền giải ngân ban đầu (VNĐ) |
+| J | `DuNo` | Number | `#,##0` | Dư nợ gốc hiện tại (VNĐ, = 0 nếu đã tất toán) |
+| K | `LaiSuat` | Number | `0.00` | Lãi suất cho vay (%/năm) |
+| L | `NgayVay` | Date | `dd/MM/yyyy` | Ngày giải ngân nhận nợ |
+| M | `DenHan` | Date | `dd/MM/yyyy` | Ngày đáo hạn hợp đồng |
+| N | `TraLaiDenNgay` | Date | `dd/MM/yyyy` | Ngày đã thanh toán lãi gần nhất |
+| O | `SoThangVay` | Number | `#,##0` | Thời hạn vay (tháng) |
+| P | `MaLoaiVay` | String | `@` | Mã/Tên sản phẩm cho vay (`LV01`, `Nông nghiệp`...) |
+| Q | `MoTaVay` | String | `@` | Phương án sản xuất kinh doanh |
+| R | `CBTD_PhuTrach` | String | `@` | Username Cán bộ Tín dụng quản lý HĐ (Bảo toàn khi sync) |
+| S | `Ten_CBTD` | String | `@` | Họ tên đầy đủ CBTD phụ trách (Bảo toàn khi sync) |
+| T | `TrangThaiHD` | Enum | `@` | Trạng thái hợp đồng (`DANG_VAY`, `DA_TAT_TOAN`) |
+| U | `MaLoaiHD` | Enum / String | `@` | Mã loại HĐ theo hình thức bảo đảm: `THCDBTNMT`, `THBLCDBTNMT`, `NHCDBTNMT`, `THCDB`, `NHCDB`, `NHKDB`, `THKDB` |
+| V | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server hoặc phân công |
+
+### 5.1. `HDTD_CORE_DN` (Hợp Đồng Vay & Dư Nợ Chốt Đến Ngày - As-Of-Date Snapshot)
+- **Mục đích**: Lưu trữ snapshot số liệu các hợp đồng và dư nợ trích xuất từ CoreBanking NG-eFUND theo **mốc Đến ngày** (người dùng nhập ngày vào để lấy).
+- **Cấu trúc & Cột**: **22 cột dữ liệu chuẩn giống 100% `HDTD_CORE`** (`SoHDTD`, `MaKH`, `HoTen`, `CCCD`, `DienThoai`, `DiaChi`, `KvXa`, `KvThon`, `TienVay`, `DuNo`, `LaiSuat`, `NgayVay`, `DenHan`, `TraLaiDenNgay`, `SoThangVay`, `MaLoaiVay`, `MoTaVay`, `CBTD_PhuTrach`, `Ten_CBTD`, `TrangThaiHD`, `MaLoaiHD`, `NgayCapNhat`).
+- **Định dạng bảng**: Header màu tím hoàng gia đậm (`#312E81`, chữ trắng in đậm), dòng chẵn/lẻ xen kẽ, tự động định dạng số tiền `#,##0` và ngày tháng `dd/MM/yyyy`.
+- **Ứng dụng trên Dashboard**:
+  * Chế độ **"Tổng Quan Đến Ngày"**: Lấy trực tiếp từ `HDTD_CORE_DN` để phản ánh tình hình dư nợ, số món, thành viên tại mốc lịch sử.
+  * Chế độ **"Đối Sánh & Tăng Trưởng"**: So sánh giữa **Hiện Tại (`HDTD_CORE`)** vs **Đến Ngày (`HDTD_CORE_DN`)** hoặc các snapshot theo năm (`HDTD_CORE_2025`, `HDTD_CORE_2024`...) để tính mức tăng trưởng dư nợ ($\Delta$ VNĐ), % tăng trưởng, biến động hợp đồng và thành viên vay.
 
 ### 6. `DANG_KY_TRICH_NO` (Ủy Quyền Trích Nợ CASA)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |

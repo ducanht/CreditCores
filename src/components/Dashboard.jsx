@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Landmark,
   TrendingUp,
@@ -13,6 +13,14 @@ import {
   FileCheck2,
   RefreshCw,
   Calendar,
+  CalendarRange,
+  GitCompare,
+  FileSpreadsheet,
+  Sparkles,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+  Database,
   Layers,
   MapPin,
   PieChart,
@@ -34,6 +42,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { formatCurrencyVN, formatCurrency, getTodayVN } from '../utils/dateUtils';
+import { api } from '../services/api';
 import CommuneComparisonChart from './dashboard/CommuneComparisonChart';
 import LoanProductDonutChart from './dashboard/LoanProductDonutChart';
 
@@ -111,6 +120,88 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Chế độ Dashboard:
+  // - 'current': Tổng quan (Hiện tại) - Đọc trực tiếp từ HDTD_CORE (Mặc định)
+  // - 'as_of_date': Tổng quan đến ngày - Đọc từ HDTD_CORE_DN hoặc sheet mốc
+  // - 'compare': Đối sánh tăng trưởng & các năm (Hiện tại vs Đến ngày / Các năm)
+  const [dashboardMode, setDashboardMode] = useState('current');
+  const [asOfDate, setAsOfDate] = useState(() => getTodayVN());
+  const [selectedSnapshotSheet, setSelectedSnapshotSheet] = useState('HDTD_CORE_DN');
+  const [selectedCompareSheet, setSelectedCompareSheet] = useState('HDTD_CORE_DN');
+  const [modeData, setModeData] = useState(null);
+  const [isLoadingMode, setIsLoadingMode] = useState(false);
+  const [availableSnapshots, setAvailableSnapshots] = useState([
+    { sheetName: 'HDTD_CORE_DN', label: 'Dữ liệu đến ngày (HDTD_CORE_DN)', rowCount: 0 }
+  ]);
+
+  // Nguồn dữ liệu thống kê chủ đạo phụ thuộc vào dashboardMode
+  const activeStats = useMemo(() => {
+    if (dashboardMode === 'current') return stats || {};
+    if (dashboardMode === 'as_of_date') return (modeData?.hasData ? modeData : stats) || {};
+    if (dashboardMode === 'compare') return modeData?.current || stats || {};
+    return stats || {};
+  }, [dashboardMode, modeData, stats]);
+
+  // Dữ liệu phục vụ đối sánh so sánh
+  const compareStats = useMemo(() => {
+    if (dashboardMode !== 'compare') return null;
+    return modeData?.asOf || null;
+  }, [dashboardMode, modeData]);
+
+  const comparisonDelta = useMemo(() => {
+    if (dashboardMode !== 'compare') return null;
+    return modeData?.comparison || null;
+  }, [dashboardMode, modeData]);
+
+  // Cập nhật danh sách snapshot sheets khi có từ stats ban đầu
+  useEffect(() => {
+    if (stats?.availableSnapshots && Array.isArray(stats.availableSnapshots) && stats.availableSnapshots.length > 0) {
+      setAvailableSnapshots(stats.availableSnapshots);
+    }
+  }, [stats]);
+
+  // Hàm tải dữ liệu chuyên sâu theo chế độ
+  const fetchModeData = async (modeToFetch, overrides = {}) => {
+    const targetMode = modeToFetch || dashboardMode;
+    if (targetMode === 'current') {
+      if (onRefresh) await onRefresh();
+      return;
+    }
+
+    setIsLoadingMode(true);
+    try {
+      const targetSheet = targetMode === 'compare' 
+        ? (overrides.compareSheet || selectedCompareSheet)
+        : (overrides.snapshotSheet || selectedSnapshotSheet);
+
+      const payload = {
+        mode: targetMode,
+        asOfDate: overrides.asOfDate !== undefined ? overrides.asOfDate : asOfDate,
+        sheetName: targetSheet,
+        compareSheet: overrides.compareSheet || selectedCompareSheet
+      };
+
+      const res = await api.getDashboardStats(payload, true);
+      if (res && res.status === 'success' && res.data) {
+        setModeData(res.data);
+        if (res.data.availableSnapshots && Array.isArray(res.data.availableSnapshots) && res.data.availableSnapshots.length > 0) {
+          setAvailableSnapshots(res.data.availableSnapshots);
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi nạp số liệu Dashboard mode:', err);
+    } finally {
+      setIsLoadingMode(false);
+    }
+  };
+
+  const handleSwitchMode = async (newMode) => {
+    setDashboardMode(newMode);
+    if (newMode !== 'current') {
+      await fetchModeData(newMode);
+    }
+  };
+
   // Phân hệ hiển thị: 'communes' (3 Xã & Thôn) | 'cbtd' (CBTD Portfolio) | 'products' (Cơ Cấu Cho Vay & Nghiệp Vụ)
   const [activeSubView, setActiveSubView] = useState('communes');
 
@@ -146,49 +237,53 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
   };
 
   const handleManualRefresh = async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || isLoadingMode) return;
     setIsRefreshing(true);
-    if (onRefresh) {
-      await onRefresh();
+    if (dashboardMode === 'current') {
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } else {
+      await fetchModeData();
     }
     setTimeout(() => setIsRefreshing(false), 600);
   };
 
-  // Tính toán các chỉ số phái sinh
-  const totalDuNo = stats?.totalDuNo || 0;
-  const totalHopDong = stats?.totalHopDong || 0;
-  const totalThanhVienVay = stats?.totalThanhVienVay || 435;
-  const duNoBinhQuanHD = stats?.duNoBinhQuanHD || (totalHopDong > 0 ? Math.round(totalDuNo / totalHopDong) : 0);
-  const duNoBinhQuanTV = stats?.duNoBinhQuanTV || (totalThanhVienVay > 0 ? Math.round(totalDuNo / totalThanhVienVay) : 0);
-  const laiSuatBinhQuan = stats?.laiSuatBinhQuan || 10.4;
-  const totalDuThuLai = stats?.totalDuThuLai || 0;
-  const totalKhachHangTrichNo = stats?.totalKhachHangTrichNo || 0;
-  const totalNoTon = stats?.totalNoTon || 0;
-  const countNoTon = stats?.countNoTon || 0;
-  const pendingAppraisals = stats?.pendingAppraisals || 0;
-  const pendingInspections = stats?.pendingInspections || 0;
+  // Tính toán các chỉ số phái sinh từ activeStats
+  const totalDuNo = activeStats?.totalDuNo || 0;
+  const totalHopDong = activeStats?.totalHopDong || 0;
+  const totalThanhVienVay = activeStats?.totalThanhVienVay || 435;
+  const duNoBinhQuanHD = activeStats?.duNoBinhQuanHD || (totalHopDong > 0 ? Math.round(totalDuNo / totalHopDong) : 0);
+  const duNoBinhQuanTV = activeStats?.duNoBinhQuanTV || (totalThanhVienVay > 0 ? Math.round(totalDuNo / totalThanhVienVay) : 0);
+  const laiSuatBinhQuan = activeStats?.laiSuatBinhQuan || 10.4;
+  const totalDuThuLai = activeStats?.totalDuThuLai || 0;
+  const totalKhachHangTrichNo = activeStats?.totalKhachHangTrichNo || 0;
+  const totalNoTon = activeStats?.totalNoTon || 0;
+  const countNoTon = activeStats?.countNoTon || 0;
+  const pendingAppraisals = activeStats?.pendingAppraisals || 0;
+  const pendingInspections = activeStats?.pendingInspections || 0;
 
   // Tỷ lệ bao phủ trích nợ tự động trên số hợp đồng
   const autoDebitCoverageRate = totalHopDong > 0 ? Math.min(100, Math.round((totalKhachHangTrichNo / totalHopDong) * 100)) : 0;
 
   // Dữ liệu 3 Xã chuẩn hóa
   const areaStats = useMemo(() => {
-    if (!stats?.areaStats || !Array.isArray(stats.areaStats)) return [];
-    return stats.areaStats;
-  }, [stats?.areaStats]);
+    if (!activeStats?.areaStats || !Array.isArray(activeStats.areaStats)) return [];
+    return activeStats.areaStats;
+  }, [activeStats?.areaStats]);
 
   // Dữ liệu CBTD chuẩn hóa
   const cbtdStats = useMemo(() => {
-    if (!stats?.cbtdStats || !Array.isArray(stats.cbtdStats)) return [];
-    return stats.cbtdStats;
-  }, [stats?.cbtdStats]);
+    if (!activeStats?.cbtdStats || !Array.isArray(activeStats.cbtdStats)) return [];
+    return activeStats.cbtdStats;
+  }, [activeStats?.cbtdStats]);
 
   // Dữ liệu Cơ cấu cho vay 3 nhóm chính
   const loanGroups = useMemo(() => {
-    if (stats?.loanGroups && Array.isArray(stats.loanGroups)) return stats.loanGroups;
-    if (stats?.loanTypes && Array.isArray(stats.loanTypes)) return stats.loanTypes;
+    if (activeStats?.loanGroups && Array.isArray(activeStats.loanGroups)) return activeStats.loanGroups;
+    if (activeStats?.loanTypes && Array.isArray(activeStats.loanTypes)) return activeStats.loanTypes;
     return [];
-  }, [stats?.loanGroups, stats?.loanTypes]);
+  }, [activeStats?.loanGroups, activeStats?.loanTypes]);
 
   // Lọc danh sách Xã & Thôn theo Bộ lọc và Từ khóa
   const filteredAreas = useMemo(() => {
@@ -299,6 +394,374 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 🚀 CHẾ ĐỘ BÁO CÁO & ĐỐI SÁNH: HIỆN TẠI vs ĐẾN NGÀY vs CÁC NĂM            */}
+      {/* ========================================================================= */}
+      <div className="card-modern p-3 border-start border-4 border-primary">
+        <div className="d-flex flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-3">
+          {/* 3 Tabs Chuyển Đổi Chế Độ */}
+          <div className="d-flex align-items-center gap-1.5 p-1 bg-light rounded-3 border flex-wrap">
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
+                dashboardMode === 'current'
+                  ? 'btn-primary shadow-sm fw-bold'
+                  : 'btn-ghost text-secondary hover-lift'
+              }`}
+              onClick={() => handleSwitchMode('current')}
+            >
+              <Zap size={14} />
+              <span>Tổng Quan (Hiện Tại)</span>
+              <span className="badge bg-white text-primary ms-1" style={{ fontSize: '0.68rem' }}>Mặc định</span>
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
+                dashboardMode === 'as_of_date'
+                  ? 'btn-dark text-white shadow-sm fw-bold'
+                  : 'btn-ghost text-secondary hover-lift'
+              }`}
+              style={dashboardMode === 'as_of_date' ? { backgroundColor: '#4338ca', borderColor: '#4338ca' } : {}}
+              onClick={() => handleSwitchMode('as_of_date')}
+            >
+              <CalendarRange size={14} />
+              <span>Tổng Quan Đến Ngày</span>
+              <span className="badge bg-white text-dark ms-1" style={{ fontSize: '0.68rem' }}>HDTD_CORE_DN</span>
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
+                dashboardMode === 'compare'
+                  ? 'btn-success text-white shadow-sm fw-bold'
+                  : 'btn-ghost text-secondary hover-lift'
+              }`}
+              onClick={() => handleSwitchMode('compare')}
+            >
+              <GitCompare size={14} />
+              <span>Đối Sánh & Tăng Trưởng</span>
+              <span className="badge bg-white text-success ms-1" style={{ fontSize: '0.68rem' }}>Đa kỳ / Các năm</span>
+            </button>
+          </div>
+
+          {/* Công cụ chọn ngày & Sheet khi ở chế độ Đến Ngày hoặc Đối Sánh */}
+          {dashboardMode !== 'current' && (
+            <div className="d-flex align-items-center gap-2 flex-wrap w-100 w-xl-auto justify-content-xl-end">
+              {dashboardMode === 'as_of_date' && (
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <div className="input-group input-group-sm" style={{ width: 175 }}>
+                    <span className="input-group-text bg-white text-muted">
+                      <Calendar size={13} />
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="dd/MM/yyyy"
+                      value={asOfDate}
+                      onChange={(e) => setAsOfDate(e.target.value)}
+                      title="Nhập mốc ngày chốt dữ liệu (dd/MM/yyyy)"
+                    />
+                  </div>
+
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ minWidth: 220 }}
+                    value={selectedSnapshotSheet}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedSnapshotSheet(val);
+                      fetchModeData('as_of_date', { snapshotSheet: val });
+                    }}
+                  >
+                    {availableSnapshots.map((s, idx) => (
+                      <option key={idx} value={s.sheetName}>
+                        {s.label || s.sheetName} {s.rowCount ? `(${s.rowCount} HĐ)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {dashboardMode === 'compare' && (
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <span className="text-muted small fw-medium">Kỳ đối chiếu:</span>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ minWidth: 230 }}
+                    value={selectedCompareSheet}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedCompareSheet(val);
+                      fetchModeData('compare', { compareSheet: val });
+                    }}
+                  >
+                    {availableSnapshots.map((s, idx) => (
+                      <option key={idx} value={s.sheetName}>
+                        {s.label || s.sheetName} {s.rowCount ? `(${s.rowCount} HĐ)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5 px-3 py-1.5"
+                onClick={() => fetchModeData()}
+                disabled={isLoadingMode}
+              >
+                <RefreshCw size={13} className={isLoadingMode ? 'spin-animation text-primary' : ''} />
+                <span className="small fw-medium">{isLoadingMode ? 'Đang nạp...' : 'Tải Dữ Liệu'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Thanh trạng thái phụ thuộc vào chế độ */}
+        {dashboardMode === 'as_of_date' && (
+          <div className="mt-2.5 pt-2.5 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 text-dark small" style={{ backgroundColor: '#f5f3ff', margin: '0.75rem -0.75rem -0.75rem -0.75rem', padding: '0.75rem 1rem', borderRadius: '0 0 10px 10px' }}>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span className="p-1 rounded-circle d-inline-block" style={{ backgroundColor: '#6366f1' }}></span>
+              <span>Đang hiển thị tổng quan chốt đến ngày: <strong className="text-indigo">{asOfDate || 'Hiện tại'}</strong></span>
+              <span>•</span>
+              <span>Nguồn bảng: <strong className="font-monospace text-primary">{activeStats?.sheetDisplayName || selectedSnapshotSheet}</strong></span>
+              <span>•</span>
+              <span className="text-muted">Tổng {totalHopDong} hợp đồng • {totalThanhVienVay} thành viên vay</span>
+            </div>
+            <span className="badge text-white px-2 py-1" style={{ backgroundColor: '#4f46e5' }}>
+              Snapshot Đến Ngày
+            </span>
+          </div>
+        )}
+
+        {dashboardMode === 'compare' && (
+          <div className="mt-2.5 pt-2.5 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 small" style={{ backgroundColor: '#f0fdf4', margin: '0.75rem -0.75rem -0.75rem -0.75rem', padding: '0.75rem 1rem', borderRadius: '0 0 10px 10px' }}>
+            <div className="d-flex align-items-center gap-2 flex-wrap text-success">
+              <span className="p-1 rounded-circle bg-success d-inline-block"></span>
+              <span>Đang đối chiếu: <strong className="text-dark">Hiện Tại (HDTD_CORE)</strong> vs <strong className="text-primary">{selectedCompareSheet}</strong></span>
+              {comparisonDelta?.diffDuNo !== undefined && (
+                <>
+                  <span>•</span>
+                  <span>Tăng trưởng dư nợ: <strong className={comparisonDelta.diffDuNo >= 0 ? 'text-success' : 'text-danger'}>
+                    {comparisonDelta.diffDuNo >= 0 ? '+' : ''}{formatCurrencyVN(comparisonDelta.diffDuNo)} ({comparisonDelta.growthDuNo >= 0 ? '+' : ''}{comparisonDelta.growthDuNo}%)
+                  </strong></span>
+                </>
+              )}
+            </div>
+            <span className="badge bg-success text-white px-2 py-1">
+              Phân Tích Tăng Trưởng & Đối Sánh
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 📊 KHỐI ĐỐI SÁNH TĂNG TRƯỞNG & CÁC NĂM (CHỈ HIỂN THỊ KHI Ở CHẾ ĐỘ COMPARE)  */}
+      {/* ========================================================================= */}
+      {dashboardMode === 'compare' && (
+        <div className="d-flex flex-column gap-3 animate-fade-in">
+          {/* 4 Thẻ Bento Metric Đối Sánh Tăng Trưởng */}
+          <div className="row g-3">
+            {/* Thẻ 1: Tăng trưởng Dư nợ */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card-modern p-3 border-start border-4 border-success h-100">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+                    Tăng Trưởng Dư Nợ
+                  </span>
+                  <div className={`badge ${comparisonDelta?.diffDuNo >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fw-bold`}>
+                    {comparisonDelta?.growthDuNo >= 0 ? '+' : ''}{comparisonDelta?.growthDuNo || 0}%
+                  </div>
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-1.5 mb-1">
+                    {comparisonDelta?.diffDuNo >= 0 ? (
+                      <ArrowUp size={20} className="text-success" />
+                    ) : (
+                      <ArrowDown size={20} className="text-danger" />
+                    )}
+                    <h3 className={`fw-bold mb-0 fs-4 num-tabular ${comparisonDelta?.diffDuNo >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {comparisonDelta?.diffDuNo >= 0 ? '+' : ''}{formatCompactVN(comparisonDelta?.diffDuNo || 0)}
+                    </h3>
+                  </div>
+                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
+                    <span>Hiện tại: <strong className="text-dark">{formatCompactVN(totalDuNo)}</strong></span>
+                    <span>Kỳ SS: <strong className="text-secondary">{formatCompactVN(compareStats?.totalDuNo || 0)}</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Thẻ 2: Tăng trưởng Số Hợp Đồng */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card-modern p-3 border-start border-4 border-primary h-100">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+                    Biến Động Số Hợp Đồng
+                  </span>
+                  <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(14, 165, 233, 0.15)', '--icon-color': '#0ea5e9' }}>
+                    <FileCheck2 size={16} />
+                  </div>
+                </div>
+                <div>
+                  <div className="d-flex align-items-baseline gap-2 mb-1">
+                    <h3 className={`fw-bold mb-0 fs-4 num-tabular ${(comparisonDelta?.diffHopDong || 0) >= 0 ? 'text-primary' : 'text-danger'}`}>
+                      {(comparisonDelta?.diffHopDong || 0) >= 0 ? '+' : ''}{comparisonDelta?.diffHopDong || 0}
+                    </h3>
+                    <span className="text-muted small">Hợp đồng</span>
+                  </div>
+                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
+                    <span>Hiện tại: <strong className="text-dark">{totalHopDong} HĐ</strong></span>
+                    <span>Kỳ SS: <strong className="text-secondary">{compareStats?.totalHopDong || 0} HĐ</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Thẻ 3: Biến động Thành viên vay */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card-modern p-3 border-start border-4 border-info h-100">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+                    Biến Động Thành Viên Vay
+                  </span>
+                  <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(99, 102, 241, 0.15)', '--icon-color': '#6366f1' }}>
+                    <Users size={16} />
+                  </div>
+                </div>
+                <div>
+                  <div className="d-flex align-items-baseline gap-2 mb-1">
+                    <h3 className={`fw-bold mb-0 fs-4 num-tabular ${(comparisonDelta?.diffThanhVien || 0) >= 0 ? 'text-indigo' : 'text-danger'}`} style={{ color: '#4f46e5' }}>
+                      {(comparisonDelta?.diffThanhVien || 0) >= 0 ? '+' : ''}{comparisonDelta?.diffThanhVien || 0}
+                    </h3>
+                    <span className="text-muted small">Thành viên</span>
+                  </div>
+                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
+                    <span>Hiện tại: <strong className="text-dark">{totalThanhVienVay} TV</strong></span>
+                    <span>Kỳ SS: <strong className="text-secondary">{compareStats?.totalThanhVienVay || 0} TV</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Thẻ 4: Dư nợ bình quân / HĐ */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="card-modern p-3 border-start border-4 border-warning h-100">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+                    Dư Nợ BQ / Hợp Đồng
+                  </span>
+                  <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(245, 158, 11, 0.15)', '--icon-color': '#f59e0b' }}>
+                    <TrendingUp size={16} />
+                  </div>
+                </div>
+                <div>
+                  <div className="d-flex align-items-baseline gap-2 mb-1">
+                    <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular">
+                      {formatCompactVN(duNoBinhQuanHD)}
+                    </h4>
+                    <span className="text-muted small">/ HĐ</span>
+                  </div>
+                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
+                    <span>Kỳ SS: <strong className="text-secondary">{formatCompactVN(compareStats?.duNoBinhQuanHD || 0)}</strong></span>
+                    <span className="badge bg-light text-dark fw-bold">
+                      {duNoBinhQuanHD >= (compareStats?.duNoBinhQuanHD || 0) ? '+' : ''}
+                      {formatCompactVN(duNoBinhQuanHD - (compareStats?.duNoBinhQuanHD || 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bảng Đối Soát Tăng Trưởng Chi Tiết 3 Xã */}
+          <div className="card-modern p-3">
+            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2 border-bottom pb-2">
+              <div className="d-flex align-items-center gap-2">
+                <MapPin size={18} className="text-success" />
+                <h5 className="fw-bold mb-0 text-dark">Đối Soát Tăng Trưởng Dư Nợ Theo 3 Xã</h5>
+              </div>
+              <span className="badge bg-light text-muted border">
+                So sánh: Hiện Tại vs {selectedCompareSheet}
+              </span>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: 680 }}>
+                <thead className="table-light text-secondary small text-uppercase" style={{ fontSize: '0.75rem' }}>
+                  <tr>
+                    <th style={{ width: '22%' }}>Địa Bàn Xã</th>
+                    <th className="text-end" style={{ width: '18%' }}>Dư Nợ Hiện Tại</th>
+                    <th className="text-end" style={{ width: '18%' }}>Dư Nợ Kỳ Đối Chiếu</th>
+                    <th className="text-end" style={{ width: '18%' }}>Chênh Lệch (Δ)</th>
+                    <th className="text-center" style={{ width: '12%' }}>% Tăng Trưởng</th>
+                    <th className="text-end" style={{ width: '12%' }}>Số HĐ (HT/Kỳ)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {['Xã Quý Lộc', 'Xã Yên Trường', 'Xã Vĩnh Lộc'].map(communeName => {
+                    const curArea = areaStats.find(a => a.name === communeName) || { duno: 0, countHD: 0 };
+                    const compAreas = compareStats?.areaStats || [];
+                    const compArea = compAreas.find(a => a.name === communeName) || { duno: 0, countHD: 0 };
+                    const diffAreaDuNo = curArea.duno - compArea.duno;
+                    const growthAreaRate = compArea.duno > 0 ? ((diffAreaDuNo / compArea.duno) * 100).toFixed(1) : (curArea.duno > 0 ? 100 : 0);
+
+                    return (
+                      <tr key={communeName}>
+                        <td className="fw-bold text-dark">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="p-1.5 rounded-circle bg-success-subtle text-success">
+                              <Building2 size={14} />
+                            </span>
+                            <span>{communeName}</span>
+                          </div>
+                        </td>
+                        <td className="text-end fw-bold text-dark num-tabular">
+                          {formatCurrencyVN(curArea.duno)}
+                        </td>
+                        <td className="text-end text-secondary num-tabular">
+                          {formatCurrencyVN(compArea.duno)}
+                        </td>
+                        <td className={`text-end fw-bold num-tabular ${diffAreaDuNo >= 0 ? 'text-success' : 'text-danger'}`}>
+                          {diffAreaDuNo >= 0 ? '+' : ''}{formatCurrencyVN(diffAreaDuNo)}
+                        </td>
+                        <td className="text-center">
+                          <span className={`badge ${diffAreaDuNo >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fw-bold`}>
+                            {diffAreaDuNo >= 0 ? '+' : ''}{growthAreaRate}%
+                          </span>
+                        </td>
+                        <td className="text-end num-tabular small">
+                          <strong className="text-dark">{curArea.countHD}</strong> / <span className="text-muted">{compArea.countHD}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="table-light fw-bold">
+                  <tr>
+                    <td>TỔNG TOÀN QUỸ</td>
+                    <td className="text-end text-dark num-tabular">{formatCurrencyVN(totalDuNo)}</td>
+                    <td className="text-end text-secondary num-tabular">{formatCurrencyVN(compareStats?.totalDuNo || 0)}</td>
+                    <td className={`text-end num-tabular ${comparisonDelta?.diffDuNo >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {comparisonDelta?.diffDuNo >= 0 ? '+' : ''}{formatCurrencyVN(comparisonDelta?.diffDuNo || 0)}
+                    </td>
+                    <td className="text-center">
+                      <span className={`badge ${comparisonDelta?.diffDuNo >= 0 ? 'bg-success text-white' : 'bg-danger text-white'}`}>
+                        {comparisonDelta?.growthDuNo >= 0 ? '+' : ''}{comparisonDelta?.growthDuNo || 0}%
+                      </span>
+                    </td>
+                    <td className="text-end num-tabular small">
+                      {totalHopDong} / {compareStats?.totalHopDong || 0}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 📊 2. HỆ THỐNG 4 THẺ BENTO KPI METRICS CAO CẤP                             */}

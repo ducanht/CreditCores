@@ -75,6 +75,15 @@ ALL_SCHEMAS = {
         ],
         "color": {"red": 0.11, "green": 0.21, "blue": 0.36}
     },
+    "HDTD_CORE_DN": {
+        "headers": [
+            "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+            "SoThangVay", "MaLoaiVay", "MoTaVay",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
+        ],
+        "color": {"red": 0.19, "green": 0.18, "blue": 0.51}
+    },
     "DANG_KY_TRICH_NO": {
         "headers": [
             "MaKH", "HoTen", "CCCD", "NgayCap", "DienThoai", "DiaChi", "SoTK", "KyTrichMacDinh", "TrangThai", "GhiChu", "NgayTao"

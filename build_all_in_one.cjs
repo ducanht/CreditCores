@@ -13,6 +13,7 @@ const modules = [
   'Utils/HeaderUtils.gs',
   'Database/Cache.gs',
   'Database/SchemaSetup.gs',
+  'Dashboard/DashboardController.gs',
   'Auth/AuthController.gs',
   'Auth/RoleController.gs',
   'Customer/Customer360Controller.gs',

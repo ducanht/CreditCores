@@ -18,7 +18,7 @@ function doGet(e) {
     var result;
     switch (action) {
       case "getDashboardStats":
-        result = DashboardController.handleGetDashboardStats(ss);
+        result = DashboardController.handleGetDashboardStats(ss, e.parameter || {});
         break;
       case "searchCustomer360":
         result = Customer360Controller.handleSearchCustomer360(ss, e.parameter || {});

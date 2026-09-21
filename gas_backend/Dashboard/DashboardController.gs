@@ -4,86 +4,134 @@
  * Quỹ Tín Dụng Nhân Dân Yên Thọ (QTDND Yên Thọ)
  * 
  * @description Controller/Module DashboardController xử lý nghiệp vụ liên quan
+ *              Hỗ trợ chế độ:
+ *              - 'current': Tổng quan hiện tại thời gian thực (HDTD_CORE)
+ *              - 'as_of_date': Tổng quan đến ngày chốt số liệu (HDTD_CORE_DN)
+ *              - 'compare': Đối sánh tăng trưởng giữa các mốc / các năm
  * @created     15/08/2026
- * @updated     20/08/2026
- * @version     2.1
+ * @updated     21/09/2026
+ * @version     3.2 Multi-Period & As-Of-Date Snapshot Engine
  * ========================================================================================
  */
 
 var DashboardController = {
-  handleGetDashboardStats: function(ss) {
-    ss = getSpreadsheetInstance(ss);
-    if (!ss) {
-      return { status: "error", message: "Không thể kết nối Google Spreadsheet!" };
+  /**
+   * Quét và lập danh sách các sheet snapshot lưu trữ theo mốc ngày / các năm
+   */
+  _listSnapshotSheets: function(ss) {
+    var allSheets = ss.getSheets();
+    var snapshots = [];
+    for (var i = 0; i < allSheets.length; i++) {
+      var name = allSheets[i].getName();
+      if (name.indexOf("HDTD_CORE_") === 0) {
+        var subName = name.replace("HDTD_CORE_", "");
+        var label = "Đến ngày (" + subName + ")";
+        if (subName === "DN") {
+          label = "Dữ liệu đến ngày (HDTD_CORE_DN)";
+        } else if (/^\d{4}$/.test(subName)) {
+          label = "Năm " + subName + " (" + name + ")";
+        }
+        snapshots.push({
+          sheetName: name,
+          label: label,
+          rowCount: Math.max(0, allSheets[i].getLastRow() - 1)
+        });
+      }
     }
+    return snapshots;
+  },
 
-    var cached = CacheHelper.getCachedData('dashboard_stats');
-    if (cached) return { status: "success", data: cached };
+  /**
+   * Ánh xạ thông tin khách hàng từ KH_CORE
+   */
+  _buildCustMap: function(sKH) {
+    var custMap = {};
+    if (!sKH || sKH.getLastRow() <= 1) return custMap;
 
-    var sHDTD = ss.getSheetByName("HDTD_CORE");
-    var sKH = ss.getSheetByName("KH_CORE");
-    var sNoTon = ss.getSheetByName("NO_TON_DONG");
-    var sDot = ss.getSheetByName("DOT_TRICH_NO");
-    var sDS = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
-    var sAppraisal = ss.getSheetByName("THAM_DINH_TD");
-    var sInspection = ss.getSheetByName("KIEM_TRA_VON");
+    var colMapKH = HeaderUtils.getHeaderMap(sKH);
+    var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, sKH.getLastColumn()).getValues();
+    for (var k = 0; k < khValues.length; k++) {
+      var makh = String(HeaderUtils.getCell(khValues[k], colMapKH, "MaKH", "")).replace(/^'/, '').trim();
+      var directXa = String(HeaderUtils.getCell(khValues[k], colMapKH, "KvXa", "")).trim();
+      var directThon = String(HeaderUtils.getCell(khValues[k], colMapKH, "KvThon", "")).trim();
+      var rawKhuVuc = (String(HeaderUtils.getCell(khValues[k], colMapKH, "KhuVuc", "")) + " " + String(HeaderUtils.getCell(khValues[k], colMapKH, "DiaChi", ""))).trim();
+      var hoten = String(HeaderUtils.getCell(khValues[k], colMapKH, "HoTen", "")).trim();
+      var sotv = String(HeaderUtils.getCell(khValues[k], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
+
+      var xa = directXa;
+      if (!xa) {
+        var rawLower = rawKhuVuc.toLowerCase();
+        if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) {
+          xa = "Xã Yên Trường";
+        } else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) {
+          xa = "Xã Vĩnh Lộc";
+        } else {
+          xa = "Xã Quý Lộc";
+        }
+      }
+
+      var thon = directThon;
+      if (!thon) {
+        thon = "Khu trung tâm " + xa.replace("Xã ", "");
+        var m = rawKhuVuc.match(/thôn\s+[^,]+/i);
+        if (m && m[0]) {
+          var rawThon = m[0].trim();
+          var tl = rawThon.toLowerCase();
+          if (tl.indexOf("tu mục") > -1) thon = "Thôn Tu Mục";
+          else if (tl.indexOf("tân lộc") > -1) thon = "Thôn Tân Lộc";
+          else if (tl.indexOf("đan nê") > -1) thon = "Thôn Đan Nê";
+          else if (tl.indexOf("phố kiểu") > -1) thon = "Thôn Phố Kiểu";
+          else if (tl.indexOf("lựu khê") > -1) thon = "Thôn Lựu Khê";
+          else if (tl.indexOf("thạc quả") > -1) thon = "Thôn Thạc Quả";
+          else if (tl.indexOf("yên lạc") > -1) thon = "Thôn Yên Lạc";
+          else if (tl.indexOf("thọ vực") > -1) thon = "Thôn Thọ Vực";
+          else if (tl.indexOf("phi bình") > -1) thon = "Thôn Phi Bình";
+          else if (tl.indexOf("kỳ ngãi") > -1) thon = "Thôn Kỳ Ngãi";
+          else if (tl.indexOf("vĩnh khang 1") > -1) thon = "Thôn Vĩnh Khang 1";
+          else if (tl.indexOf("vĩnh khang 2") > -1) thon = "Thôn Vĩnh Khang 2";
+          else thon = rawThon;
+        }
+      }
+      custMap[makh] = { hoten: hoten, sotv: sotv, xa: xa, thon: thon };
+    }
+    return custMap;
+  },
+
+  /**
+   * Tính toán bộ chỉ số thống kê từ một Sheet Hợp đồng Tín dụng (HDTD_CORE hoặc HDTD_CORE_DN)
+   */
+  _computeHdtdStats: function(sHDTD, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, sheetDisplayName) {
+    if (!sHDTD || sHDTD.getLastRow() <= 1) {
+      return {
+        hasData: false,
+        sheetName: sHDTD ? sHDTD.getName() : "",
+        sheetDisplayName: sheetDisplayName || "",
+        totalDuNo: 0,
+        totalHopDong: 0,
+        totalThanhVienVay: 0,
+        duNoBinhQuanHD: 0,
+        duNoBinhQuanTV: 0,
+        laiSuatBinhQuan: 0,
+        totalDuThuLai: 0,
+        totalKhachHangTrichNo: 0,
+        totalNoTon: 0,
+        countNoTon: 0,
+        pendingAppraisals: 0,
+        pendingInspections: 0,
+        recentBatches: [],
+        areaStats: [],
+        cbtdStats: [],
+        loanTypes: [],
+        loanGroups: [],
+        securityTypes: []
+      };
+    }
 
     var totalDuNo = 0;
     var totalHopDong = 0;
     var totalDuThuLai = 0;
 
-    // 1. Ánh xạ địa bàn khách hàng (Xã & Thôn) từ KH_CORE
-    var custMap = {};
-    if (sKH && sKH.getLastRow() > 1) {
-      var colMapKH = HeaderUtils.getHeaderMap(sKH);
-      var khValues = sKH.getRange(2, 1, sKH.getLastRow() - 1, sKH.getLastColumn()).getValues();
-      for (var k = 0; k < khValues.length; k++) {
-        var makh = String(HeaderUtils.getCell(khValues[k], colMapKH, "MaKH", "")).replace(/^'/, '').trim();
-        var directXa = String(HeaderUtils.getCell(khValues[k], colMapKH, "KvXa", "")).trim();
-        var directThon = String(HeaderUtils.getCell(khValues[k], colMapKH, "KvThon", "")).trim();
-        var rawKhuVuc = (String(HeaderUtils.getCell(khValues[k], colMapKH, "KhuVuc", "")) + " " + String(HeaderUtils.getCell(khValues[k], colMapKH, "DiaChi", ""))).trim();
-        var hoten = String(HeaderUtils.getCell(khValues[k], colMapKH, "HoTen", "")).trim();
-        var sotv = String(HeaderUtils.getCell(khValues[k], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
-
-        var xa = directXa;
-        if (!xa) {
-          var rawLower = rawKhuVuc.toLowerCase();
-          if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) {
-            xa = "Xã Yên Trường";
-          } else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) {
-            xa = "Xã Vĩnh Lộc";
-          } else {
-            xa = "Xã Quý Lộc";
-          }
-        }
-
-        var thon = directThon;
-        if (!thon) {
-          thon = "Khu trung tâm " + xa.replace("Xã ", "");
-          var m = rawKhuVuc.match(/thôn\s+[^,]+/i);
-          if (m && m[0]) {
-            var rawThon = m[0].trim();
-            var tl = rawThon.toLowerCase();
-            if (tl.indexOf("tu mục") > -1) thon = "Thôn Tu Mục";
-            else if (tl.indexOf("tân lộc") > -1) thon = "Thôn Tân Lộc";
-            else if (tl.indexOf("đan nê") > -1) thon = "Thôn Đan Nê";
-            else if (tl.indexOf("phố kiểu") > -1) thon = "Thôn Phố Kiểu";
-            else if (tl.indexOf("lựu khê") > -1) thon = "Thôn Lựu Khê";
-            else if (tl.indexOf("thạc quả") > -1) thon = "Thôn Thạc Quả";
-            else if (tl.indexOf("yên lạc") > -1) thon = "Thôn Yên Lạc";
-            else if (tl.indexOf("thọ vực") > -1) thon = "Thôn Thọ Vực";
-            else if (tl.indexOf("phi bình") > -1) thon = "Thôn Phi Bình";
-            else if (tl.indexOf("kỳ ngãi") > -1) thon = "Thôn Kỳ Ngãi";
-            else if (tl.indexOf("vĩnh khang 1") > -1) thon = "Thôn Vĩnh Khang 1";
-            else if (tl.indexOf("vĩnh khang 2") > -1) thon = "Thôn Vĩnh Khang 2";
-            else thon = rawThon;
-          }
-        }
-        custMap[makh] = { hoten: hoten, sotv: sotv, xa: xa, thon: thon };
-      }
-    }
-
-    // 2. Cơ cấu theo 3 địa bàn xã chính & phân rã theo Thôn
+    // 1. Phân bổ theo 3 địa bàn xã chính & phân rã theo Thôn
     var byCommuneMap = {
       "Xã Quý Lộc": {
         key: "quyloc",
@@ -126,7 +174,7 @@ var DashboardController = {
       }
     };
 
-    // 3. Cơ cấu theo Cán bộ quản lý tín dụng (CBTD Portfolio)
+    // 2. Cơ cấu theo Cán bộ quản lý tín dụng (CBTD Portfolio)
     var byCbtdMap = {
       "qtdyentho.huyennhu": {
         user: "qtdyentho.huyennhu",
@@ -166,7 +214,7 @@ var DashboardController = {
       }
     };
 
-    // 4. Cơ cấu sản phẩm tín dụng theo 3 nhóm chính
+    // 3. Cơ cấu sản phẩm tín dụng theo 3 nhóm chính
     var loanGroups = {
       "nong_nghiep": {
         key: "nong_nghiep",
@@ -194,139 +242,162 @@ var DashboardController = {
       }
     };
 
+    // 4. Cơ cấu 7 loại mã hợp đồng bảo đảm
+    var securityTypesMap = {
+      "THCDBTNMT": { code: "THCDBTNMT", label: "Trung hạn có đảm bảo, đăng ký GDBĐ", count: 0, duNo: 0, color: "#2563eb" },
+      "THBLCDBTNMT": { code: "THBLCDBTNMT", label: "Trung hạn đăng ký GDBĐ uỷ quyền", count: 0, duNo: 0, color: "#0891b2" },
+      "NHCDBTNMT": { code: "NHCDBTNMT", label: "Ngắn hạn có đảm bảo, đăng ký GDBĐ", count: 0, duNo: 0, color: "#059669" },
+      "THCDB": { code: "THCDB", label: "Trung hạn có TSBĐ không đăng ký GDBĐ", count: 0, duNo: 0, color: "#d97706" },
+      "NHCDB": { code: "NHCDB", label: "Ngắn hạn có TSBĐ không đăng ký GDBĐ", count: 0, duNo: 0, color: "#ea580c" },
+      "NHKDB": { code: "NHKDB", label: "Ngắn hạn, tín chấp", count: 0, duNo: 0, color: "#64748b" },
+      "THKDB": { code: "THKDB", label: "Trung hạn tín chấp", count: 0, duNo: 0, color: "#475569" }
+    };
+
     var allBorrowersSet = {};
     var totalWeightedLai = 0;
 
-    if (sHDTD && sHDTD.getLastRow() > 1) {
-      var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
-      var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
-      for (var i = 0; i < hdValues.length; i++) {
-        var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
-        var duNo = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "DuNo", 0)) || 0;
-        var laiSuat = Number(String(HeaderUtils.getCell(hdValues[i], colMapHD, "LaiSuat", 0)).replace(',', '.')) || 0;
-        var maLoaiVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiVay", "")).trim();
-        var moTaVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MoTaVay", "")).trim();
-        var cbtdUser = String(HeaderUtils.getCell(hdValues[i], colMapHD, "CBTD_PhuTrach", "")).trim();
-        var cbtdName = String(HeaderUtils.getCell(hdValues[i], colMapHD, "Ten_CBTD", "")).trim();
-        var trangThaiHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
-        var directXa = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvXa", "")).trim();
-        var directThon = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvThon", "")).trim();
+    var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
+    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
 
-        if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
-          totalDuNo += duNo;
-          totalHopDong++;
-          totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
-          totalWeightedLai += (duNo * laiSuat);
-          allBorrowersSet[makh] = true;
+    for (var i = 0; i < hdValues.length; i++) {
+      var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
+      var duNo = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "DuNo", 0)) || 0;
+      var laiSuat = Number(String(HeaderUtils.getCell(hdValues[i], colMapHD, "LaiSuat", 0)).replace(',', '.')) || 0;
+      var maLoaiVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiVay", "")).trim();
+      var moTaVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MoTaVay", "")).trim();
+      var cbtdUser = String(HeaderUtils.getCell(hdValues[i], colMapHD, "CBTD_PhuTrach", "")).trim();
+      var cbtdName = String(HeaderUtils.getCell(hdValues[i], colMapHD, "Ten_CBTD", "")).trim();
+      var trangThaiHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "TrangThaiHD", duNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN")).trim();
+      var maLoaiHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiHD", "")).trim();
+      var directXa = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvXa", "")).trim();
+      var directThon = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvThon", "")).trim();
 
-          var cust = custMap[makh] || { xa: "Xã Quý Lộc", thon: "Thôn khác" };
-          var xa = directXa || cust.xa;
-          var thon = directThon || cust.thon;
+      if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
+        totalDuNo += duNo;
+        totalHopDong++;
+        totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
+        totalWeightedLai += (duNo * laiSuat);
+        allBorrowersSet[makh] = true;
 
-          // Phân loại nhóm cho vay
-          var prodName = maLoaiVay || moTaVay || "Cho vay khác";
-          var grpKey = "kinh_doanh";
-          var grpShort = "Thương mại - Dịch vụ";
-          if (prodName.indexOf("Sản Xuất NN") > -1 || prodName.indexOf("Nông nghiệp") > -1) {
-            grpKey = "nong_nghiep";
-            grpShort = "Nông nghiệp";
-          } else if (prodName.indexOf("Sinh hoạt") > -1 || prodName.indexOf("Tiêu dùng") > -1) {
-            grpKey = "sinh_hoat";
-            grpShort = "Tiêu dùng - Đời sống";
-          }
+        var cust = custMap[makh] || { xa: "Xã Quý Lộc", thon: "Thôn khác" };
+        var xa = directXa || cust.xa;
+        var thon = directThon || cust.thon;
 
-          // A. Tích lũy 3 nhóm cho vay
-          loanGroups[grpKey].count++;
-          loanGroups[grpKey].duNo += duNo;
-          if (!loanGroups[grpKey].subtypes[prodName]) {
-            loanGroups[grpKey].subtypes[prodName] = { name: prodName, count: 0, duNo: 0 };
-          }
-          loanGroups[grpKey].subtypes[prodName].count++;
-          loanGroups[grpKey].subtypes[prodName].duNo += duNo;
-
-          // B. Tích lũy theo Xã & Thôn
-          if (!byCommuneMap[xa]) xa = "Xã Quý Lộc";
-          var cObj = byCommuneMap[xa];
-          cObj.countHD++;
-          cObj.duNo += duNo;
-          if (!cObj.khSet[makh]) {
-            cObj.khSet[makh] = true;
-            cObj.countKH++;
-          }
-          cObj.loanGroups[grpShort] = (cObj.loanGroups[grpShort] || 0) + duNo;
-
-          if (!cObj.thonsMap[thon]) {
-            cObj.thonsMap[thon] = {
-              name: thon,
-              duno: 0,
-              countHD: 0,
-              countKH: 0,
-              khSet: {},
-              loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 }
-            };
-          }
-          var tObj = cObj.thonsMap[thon];
-          tObj.duno += duNo;
-          tObj.countHD++;
-          if (!tObj.khSet[makh]) {
-            tObj.khSet[makh] = true;
-            tObj.countKH++;
-          }
-          tObj.loanGroups[grpShort] = (tObj.loanGroups[grpShort] || 0) + duNo;
-
-          // C. Tích lũy theo Cán bộ quản lý
-          var cbKey = cbtdUser;
-          if (!byCbtdMap[cbKey]) {
-            if (xa === "Xã Yên Trường") cbKey = "qtdyentho.luudinh";
-            else if (xa === "Xã Vĩnh Lộc") cbKey = "qtdyentho.huunhan";
-            else cbKey = "qtdyentho.huyennhu";
-          }
-          var cbObj = byCbtdMap[cbKey];
-          cbObj.countHD++;
-          cbObj.duNo += duNo;
-          if (!cbObj.khSet[makh]) {
-            cbObj.khSet[makh] = true;
-            cbObj.countKH++;
-          }
-          cbObj.loanGroups[grpShort] = (cbObj.loanGroups[grpShort] || 0) + duNo;
-
-          if (!cbObj.xasMap[xa]) {
-            cbObj.xasMap[xa] = {
-              name: xa,
-              duno: 0,
-              countHD: 0,
-              countKH: 0,
-              khSet: {},
-              thonsMap: {}
-            };
-          }
-          var cbXa = cbObj.xasMap[xa];
-          cbXa.duno += duNo;
-          cbXa.countHD++;
-          if (!cbXa.khSet[makh]) {
-            cbXa.khSet[makh] = true;
-            cbXa.countKH++;
-          }
-
-          if (!cbXa.thonsMap[thon]) {
-            cbXa.thonsMap[thon] = {
-              name: thon,
-              duno: 0,
-              countHD: 0,
-              countKH: 0,
-              khSet: {},
-              loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 }
-            };
-          }
-          var cbThon = cbXa.thonsMap[thon];
-          cbThon.duno += duNo;
-          cbThon.countHD++;
-          if (!cbThon.khSet[makh]) {
-            cbThon.khSet[makh] = true;
-            cbThon.countKH++;
-          }
-          cbThon.loanGroups[grpShort] = (cbThon.loanGroups[grpShort] || 0) + duNo;
+        // Phân loại nhóm cho vay
+        var prodName = maLoaiVay || moTaVay || "Cho vay khác";
+        var grpKey = "kinh_doanh";
+        var grpShort = "Thương mại - Dịch vụ";
+        if (prodName.indexOf("Sản Xuất NN") > -1 || prodName.indexOf("Nông nghiệp") > -1) {
+          grpKey = "nong_nghiep";
+          grpShort = "Nông nghiệp";
+        } else if (prodName.indexOf("Sinh hoạt") > -1 || prodName.indexOf("Tiêu dùng") > -1) {
+          grpKey = "sinh_hoat";
+          grpShort = "Tiêu dùng - Đời sống";
         }
+
+        // Tích lũy nhóm cho vay
+        loanGroups[grpKey].count++;
+        loanGroups[grpKey].duNo += duNo;
+        if (!loanGroups[grpKey].subtypes[prodName]) {
+          loanGroups[grpKey].subtypes[prodName] = { name: prodName, count: 0, duNo: 0 };
+        }
+        loanGroups[grpKey].subtypes[prodName].count++;
+        loanGroups[grpKey].subtypes[prodName].duNo += duNo;
+
+        // Tích lũy hình thức bảo đảm MaLoaiHD
+        var cleanLoaiHD = maLoaiHD.toUpperCase();
+        if (securityTypesMap[cleanLoaiHD]) {
+          securityTypesMap[cleanLoaiHD].count++;
+          securityTypesMap[cleanLoaiHD].duNo += duNo;
+        } else {
+          var fallbackKey = cleanLoaiHD.indexOf("TH") === 0 ? "THCDBTNMT" : "NHCDBTNMT";
+          securityTypesMap[fallbackKey].count++;
+          securityTypesMap[fallbackKey].duNo += duNo;
+        }
+
+        // Tích lũy theo Xã & Thôn
+        if (!byCommuneMap[xa]) xa = "Xã Quý Lộc";
+        var cObj = byCommuneMap[xa];
+        cObj.countHD++;
+        cObj.duNo += duNo;
+        cObj.loanGroups[grpShort] = (cObj.loanGroups[grpShort] || 0) + duNo;
+        if (!cObj.khSet[makh]) {
+          cObj.khSet[makh] = true;
+          cObj.countKH++;
+        }
+
+        if (!cObj.thonsMap[thon]) {
+          cObj.thonsMap[thon] = {
+            name: thon,
+            duno: 0,
+            countHD: 0,
+            countKH: 0,
+            khSet: {},
+            loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 }
+          };
+        }
+        var thonObj = cObj.thonsMap[thon];
+        thonObj.duno += duNo;
+        thonObj.countHD++;
+        thonObj.loanGroups[grpShort] = (thonObj.loanGroups[grpShort] || 0) + duNo;
+        if (!thonObj.khSet[makh]) {
+          thonObj.khSet[makh] = true;
+          thonObj.countKH++;
+        }
+
+        // Tích lũy theo CBTD
+        var cbKey = cbtdUser;
+        if (!byCbtdMap[cbKey]) {
+          if (xa === "Xã Quý Lộc") cbKey = "qtdyentho.huyennhu";
+          else if (xa === "Xã Yên Trường") cbKey = "qtdyentho.luudinh";
+          else cbKey = "qtdyentho.huunhan";
+        }
+
+        var cbObj = byCbtdMap[cbKey];
+        cbObj.countHD++;
+        cbObj.duNo += duNo;
+        cbObj.loanGroups[grpShort] = (cbObj.loanGroups[grpShort] || 0) + duNo;
+        if (!cbObj.khSet[makh]) {
+          cbObj.khSet[makh] = true;
+          cbObj.countKH++;
+        }
+
+        if (!cbObj.xasMap[xa]) {
+          cbObj.xasMap[xa] = {
+            name: xa,
+            duno: 0,
+            countHD: 0,
+            countKH: 0,
+            khSet: {},
+            thonsMap: {}
+          };
+        }
+        var cbXa = cbObj.xasMap[xa];
+        cbXa.duno += duNo;
+        cbXa.countHD++;
+        if (!cbXa.khSet[makh]) {
+          cbXa.khSet[makh] = true;
+          cbXa.countKH++;
+        }
+
+        if (!cbXa.thonsMap[thon]) {
+          cbXa.thonsMap[thon] = {
+            name: thon,
+            duno: 0,
+            countHD: 0,
+            countKH: 0,
+            khSet: {},
+            loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 }
+          };
+        }
+        var cbThon = cbXa.thonsMap[thon];
+        cbThon.duno += duNo;
+        cbThon.countHD++;
+        if (!cbThon.khSet[makh]) {
+          cbThon.khSet[makh] = true;
+          cbThon.countKH++;
+        }
+        cbThon.loanGroups[grpShort] = (cbThon.loanGroups[grpShort] || 0) + duNo;
       }
     }
 
@@ -392,6 +463,14 @@ var DashboardController = {
     for (var gKey in loanGroups) {
       loanGroups[gKey].rate = totalDuNo > 0 ? (Math.round((loanGroups[gKey].duNo / totalDuNo) * 1000) / 10) + "%" : "0%";
       loanGroups[gKey].subtypes = Object.values(loanGroups[gKey].subtypes);
+    }
+
+    // Hoàn tất securityTypes
+    var securityTypesList = [];
+    for (var sCode in securityTypesMap) {
+      var sItem = securityTypesMap[sCode];
+      sItem.rate = totalDuNo > 0 ? (Math.round((sItem.duNo / totalDuNo) * 1000) / 10) + "%" : "0%";
+      securityTypesList.push(sItem);
     }
 
     var totalThanhVienVay = Object.keys(allBorrowersSet).length;
@@ -471,7 +550,10 @@ var DashboardController = {
       }
     }
 
-    var result = {
+    return {
+      hasData: true,
+      sheetName: sHDTD.getName(),
+      sheetDisplayName: sheetDisplayName || sHDTD.getName(),
       totalDuNo: totalDuNo,
       totalHopDong: totalHopDong,
       totalThanhVienVay: totalThanhVienVay,
@@ -488,10 +570,97 @@ var DashboardController = {
       areaStats: finalAreaStats,
       cbtdStats: finalCbtdStats,
       loanTypes: Object.values(loanGroups),
-      loanGroups: Object.values(loanGroups)
+      loanGroups: Object.values(loanGroups),
+      securityTypes: securityTypesList
     };
+  },
 
-    CacheHelper.setCachedData('dashboard_stats', result, CacheHelper.TIERS.HOT);
-    return { status: "success", data: result };
+  /**
+   * Handler chính trả về Dashboard Stats theo chế độ:
+   * - 'current': Hiện tại từ HDTD_CORE
+   * - 'as_of_date': Đến ngày từ HDTD_CORE_DN (hoặc sheet được chỉ định)
+   * - 'compare': Đối sánh tăng trưởng Hiện tại vs Đến ngày / Các năm
+   */
+  handleGetDashboardStats: function(ss, params) {
+    ss = getSpreadsheetInstance(ss);
+    if (!ss) {
+      return { status: "error", message: "Không thể kết nối Google Spreadsheet!" };
+    }
+
+    params = params || {};
+    var mode = params.mode || "current"; // "current" | "as_of_date" | "compare"
+    var targetSheet = params.sheetName || (mode === "as_of_date" ? "HDTD_CORE_DN" : "HDTD_CORE");
+    var asOfDate = params.asOfDate || "";
+
+    var cacheKey = "dashboard_stats_" + mode + "_" + targetSheet + "_" + (asOfDate ? asOfDate.replace(/\//g, "") : "");
+    var cached = CacheHelper.getCachedData(cacheKey);
+    if (cached) return { status: "success", data: cached };
+
+    var sKH = ss.getSheetByName("KH_CORE");
+    var sNoTon = ss.getSheetByName("NO_TON_DONG");
+    var sDot = ss.getSheetByName("DOT_TRICH_NO");
+    var sDS = ss.getSheetByName("DANG_KY_TRICH_NO") || ss.getSheetByName("DS_TRICH_NO");
+    var sAppraisal = ss.getSheetByName("THAM_DINH_TD");
+    var sInspection = ss.getSheetByName("KIEM_TRA_VON");
+
+    var custMap = this._buildCustMap(sKH);
+    var snapshotSheets = this._listSnapshotSheets(ss);
+
+    // 1. Tính toán dữ liệu Hiện Tại (HDTD_CORE)
+    var sCurrent = ss.getSheetByName("HDTD_CORE");
+    var currentStats = this._computeHdtdStats(sCurrent, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Hiện Tại (Thời Gian Thực)");
+    currentStats.mode = "current";
+
+    var finalResult;
+
+    if (mode === "current") {
+      finalResult = currentStats;
+      finalResult.availableSnapshots = snapshotSheets;
+    } else if (mode === "as_of_date") {
+      // 2. Chế độ Đến Ngày: Lấy từ sheet chỉ định (mặc định HDTD_CORE_DN)
+      var sTarget = ss.getSheetByName(targetSheet);
+      if (!sTarget) {
+        // Tự động kiểm tra schema nếu sheet chưa có
+        SchemaSetup.ensureDatabaseSchema(ss);
+        sTarget = ss.getSheetByName(targetSheet);
+      }
+
+      var displayName = "Đến Ngày Chốt (" + (asOfDate || targetSheet) + ")";
+      var asOfStats = this._computeHdtdStats(sTarget, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, displayName);
+      asOfStats.mode = "as_of_date";
+      asOfStats.asOfDate = asOfDate;
+      asOfStats.availableSnapshots = snapshotSheets;
+
+      finalResult = asOfStats;
+    } else {
+      // 3. Chế độ So Sánh: Đối chiếu giữa Current và As-Of / Kỳ năm
+      var sCompareTarget = ss.getSheetByName(targetSheet);
+      var compareDisplayName = targetSheet === "HDTD_CORE_DN" ? ("Đến Ngày " + (asOfDate || "Chốt")) : targetSheet;
+      var targetStats = this._computeHdtdStats(sCompareTarget, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, compareDisplayName);
+
+      // Tính chênh lệch
+      var diffDuNo = currentStats.totalDuNo - targetStats.totalDuNo;
+      var growthDuNo = targetStats.totalDuNo > 0 ? (Math.round((diffDuNo / targetStats.totalDuNo) * 1000) / 10) : 0;
+      var diffHD = currentStats.totalHopDong - targetStats.totalHopDong;
+      var diffTV = currentStats.totalThanhVienVay - targetStats.totalThanhVienVay;
+
+      finalResult = {
+        mode: "compare",
+        current: currentStats,
+        asOf: targetStats,
+        comparison: {
+          targetSheet: targetSheet,
+          asOfDate: asOfDate,
+          diffDuNo: diffDuNo,
+          growthDuNo: growthDuNo,
+          diffHopDong: diffHD,
+          diffThanhVien: diffTV
+        },
+        availableSnapshots: snapshotSheets
+      };
+    }
+
+    CacheHelper.setCachedData(cacheKey, finalResult, CacheHelper.TIERS.HOT);
+    return { status: "success", data: finalResult };
   }
 };
