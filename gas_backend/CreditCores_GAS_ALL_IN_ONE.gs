@@ -8,7 +8,7 @@
  *              - Tối ưu tra cứu O(1) Hash Map cho 5.175+ khách hàng & 549+ hợp đồng
  *              - Thẩm định, Trích nợ Auto-Debit, Kiểm tra vốn, In hợp đồng Mail Merge
  *              - Độc lập hoàn toàn, không nghẽn Timeout, Zero Mock Data
- * @updated     21/9/2026
+ * @updated     22/9/2026
  * @version     3.1 Header-Based Resilient Engine
  * ========================================================================================
  */
@@ -144,11 +144,12 @@ var HeaderUtils = {
    * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
    * @return {Object} { [colName]: colIndex }
    */
-  getHeaderMap: function(sheet) {
+  getHeaderMap: function(sheet, headerRowIdx) {
     if (!sheet) return {};
     var lastCol = sheet.getLastColumn();
     if (lastCol < 1) return {};
-    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var row = headerRowIdx || 1;
+    var headers = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
     var map = {};
     for (var i = 0; i < headers.length; i++) {
       var h = String(headers[i] || "").trim();
@@ -454,11 +455,11 @@ var SchemaSetup = {
       ]
     },
     SETTING: {
-      headers: ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE"],
+      headers: ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE", "PARAMS"],
       color: "#1E293B",
-      formats: { "C:E": "dd/MM/yyyy HH:mm:ss", "F:F": "#,##0" },
-      colWidths: { 1: 140, 2: 120, 3: 160, 4: 160, 5: 160, 6: 120, 7: 250 },
-      defaultData: [["IDLE", "SUCCESS", new Date(), new Date(), new Date(), 0, "Hệ thống sẵn sàng đồng bộ."]]
+      formats: { "C:E": "dd/MM/yyyy HH:mm:ss", "F:F": "#,##0", "G:H": "@" },
+      colWidths: { 1: 160, 2: 120, 3: 160, 4: 160, 5: 160, 6: 120, 7: 250, 8: 250 },
+      defaultData: [["IDLE", "SUCCESS", new Date(), new Date(), new Date(), 0, "Hệ thống sẵn sàng đồng bộ.", ""]]
     },
     KH_CORE: {
       headers: [
@@ -484,14 +485,14 @@ var SchemaSetup = {
     },
     HDTD_CORE_DN: {
       headers: [
-        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
-        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
-        "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
+        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
+        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#312E81",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 160 }
+      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
@@ -876,13 +877,27 @@ var DashboardController = {
 
   /**
    * Tính toán bộ chỉ số thống kê từ một Sheet Hợp đồng Tín dụng (HDTD_CORE hoặc HDTD_CORE_DN)
+   * Hỗ trợ tự động nhận diện Sheet 2 tầng (Dòng 1: Banner Metadata sao kê, Dòng 2: Header 17 cột, Dòng 3+: Data)
    */
   _computeHdtdStats: function(sHDTD, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, sheetDisplayName) {
-    if (!sHDTD || sHDTD.getLastRow() <= 1) {
+    var isTwoTier = false;
+    var asOfMetadataText = "";
+    if (sHDTD && sHDTD.getLastRow() >= 1) {
+      var firstCellVal = String(sHDTD.getRange(1, 1).getValue() || "").trim();
+      if (firstCellVal.indexOf("Sao kê") > -1 || sHDTD.getFrozenRows() >= 2 || sHDTD.getName().indexOf("HDTD_CORE_DN") > -1) {
+        isTwoTier = true;
+        asOfMetadataText = firstCellVal;
+      }
+    }
+
+    var minRequiredRows = isTwoTier ? 2 : 1;
+    if (!sHDTD || sHDTD.getLastRow() <= minRequiredRows) {
       return {
         hasData: false,
         sheetName: sHDTD ? sHDTD.getName() : "",
         sheetDisplayName: sheetDisplayName || "",
+        asOfMetadata: asOfMetadataText,
+        isTwoTier: isTwoTier,
         totalDuNo: 0,
         totalHopDong: 0,
         totalThanhVienVay: 0,
@@ -900,7 +915,10 @@ var DashboardController = {
         cbtdStats: [],
         loanTypes: [],
         loanGroups: [],
-        securityTypes: []
+        securityTypes: [],
+        top50DuNoDenNgay: [],
+        top50DuNoBinhQuanCuoiThang: [],
+        monthlyDebtTrend: []
       };
     }
 
@@ -1033,8 +1051,14 @@ var DashboardController = {
     var allBorrowersSet = {};
     var totalWeightedLai = 0;
 
-    var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
-    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
+    var headerRow = isTwoTier ? 2 : 1;
+    var startDataRow = isTwoTier ? 3 : 2;
+    var numDataRows = sHDTD.getLastRow() - headerRow;
+    var colMapHD = HeaderUtils.getHeaderMap(sHDTD, headerRow);
+    var hdValues = sHDTD.getRange(startDataRow, 1, numDataRows, sHDTD.getLastColumn()).getValues();
+
+    var customerAggMap = {}; // { [makh]: { maKH, hoTen, diaChi, xa, thon, soHDCount, tongDuNo, monthlyDebts: {} } }
+    var monthlyTrendMap = {}; // { [dateKey]: { dateKey, totalDuNo, countHD, khSet: {} } }
 
     for (var i = 0; i < hdValues.length; i++) {
       var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
@@ -1048,6 +1072,9 @@ var DashboardController = {
       var maLoaiHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiHD", "")).trim();
       var directXa = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvXa", "")).trim();
       var directThon = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvThon", "")).trim();
+      var rawHoTen = String(HeaderUtils.getCell(hdValues[i], colMapHD, "HoTen", "")).trim();
+      var rawDiaChi = String(HeaderUtils.getCell(hdValues[i], colMapHD, "DiaChi", "")).trim();
+      var ngayDuLieu = String(HeaderUtils.getCell(hdValues[i], colMapHD, "NgayDuLieu", "")).trim();
 
       if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
         totalDuNo += duNo;
@@ -1056,9 +1083,43 @@ var DashboardController = {
         totalWeightedLai += (duNo * laiSuat);
         allBorrowersSet[makh] = true;
 
-        var cust = custMap[makh] || { xa: "Xã Quý Lộc", thon: "Thôn khác" };
-        var xa = directXa || cust.xa;
-        var thon = directThon || cust.thon;
+        var cust = custMap[makh] || { hoten: rawHoTen, xa: "Xã Quý Lộc", thon: "Thôn khác" };
+        var xa = directXa || cust.xa || "Xã Quý Lộc";
+        var thon = directThon || cust.thon || "Thôn khác";
+        var hoten = rawHoTen || cust.hoten || ("Khách hàng " + makh);
+        var diachi = rawDiaChi || (thon + ", " + xa);
+
+        // Thu thập dữ liệu khách hàng cho Top 50 & Báo cáo
+        if (!customerAggMap[makh]) {
+          customerAggMap[makh] = {
+            maKH: makh,
+            hoTen: hoten,
+            diaChi: diachi,
+            xa: xa,
+            thon: thon,
+            soHDCount: 0,
+            tongDuNo: 0,
+            monthlyDebts: {}
+          };
+        }
+        customerAggMap[makh].soHDCount++;
+        customerAggMap[makh].tongDuNo += duNo;
+
+        // Nếu có NgayDuLieu (sao kê các mốc hoặc ngày chốt)
+        var dateKey = ngayDuLieu || "Hiện tại";
+        if (!monthlyTrendMap[dateKey]) {
+          monthlyTrendMap[dateKey] = {
+            dateKey: dateKey,
+            totalDuNo: 0,
+            countHD: 0,
+            khSet: {}
+          };
+        }
+        monthlyTrendMap[dateKey].totalDuNo += duNo;
+        monthlyTrendMap[dateKey].countHD++;
+        monthlyTrendMap[dateKey].khSet[makh] = true;
+
+        customerAggMap[makh].monthlyDebts[dateKey] = (customerAggMap[makh].monthlyDebts[dateKey] || 0) + duNo;
 
         // Phân loại nhóm cho vay
         var prodName = maLoaiVay || moTaVay || "Cho vay khác";
@@ -1327,10 +1388,95 @@ var DashboardController = {
       }
     }
 
+    // 5. Tính Top 50 khách hàng có dư nợ lớn nhất đến ngày
+    var allCustList = [];
+    for (var mId in customerAggMap) {
+      allCustList.push(customerAggMap[mId]);
+    }
+    allCustList.sort(function(a, b) { return b.tongDuNo - a.tongDuNo; });
+
+    var top50DuNoDenNgay = [];
+    var topCount = Math.min(50, allCustList.length);
+    for (var cIdx = 0; cIdx < topCount; cIdx++) {
+      var cItem = allCustList[cIdx];
+      top50DuNoDenNgay.push({
+        rank: cIdx + 1,
+        maKH: cItem.maKH,
+        hoTen: cItem.hoTen,
+        diaChi: cItem.diaChi,
+        xa: cItem.xa,
+        thon: cItem.thon,
+        soHDCount: cItem.soHDCount,
+        tongDuNo: cItem.tongDuNo,
+        tyLe: totalDuNo > 0 ? (Math.round((cItem.tongDuNo / totalDuNo) * 1000) / 10) + "%" : "0%"
+      });
+    }
+
+    // 6. Tính Biểu đồ xu hướng dư nợ theo các tháng/mốc (monthlyDebtTrend)
+    var monthlyDebtTrend = [];
+    var dateKeys = Object.keys(monthlyTrendMap);
+    dateKeys.sort(function(a, b) {
+      var parseD = function(str) {
+        var p = String(str).split('/');
+        if (p.length === 3) return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime();
+        return 0;
+      };
+      return parseD(a) - parseD(b);
+    });
+
+    for (var dIdx = 0; dIdx < dateKeys.length; dIdx++) {
+      var dKey = dateKeys[dIdx];
+      var mData = monthlyTrendMap[dKey];
+      var countKH = Object.keys(mData.khSet).length;
+      monthlyDebtTrend.push({
+        date: dKey,
+        totalDuNo: mData.totalDuNo,
+        countHD: mData.countHD,
+        countKH: countKH,
+        duNoBinhQuanKH: countKH > 0 ? Math.round(mData.totalDuNo / countKH) : 0
+      });
+    }
+
+    // 7. Tính Top 50 khách hàng có dư nợ bình quân lớn nhất (chỉ tính đến các ngày cuối tháng sao kê)
+    var numSnapshots = dateKeys.length > 0 ? dateKeys.length : 1;
+    var allCustAvgList = [];
+    for (var aId in customerAggMap) {
+      var custObj = customerAggMap[aId];
+      var sumAllMonths = 0;
+      var activeMonthsCount = 0;
+      for (var dk in custObj.monthlyDebts) {
+        sumAllMonths += custObj.monthlyDebts[dk];
+        if (custObj.monthlyDebts[dk] > 0) activeMonthsCount++;
+      }
+      var duNoBinhQuan = Math.round(sumAllMonths / numSnapshots);
+      allCustAvgList.push({
+        maKH: custObj.maKH,
+        hoTen: custObj.hoTen,
+        diaChi: custObj.diaChi,
+        xa: custObj.xa,
+        thon: custObj.thon,
+        duNoBinhQuan: duNoBinhQuan,
+        tongDuNoHienTai: custObj.tongDuNo,
+        soThangCoDuNo: activeMonthsCount,
+        chiTietThang: custObj.monthlyDebts
+      });
+    }
+    allCustAvgList.sort(function(a, b) { return b.duNoBinhQuan - a.duNoBinhQuan; });
+
+    var top50DuNoBinhQuanCuoiThang = [];
+    var topAvgCount = Math.min(50, allCustAvgList.length);
+    for (var avgIdx = 0; avgIdx < topAvgCount; avgIdx++) {
+      var avgItem = allCustAvgList[avgIdx];
+      avgItem.rank = avgIdx + 1;
+      top50DuNoBinhQuanCuoiThang.push(avgItem);
+    }
+
     return {
       hasData: true,
       sheetName: sHDTD.getName(),
       sheetDisplayName: sheetDisplayName || sHDTD.getName(),
+      asOfMetadata: asOfMetadataText,
+      isTwoTier: isTwoTier,
       totalDuNo: totalDuNo,
       totalHopDong: totalHopDong,
       totalThanhVienVay: totalThanhVienVay,
@@ -1348,7 +1494,10 @@ var DashboardController = {
       cbtdStats: finalCbtdStats,
       loanTypes: Object.values(loanGroups),
       loanGroups: Object.values(loanGroups),
-      securityTypes: securityTypesList
+      securityTypes: securityTypesList,
+      top50DuNoDenNgay: top50DuNoDenNgay,
+      top50DuNoBinhQuanCuoiThang: top50DuNoBinhQuanCuoiThang,
+      monthlyDebtTrend: monthlyDebtTrend
     };
   },
 
@@ -3953,7 +4102,7 @@ var ReportController = {
     }
     topDebtArr.sort(function(a, b) { return b.tongDuNo - a.tongDuNo; });
 
-    var topAvgDebtResult = topDebtArr.slice(0, 20).map(function(c, idx) {
+    var topAvgDebtResult = topDebtArr.slice(0, 50).map(function(c, idx) {
       c.xepHang = idx + 1;
       c.namBaoCao = 2026;
       return c;
@@ -4090,6 +4239,29 @@ var SyncController = {
     return { status: "success", message: "Đã gửi lệnh SYNC_DATA tới Hàng đợi Lệnh Core!" };
   },
 
+  handleTriggerAsOfExtract: function(ss, params) {
+    var sheet = ss.getSheetByName("SETTING");
+    if (!sheet) return { status: "error", message: "Không tìm thấy Sheet SETTING." };
+
+    params = params || {};
+    var asOfDate = params.asOfDate || formatGasDate(new Date());
+    var mode = params.mode || "as_of_date";
+    var paramStr = JSON.stringify(params);
+
+    sheet.getRange(2, 1).setValue("EXTRACT_HDTD_DN");
+    sheet.getRange(2, 2).setValue("PENDING");
+    sheet.getRange(2, 3).setValue(new Date());
+    sheet.getRange(2, 7).setValue("Yêu cầu trích xuất HDTD_CORE_DN mốc " + asOfDate + ". Đang chờ Python Daemon...");
+    sheet.getRange(2, 8).setValue(paramStr);
+
+    CacheHelper.invalidateModuleCache('dashboard');
+    return { 
+      status: "success", 
+      message: "Đã gửi lệnh trích xuất HDTD_CORE_DN (Mốc: " + asOfDate + ") tới Hàng đợi Lệnh Core!",
+      data: { command: "EXTRACT_HDTD_DN", status: "PENDING", asOfDate: asOfDate, mode: mode }
+    };
+  },
+
   handleGetSyncStatus: function(ss) {
     var sheet = ss.getSheetByName("SETTING");
     if (!sheet || sheet.getLastRow() <= 1) {
@@ -4103,7 +4275,7 @@ var SyncController = {
       };
     }
 
-    var row = sheet.getRange(2, 1, 1, 7).getValues()[0];
+    var row = sheet.getRange(2, 1, 1, 8).getValues()[0];
     return {
       status: "success",
       data: {
@@ -4113,7 +4285,8 @@ var SyncController = {
         startTime: formatGasDateTime(row[3]),
         finishTime: formatGasDateTime(row[4]),
         totalRows: row[5],
-        message: row[6]
+        message: row[6],
+        params: row[7] || ""
       }
     };
   }
@@ -4723,7 +4896,7 @@ function doPost(e) {
     "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch", "saveDebitConfig",
     "reconcileUpload", "assignContractCBTD", "initDatabase",
     "saveTemplate", "deleteTemplate", "saveDriveSettings",
-    "saveCollateral", "deleteCollateral"
+    "saveCollateral", "deleteCollateral", "triggerAsOfExtract"
   ];
 
   var needsLock = WRITE_ACTIONS.indexOf(action) !== -1;
@@ -4808,6 +4981,9 @@ function doPost(e) {
         break;
       case "triggerSqlSync":
         result = SyncController.handleTriggerSqlSync(ss);
+        break;
+      case "triggerAsOfExtract":
+        result = SyncController.handleTriggerAsOfExtract(ss, data);
         break;
       case "getCBTDPortfolioStats":
         result = Customer360Controller.handleGetCBTDPortfolioStats(ss, data);

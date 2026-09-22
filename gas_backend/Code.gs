@@ -123,7 +123,7 @@ function doPost(e) {
     "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch", "saveDebitConfig",
     "reconcileUpload", "assignContractCBTD", "initDatabase",
     "saveTemplate", "deleteTemplate", "saveDriveSettings",
-    "saveCollateral", "deleteCollateral"
+    "saveCollateral", "deleteCollateral", "triggerAsOfExtract"
   ];
 
   var needsLock = WRITE_ACTIONS.indexOf(action) !== -1;
@@ -208,6 +208,9 @@ function doPost(e) {
         break;
       case "triggerSqlSync":
         result = SyncController.handleTriggerSqlSync(ss);
+        break;
+      case "triggerAsOfExtract":
+        result = SyncController.handleTriggerAsOfExtract(ss, data);
         break;
       case "getCBTDPortfolioStats":
         result = Customer360Controller.handleGetCBTDPortfolioStats(ss, data);

@@ -63,11 +63,11 @@ var SchemaSetup = {
       ]
     },
     SETTING: {
-      headers: ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE"],
+      headers: ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE", "PARAMS"],
       color: "#1E293B",
-      formats: { "C:E": "dd/MM/yyyy HH:mm:ss", "F:F": "#,##0" },
-      colWidths: { 1: 140, 2: 120, 3: 160, 4: 160, 5: 160, 6: 120, 7: 250 },
-      defaultData: [["IDLE", "SUCCESS", new Date(), new Date(), new Date(), 0, "Hệ thống sẵn sàng đồng bộ."]]
+      formats: { "C:E": "dd/MM/yyyy HH:mm:ss", "F:F": "#,##0", "G:H": "@" },
+      colWidths: { 1: 160, 2: 120, 3: 160, 4: 160, 5: 160, 6: 120, 7: 250, 8: 250 },
+      defaultData: [["IDLE", "SUCCESS", new Date(), new Date(), new Date(), 0, "Hệ thống sẵn sàng đồng bộ.", ""]]
     },
     KH_CORE: {
       headers: [
@@ -93,14 +93,14 @@ var SchemaSetup = {
     },
     HDTD_CORE_DN: {
       headers: [
-        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
-        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
-        "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
+        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
+        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#312E81",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 160 }
+      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   Award,
@@ -11,11 +11,27 @@ import {
   MapPin,
   Layers,
   ArrowUpRight,
+  Search,
   Info
 } from 'lucide-react';
 import { formatCurrencyVN, getTodayVN } from '../../utils/dateUtils';
 
 export default function TopAverageDebtTable({ topAvgDebtData = [], totalDuNo = 0, loading = false }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Lọc danh sách theo từ khóa tìm kiếm
+  const displayList = useMemo(() => {
+    if (!searchQuery.trim()) return topAvgDebtData || [];
+    const q = searchQuery.toLowerCase().trim();
+    return (topAvgDebtData || []).filter(item =>
+      (item.hoTen && item.hoTen.toLowerCase().includes(q)) ||
+      (item.maKH && item.maKH.toLowerCase().includes(q)) ||
+      (item.soTV && item.soTV.toLowerCase().includes(q)) ||
+      (item.diaChi && item.diaChi.toLowerCase().includes(q)) ||
+      (item.khuVuc && item.khuVuc.toLowerCase().includes(q))
+    );
+  }, [topAvgDebtData, searchQuery]);
+
   // Tính tổng số liệu Top
   const stats = useMemo(() => {
     const list = topAvgDebtData || [];
@@ -161,20 +177,39 @@ export default function TopAverageDebtTable({ topAvgDebtData = [], totalDuNo = 0
 
       {/* 2. Bảng Danh Sách Xếp Hạng */}
       <div className="card-modern p-0 overflow-hidden">
-        <div className="d-flex justify-content-between align-items-center p-3 border-bottom" style={{ background: 'var(--bg-surface)' }}>
+        <div className="d-flex justify-content-between align-items-center p-3 border-bottom flex-wrap gap-2" style={{ background: 'var(--bg-surface)' }}>
           <div className="d-flex align-items-center gap-2">
             <TrendingUp size={16} className="text-primary" />
             <h6 className="fw-bold m-0 font-heading">
               Bảng Xếp Hạng Top {stats.count} Khách Hàng Dư Nợ Bình Quân Toàn Quỹ
             </h6>
           </div>
-          <button
-            className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-            onClick={handleExportCSV}
-            title="Xuất bảng xếp hạng sang Excel (CSV)"
-          >
-            <FileSpreadsheet size={14} /> Xuất Báo Cáo CSV
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <div className="input-group input-group-sm" style={{ maxWidth: '220px' }}>
+              <span className="input-group-text bg-white text-muted">
+                <Search size={13} />
+              </span>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Tìm tên, mã KH..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="btn btn-outline-secondary" onClick={() => setSearchQuery('')}>
+                  ×
+                </button>
+              )}
+            </div>
+            <button
+              className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+              onClick={handleExportCSV}
+              title="Xuất bảng xếp hạng sang Excel (CSV)"
+            >
+              <FileSpreadsheet size={14} /> Xuất CSV
+            </button>
+          </div>
         </div>
 
         <div className="table-responsive">
@@ -193,15 +228,15 @@ export default function TopAverageDebtTable({ topAvgDebtData = [], totalDuNo = 0
               </tr>
             </thead>
             <tbody>
-              {topAvgDebtData.length === 0 ? (
+              {displayList.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-5 text-muted">
                     <div className="empty-state-icon mx-auto mb-2"><TrendingUp size={28} /></div>
-                    <span>Chưa có dữ liệu Top Dư Nợ</span>
+                    <span>{searchQuery ? 'Không tìm thấy khách hàng nào khớp với tìm kiếm' : 'Chưa có dữ liệu Top Dư Nợ'}</span>
                   </td>
                 </tr>
               ) : (
-                topAvgDebtData.map((item, idx) => {
+                displayList.map((item, idx) => {
                   const rank = item.xepHang || (idx + 1);
                   const debt = Number(item.tongDuNo) || Number(item.duNoBinhQuan) || 0;
                   const rate = Number(item.tyTrongDuNo) || 0;

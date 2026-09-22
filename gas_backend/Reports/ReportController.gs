@@ -295,7 +295,7 @@ var ReportController = {
     }
     topDebtArr.sort(function(a, b) { return b.tongDuNo - a.tongDuNo; });
 
-    var topAvgDebtResult = topDebtArr.slice(0, 20).map(function(c, idx) {
+    var topAvgDebtResult = topDebtArr.slice(0, 50).map(function(c, idx) {
       c.xepHang = idx + 1;
       c.namBaoCao = 2026;
       return c;

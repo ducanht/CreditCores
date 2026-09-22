@@ -557,8 +557,9 @@ def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
 
     # Ưu tiên lấy Header thực tế của Sheet nếu có
     actual_headers = []
+    header_row_to_read = 2 if start_row == 3 else 1
     try:
-        actual_headers = [str(h).strip() for h in sheet.row_values(1) if str(h).strip()]
+        actual_headers = [str(h).strip() for h in sheet.row_values(header_row_to_read) if str(h).strip()]
     except Exception:
         actual_headers = []
 
@@ -799,6 +800,170 @@ def process_sync_request(spreadsheet, sql_cfg):
         )
         return False
 
+# --- 10B. TRÍCH XUẤT HĐTD ĐẾN NGÀY SAO KÊ (HDTD_CORE_DN - 17 CỘT, 2 TẦNG HEADER) ---
+def process_extract_hdtd_dn_request(spreadsheet, sql_cfg, params=None):
+    """
+    Trích xuất dữ liệu HĐTD sao kê đến ngày (HDTD_CORE_DN) theo kiến trúc 2 tầng:
+    - Dòng 1: Banner metadata chuỗi đơn lẻ:
+      Sao kê tín dụng đến ngày: {as_of_date} | Dữ liệu cập nhật: {now_str} | Trạng thái: HOÀN TẤT | Nguồn: CoreBanking NG-eFUND
+    - Dòng 2: Tiêu đề 17 cột chuẩn mực (không có CCCD, DienThoai, TraLaiDenNgay, CBTD_PhuTrach, Ten_CBTD, TrangThaiHD; có NgayDuLieu).
+    - Dòng 3+: Danh sách bản ghi dữ liệu.
+    """
+    start_time = datetime.now()
+    now_str = start_time.strftime("%d/%m/%Y %H:%M:%S")
+
+    if isinstance(params, str):
+        try:
+            params = json.loads(params)
+        except Exception:
+            params = {"asOfDate": params}
+    params = params or {}
+
+    as_of_date = params.get("asOfDate") or start_time.strftime("%d/%m/%Y")
+    mode = params.get("mode", "as_of_date")
+    months = params.get("months", [])
+
+    setting_headers = ["COMMAND", "STATUS", "REQUEST_TIME", "START_TIME", "FINISH_TIME", "TOTAL_ROWS", "MESSAGE", "PARAMS"]
+    setting_sheet = get_or_create_worksheet(spreadsheet, "SETTING", setting_headers)
+
+    # Cập nhật trạng thái PROCESSING
+    setting_sheet.update(
+        values=[["PROCESSING", now_str, now_str]],
+        range_name="B2:D2",
+        value_input_option="USER_ENTERED"
+    )
+    logger.info(f"⚡ BẮT ĐẦU TRÍCH XUẤT HDTD_CORE_DN (Mốc: {as_of_date}, Mode: {mode}) LÚC {now_str}...")
+
+    try:
+        with get_sql_connection(sql_cfg) as sql_conn:
+            records_kh = fetch_customer_core_data(sql_conn, now_str)
+            records_hdtd = fetch_loan_contract_core_data(sql_conn, now_str)
+
+        # Lập Map tra cứu khách hàng O(1) theo MaKH
+        kh_lookup = {}
+        for k in records_kh:
+            m = str(k.get("MaKH", "")).strip().lstrip("'")
+            kh_lookup[m] = k
+
+        # Chuẩn bị danh sách mốc ngày
+        target_dates = [as_of_date]
+        if mode == "month_ends" and months:
+            target_dates = []
+            curr_year = datetime.now().year
+            import calendar
+            for m in months:
+                try:
+                    m_int = int(m)
+                    last_day = calendar.monthrange(curr_year, m_int)[1]
+                    target_dates.append(f"{last_day:02d}/{m_int:02d}/{curr_year}")
+                except Exception:
+                    pass
+            if not target_dates:
+                target_dates = [as_of_date]
+
+        dn_records = []
+        for t_date in target_dates:
+            for r in records_hdtd:
+                makh = str(r.get("MaKH", "")).strip().lstrip("'")
+                cust = kh_lookup.get(makh, {})
+                ho_ten = cust.get("HoTen", "") or r.get("HoTen", "")
+                dia_chi = cust.get("DiaChi", "") or r.get("DiaChi", "")
+                kv_xa = cust.get("KvXa", "") or r.get("KvXa", "")
+                kv_thon = cust.get("KvThon", "") or r.get("KvThon", "")
+
+                dn_record = {
+                    "SoHDTD": r.get("SoHDTD", ""),
+                    "MaKH": r.get("MaKH", ""),
+                    "HoTen": ho_ten,
+                    "DiaChi": dia_chi,
+                    "KvXa": kv_xa,
+                    "KvThon": kv_thon,
+                    "TienVay": r.get("TienVay", 0),
+                    "DuNo": r.get("DuNo", 0),
+                    "LaiSuat": r.get("LaiSuat", 0),
+                    "NgayVay": r.get("NgayVay", ""),
+                    "DenHan": r.get("DenHan", ""),
+                    "SoThangVay": r.get("SoThangVay", 12),
+                    "MaLoaiVay": r.get("MaLoaiVay", ""),
+                    "MoTaVay": r.get("MoTaVay", ""),
+                    "MaLoaiHD": r.get("MaLoaiHD", ""),
+                    "NgayDuLieu": t_date,
+                    "NgayCapNhat": now_str
+                }
+                dn_records.append(dn_record)
+
+        dn_headers = ALL_SCHEMAS.get("HDTD_CORE_DN", {}).get("headers", [
+            "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
+            "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+            "NgayDuLieu", "NgayCapNhat"
+        ])
+        dn_sheet = get_or_create_worksheet(spreadsheet, "HDTD_CORE_DN", dn_headers)
+
+        # 1. Cập nhật Dòng 1 Banner Metadata
+        banner_text = f"Sao kê tín dụng đến ngày: {as_of_date} | Dữ liệu cập nhật: {now_str} | Trạng thái: HOÀN TẤT | Nguồn: CoreBanking NG-eFUND"
+        dn_sheet.update(
+            values=[[banner_text]],
+            range_name="A1:A1",
+            value_input_option="USER_ENTERED"
+        )
+
+        # 2. Cập nhật Dòng 2 Headers 17 cột (đảm bảo đúng thứ tự)
+        dn_sheet.update(
+            values=[dn_headers],
+            range_name="A2:Q2",
+            value_input_option="USER_ENTERED"
+        )
+
+        # 3. Ghi dữ liệu từ Dòng 3
+        rows_dn = sync_records_to_sheet(dn_sheet, dn_headers, dn_records, start_row=3)
+
+        # 4. Đảm bảo cố định 2 dòng đầu
+        try:
+            dn_sheet.freeze(rows=2)
+        except Exception:
+            pass
+
+        finish_time = datetime.now()
+        elapsed = (finish_time - start_time).total_seconds()
+        message = f"Trích xuất thành công {rows_dn} bản ghi HDTD_CORE_DN mốc {as_of_date} lúc {finish_time.strftime('%d/%m/%Y %H:%M:%S')} ({elapsed:.1f}s)."
+
+        # Cập nhật trạng thái SETTING -> SUCCESS
+        setting_sheet.update(
+            values=[[
+                "IDLE",
+                "SUCCESS",
+                now_str,
+                now_str,
+                finish_time.strftime("%d/%m/%Y %H:%M:%S"),
+                rows_dn,
+                message
+            ]],
+            range_name="A2:G2",
+            value_input_option="USER_ENTERED"
+        )
+        logger.info(f"🏆 === {message} ===")
+        return True
+
+    except Exception as e:
+        finish_time = datetime.now()
+        err_msg = f"Lỗi trích xuất HDTD_CORE_DN: {str(e)}"
+        logger.error(err_msg, exc_info=True)
+        setting_sheet.update(
+            values=[[
+                "IDLE",
+                "ERROR",
+                now_str,
+                now_str,
+                finish_time.strftime("%d/%m/%Y %H:%M:%S"),
+                0,
+                err_msg[:250]
+            ]],
+            range_name="A2:G2",
+            value_input_option="USER_ENTERED"
+        )
+        return False
+
 # --- 11. CHỨC NĂNG KIỂM TRA KẾT NỐI (DIAGNOSTICS) ---
 def run_diagnostics(spreadsheet, sql_cfg):
     """
@@ -839,6 +1004,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--now", action="store_true", help="Thực hiện đồng bộ ngay 1 lần từ SQL Server và thoát")
+    parser.add_argument("--extract-dn", action="store_true", help="Thực hiện trích xuất HDTD_CORE_DN ngay 1 lần từ SQL Server và thoát")
+    parser.add_argument("--as-of-date", type=str, default="", help="Mốc ngày sao kê (dd/MM/yyyy) khi dùng --extract-dn")
+    parser.add_argument("--mode", type=str, default="as_of_date", help="Chế độ sao kê: 'as_of_date' hoặc 'month_ends'")
     parser.add_argument("--init-schema", action="store_true", help="Khởi tạo hoặc sửa chữa cấu trúc 12 bảng CSDL Google Sheets")
     parser.add_argument("--test-connection", action="store_true", help="Kiểm tra kết nối tới Google Sheets và SQL Server")
     args = parser.parse_args()
@@ -865,7 +1033,13 @@ def main():
         run_diagnostics(spreadsheet, sql_cfg)
         sys.exit(0)
 
-    # 4. Chế độ chạy thủ công tức thì từ SQL Server
+    # 3. Chế độ chạy thủ công trích xuất HDTD_CORE_DN tức thì
+    if args.extract_dn:
+        logger.info(f"🚀 Chế độ trích xuất HDTD_CORE_DN tức thì (--extract-dn, as_of_date={args.as_of_date or 'Hôm nay'})...")
+        process_extract_hdtd_dn_request(spreadsheet, sql_cfg, {"asOfDate": args.as_of_date, "mode": args.mode})
+        sys.exit(0)
+
+    # 4. Chế độ chạy thủ công tức thì từ SQL Server (SYNC_DATA)
     if args.now:
         logger.info("🚀 Chế độ chạy thủ công tức thì (--now)...")
         process_sync_request(spreadsheet, sql_cfg)
@@ -890,6 +1064,10 @@ def main():
             if command == "SYNC_DATA" and status in ["PENDING", "REQUESTED"]:
                 logger.info(f"🔔 Phát hiện lệnh đồng bộ từ WebApp (COMMAND='{command}', STATUS='{status}')")
                 process_sync_request(spreadsheet, sql_cfg)
+            elif command == "EXTRACT_HDTD_DN" and status in ["PENDING", "REQUESTED"]:
+                logger.info(f"🔔 Phát hiện lệnh trích xuất HDTD_CORE_DN từ WebApp (COMMAND='{command}', STATUS='{status}')")
+                params_val = row2[7].strip() if len(row2) > 7 else ""
+                process_extract_hdtd_dn_request(spreadsheet, sql_cfg, params_val)
 
         except gspread.exceptions.APIError as api_err:
             logger.warning(f"Google Sheets API tạm thời bận: {api_err}. Đang tiếp tục lắng nghe...")

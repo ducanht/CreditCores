@@ -99,13 +99,27 @@ var DashboardController = {
 
   /**
    * Tính toán bộ chỉ số thống kê từ một Sheet Hợp đồng Tín dụng (HDTD_CORE hoặc HDTD_CORE_DN)
+   * Hỗ trợ tự động nhận diện Sheet 2 tầng (Dòng 1: Banner Metadata sao kê, Dòng 2: Header 17 cột, Dòng 3+: Data)
    */
   _computeHdtdStats: function(sHDTD, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, sheetDisplayName) {
-    if (!sHDTD || sHDTD.getLastRow() <= 1) {
+    var isTwoTier = false;
+    var asOfMetadataText = "";
+    if (sHDTD && sHDTD.getLastRow() >= 1) {
+      var firstCellVal = String(sHDTD.getRange(1, 1).getValue() || "").trim();
+      if (firstCellVal.indexOf("Sao kê") > -1 || sHDTD.getFrozenRows() >= 2 || sHDTD.getName().indexOf("HDTD_CORE_DN") > -1) {
+        isTwoTier = true;
+        asOfMetadataText = firstCellVal;
+      }
+    }
+
+    var minRequiredRows = isTwoTier ? 2 : 1;
+    if (!sHDTD || sHDTD.getLastRow() <= minRequiredRows) {
       return {
         hasData: false,
         sheetName: sHDTD ? sHDTD.getName() : "",
         sheetDisplayName: sheetDisplayName || "",
+        asOfMetadata: asOfMetadataText,
+        isTwoTier: isTwoTier,
         totalDuNo: 0,
         totalHopDong: 0,
         totalThanhVienVay: 0,
@@ -123,7 +137,10 @@ var DashboardController = {
         cbtdStats: [],
         loanTypes: [],
         loanGroups: [],
-        securityTypes: []
+        securityTypes: [],
+        top50DuNoDenNgay: [],
+        top50DuNoBinhQuanCuoiThang: [],
+        monthlyDebtTrend: []
       };
     }
 
@@ -256,8 +273,14 @@ var DashboardController = {
     var allBorrowersSet = {};
     var totalWeightedLai = 0;
 
-    var colMapHD = HeaderUtils.getHeaderMap(sHDTD);
-    var hdValues = sHDTD.getRange(2, 1, sHDTD.getLastRow() - 1, sHDTD.getLastColumn()).getValues();
+    var headerRow = isTwoTier ? 2 : 1;
+    var startDataRow = isTwoTier ? 3 : 2;
+    var numDataRows = sHDTD.getLastRow() - headerRow;
+    var colMapHD = HeaderUtils.getHeaderMap(sHDTD, headerRow);
+    var hdValues = sHDTD.getRange(startDataRow, 1, numDataRows, sHDTD.getLastColumn()).getValues();
+
+    var customerAggMap = {}; // { [makh]: { maKH, hoTen, diaChi, xa, thon, soHDCount, tongDuNo, monthlyDebts: {} } }
+    var monthlyTrendMap = {}; // { [dateKey]: { dateKey, totalDuNo, countHD, khSet: {} } }
 
     for (var i = 0; i < hdValues.length; i++) {
       var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
@@ -271,6 +294,9 @@ var DashboardController = {
       var maLoaiHD = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiHD", "")).trim();
       var directXa = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvXa", "")).trim();
       var directThon = String(HeaderUtils.getCell(hdValues[i], colMapHD, "KvThon", "")).trim();
+      var rawHoTen = String(HeaderUtils.getCell(hdValues[i], colMapHD, "HoTen", "")).trim();
+      var rawDiaChi = String(HeaderUtils.getCell(hdValues[i], colMapHD, "DiaChi", "")).trim();
+      var ngayDuLieu = String(HeaderUtils.getCell(hdValues[i], colMapHD, "NgayDuLieu", "")).trim();
 
       if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
         totalDuNo += duNo;
@@ -279,9 +305,43 @@ var DashboardController = {
         totalWeightedLai += (duNo * laiSuat);
         allBorrowersSet[makh] = true;
 
-        var cust = custMap[makh] || { xa: "Xã Quý Lộc", thon: "Thôn khác" };
-        var xa = directXa || cust.xa;
-        var thon = directThon || cust.thon;
+        var cust = custMap[makh] || { hoten: rawHoTen, xa: "Xã Quý Lộc", thon: "Thôn khác" };
+        var xa = directXa || cust.xa || "Xã Quý Lộc";
+        var thon = directThon || cust.thon || "Thôn khác";
+        var hoten = rawHoTen || cust.hoten || ("Khách hàng " + makh);
+        var diachi = rawDiaChi || (thon + ", " + xa);
+
+        // Thu thập dữ liệu khách hàng cho Top 50 & Báo cáo
+        if (!customerAggMap[makh]) {
+          customerAggMap[makh] = {
+            maKH: makh,
+            hoTen: hoten,
+            diaChi: diachi,
+            xa: xa,
+            thon: thon,
+            soHDCount: 0,
+            tongDuNo: 0,
+            monthlyDebts: {}
+          };
+        }
+        customerAggMap[makh].soHDCount++;
+        customerAggMap[makh].tongDuNo += duNo;
+
+        // Nếu có NgayDuLieu (sao kê các mốc hoặc ngày chốt)
+        var dateKey = ngayDuLieu || "Hiện tại";
+        if (!monthlyTrendMap[dateKey]) {
+          monthlyTrendMap[dateKey] = {
+            dateKey: dateKey,
+            totalDuNo: 0,
+            countHD: 0,
+            khSet: {}
+          };
+        }
+        monthlyTrendMap[dateKey].totalDuNo += duNo;
+        monthlyTrendMap[dateKey].countHD++;
+        monthlyTrendMap[dateKey].khSet[makh] = true;
+
+        customerAggMap[makh].monthlyDebts[dateKey] = (customerAggMap[makh].monthlyDebts[dateKey] || 0) + duNo;
 
         // Phân loại nhóm cho vay
         var prodName = maLoaiVay || moTaVay || "Cho vay khác";
@@ -550,10 +610,95 @@ var DashboardController = {
       }
     }
 
+    // 5. Tính Top 50 khách hàng có dư nợ lớn nhất đến ngày
+    var allCustList = [];
+    for (var mId in customerAggMap) {
+      allCustList.push(customerAggMap[mId]);
+    }
+    allCustList.sort(function(a, b) { return b.tongDuNo - a.tongDuNo; });
+
+    var top50DuNoDenNgay = [];
+    var topCount = Math.min(50, allCustList.length);
+    for (var cIdx = 0; cIdx < topCount; cIdx++) {
+      var cItem = allCustList[cIdx];
+      top50DuNoDenNgay.push({
+        rank: cIdx + 1,
+        maKH: cItem.maKH,
+        hoTen: cItem.hoTen,
+        diaChi: cItem.diaChi,
+        xa: cItem.xa,
+        thon: cItem.thon,
+        soHDCount: cItem.soHDCount,
+        tongDuNo: cItem.tongDuNo,
+        tyLe: totalDuNo > 0 ? (Math.round((cItem.tongDuNo / totalDuNo) * 1000) / 10) + "%" : "0%"
+      });
+    }
+
+    // 6. Tính Biểu đồ xu hướng dư nợ theo các tháng/mốc (monthlyDebtTrend)
+    var monthlyDebtTrend = [];
+    var dateKeys = Object.keys(monthlyTrendMap);
+    dateKeys.sort(function(a, b) {
+      var parseD = function(str) {
+        var p = String(str).split('/');
+        if (p.length === 3) return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])).getTime();
+        return 0;
+      };
+      return parseD(a) - parseD(b);
+    });
+
+    for (var dIdx = 0; dIdx < dateKeys.length; dIdx++) {
+      var dKey = dateKeys[dIdx];
+      var mData = monthlyTrendMap[dKey];
+      var countKH = Object.keys(mData.khSet).length;
+      monthlyDebtTrend.push({
+        date: dKey,
+        totalDuNo: mData.totalDuNo,
+        countHD: mData.countHD,
+        countKH: countKH,
+        duNoBinhQuanKH: countKH > 0 ? Math.round(mData.totalDuNo / countKH) : 0
+      });
+    }
+
+    // 7. Tính Top 50 khách hàng có dư nợ bình quân lớn nhất (chỉ tính đến các ngày cuối tháng sao kê)
+    var numSnapshots = dateKeys.length > 0 ? dateKeys.length : 1;
+    var allCustAvgList = [];
+    for (var aId in customerAggMap) {
+      var custObj = customerAggMap[aId];
+      var sumAllMonths = 0;
+      var activeMonthsCount = 0;
+      for (var dk in custObj.monthlyDebts) {
+        sumAllMonths += custObj.monthlyDebts[dk];
+        if (custObj.monthlyDebts[dk] > 0) activeMonthsCount++;
+      }
+      var duNoBinhQuan = Math.round(sumAllMonths / numSnapshots);
+      allCustAvgList.push({
+        maKH: custObj.maKH,
+        hoTen: custObj.hoTen,
+        diaChi: custObj.diaChi,
+        xa: custObj.xa,
+        thon: custObj.thon,
+        duNoBinhQuan: duNoBinhQuan,
+        tongDuNoHienTai: custObj.tongDuNo,
+        soThangCoDuNo: activeMonthsCount,
+        chiTietThang: custObj.monthlyDebts
+      });
+    }
+    allCustAvgList.sort(function(a, b) { return b.duNoBinhQuan - a.duNoBinhQuan; });
+
+    var top50DuNoBinhQuanCuoiThang = [];
+    var topAvgCount = Math.min(50, allCustAvgList.length);
+    for (var avgIdx = 0; avgIdx < topAvgCount; avgIdx++) {
+      var avgItem = allCustAvgList[avgIdx];
+      avgItem.rank = avgIdx + 1;
+      top50DuNoBinhQuanCuoiThang.push(avgItem);
+    }
+
     return {
       hasData: true,
       sheetName: sHDTD.getName(),
       sheetDisplayName: sheetDisplayName || sHDTD.getName(),
+      asOfMetadata: asOfMetadataText,
+      isTwoTier: isTwoTier,
       totalDuNo: totalDuNo,
       totalHopDong: totalHopDong,
       totalThanhVienVay: totalThanhVienVay,
@@ -571,7 +716,10 @@ var DashboardController = {
       cbtdStats: finalCbtdStats,
       loanTypes: Object.values(loanGroups),
       loanGroups: Object.values(loanGroups),
-      securityTypes: securityTypesList
+      securityTypes: securityTypesList,
+      top50DuNoDenNgay: top50DuNoDenNgay,
+      top50DuNoBinhQuanCuoiThang: top50DuNoBinhQuanCuoiThang,
+      monthlyDebtTrend: monthlyDebtTrend
     };
   },
 

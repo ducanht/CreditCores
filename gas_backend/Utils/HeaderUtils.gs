@@ -14,11 +14,12 @@ var HeaderUtils = {
    * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
    * @return {Object} { [colName]: colIndex }
    */
-  getHeaderMap: function(sheet) {
+  getHeaderMap: function(sheet, headerRowIdx) {
     if (!sheet) return {};
     var lastCol = sheet.getLastColumn();
     if (lastCol < 1) return {};
-    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var row = headerRowIdx || 1;
+    var headers = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
     var map = {};
     for (var i = 0; i < headers.length; i++) {
       var h = String(headers[i] || "").trim();

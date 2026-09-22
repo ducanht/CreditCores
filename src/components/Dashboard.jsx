@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Landmark,
   TrendingUp,
+  Crown,
   Users,
   AlertCircle,
   CheckCircle2,
@@ -45,6 +46,9 @@ import { formatCurrencyVN, formatCurrency, getTodayVN } from '../utils/dateUtils
 import { api } from '../services/api';
 import CommuneComparisonChart from './dashboard/CommuneComparisonChart';
 import LoanProductDonutChart from './dashboard/LoanProductDonutChart';
+import MonthlyDebtTrendChart from './dashboard/MonthlyDebtTrendChart';
+import Top50DebtSection from './dashboard/Top50DebtSection';
+import ExtractAsOfModal from './dashboard/ExtractAsOfModal';
 
 // Helper rút gọn tiền tệ sang Tỷ / Triệu hiển thị trực quan
 const formatCompactVN = (amount) => {
@@ -262,6 +266,28 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
   const countNoTon = activeStats?.countNoTon || 0;
   const pendingAppraisals = activeStats?.pendingAppraisals || 0;
   const pendingInspections = activeStats?.pendingInspections || 0;
+  const [isExtractModalOpen, setIsExtractModalOpen] = useState(false);
+
+  // Dữ liệu Top 50 và Diễn biến tháng
+  const top50DuNoDenNgay = useMemo(() => {
+    return (activeStats?.top50DuNoDenNgay && Array.isArray(activeStats.top50DuNoDenNgay))
+      ? activeStats.top50DuNoDenNgay
+      : [];
+  }, [activeStats?.top50DuNoDenNgay]);
+
+  const top50DuNoBinhQuanCuoiThang = useMemo(() => {
+    return (activeStats?.top50DuNoBinhQuanCuoiThang && Array.isArray(activeStats.top50DuNoBinhQuanCuoiThang))
+      ? activeStats.top50DuNoBinhQuanCuoiThang
+      : [];
+  }, [activeStats?.top50DuNoBinhQuanCuoiThang]);
+
+  const monthlyDebtTrend = useMemo(() => {
+    return (activeStats?.monthlyDebtTrend && Array.isArray(activeStats.monthlyDebtTrend))
+      ? activeStats.monthlyDebtTrend
+      : [];
+  }, [activeStats?.monthlyDebtTrend]);
+
+  const asOfMetadata = activeStats?.asOfMetadata || '';
 
   // Tỷ lệ bao phủ trích nợ tự động trên số hợp đồng
   const autoDebitCoverageRate = totalHopDong > 0 ? Math.min(100, Math.round((totalKhachHangTrichNo / totalHopDong) * 100)) : 0;
@@ -530,9 +556,20 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
               <span>•</span>
               <span className="text-muted">Tổng {totalHopDong} hợp đồng • {totalThanhVienVay} thành viên vay</span>
             </div>
-            <span className="badge text-white px-2 py-1" style={{ backgroundColor: '#4f46e5' }}>
-              Snapshot Đến Ngày
-            </span>
+            <div className="d-flex align-items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-xs btn-outline-primary d-flex align-items-center gap-1.5 py-1 px-2.5 rounded-2 bg-white shadow-sm"
+                onClick={() => setIsExtractModalOpen(true)}
+                title="Gửi lệnh trích xuất dữ liệu sao kê HDTD_CORE_DN từ SQL Core qua Python Daemon"
+              >
+                <Sparkles size={13} className="text-warning" />
+                <span className="fw-semibold">Trích Xuất Từ SQL Core</span>
+              </button>
+              <span className="badge text-white px-2 py-1" style={{ backgroundColor: '#4f46e5' }}>
+                Snapshot Đến Ngày
+              </span>
+            </div>
           </div>
         )}
 
@@ -556,6 +593,31 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </div>
         )}
       </div>
+
+      {/* Banner Dòng 1 Thông Tin Sao Kê Dữ Liệu HDTD_CORE_DN */}
+      {dashboardMode === 'as_of_date' && asOfMetadata && (
+        <div className="card-modern p-3 border-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ background: 'linear-gradient(135deg, #312e81 0%, #4338ca 100%)', color: '#fff' }}>
+          <div className="d-flex align-items-center gap-2.5">
+            <div className="p-2 rounded-2 bg-white bg-opacity-20 text-white">
+              <Database size={20} />
+            </div>
+            <div>
+              <div className="fw-bold fs-6">{asOfMetadata}</div>
+              <div className="small text-white text-opacity-75">
+                Cấu trúc bảng 17 cột chuẩn mực (loại bỏ 6 cột CCCD, SĐT, TraLaiDenNgay, CBTD, TrangThaiHD; bổ sung NgayDuLieu & Banner Dòng 1).
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-light text-indigo fw-bold d-flex align-items-center gap-1.5 shadow-sm"
+            onClick={() => setIsExtractModalOpen(true)}
+          >
+            <Sparkles size={14} className="text-warning" />
+            <span>Sao Kê Lại Từ SQL Core</span>
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 📊 KHỐI ĐỐI SÁNH TĂNG TRƯỞNG & CÁC NĂM (CHỈ HIỂN THỊ KHI Ở CHẾ ĐỘ COMPARE)  */}
@@ -888,68 +950,90 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
       {/* ========================================================================= */}
       <div className="card-modern p-2.5">
         <div className="row g-2 align-items-center">
-          {/* 3 Nút phân hệ chính */}
+          {/* Các Nút Phân Hệ Thống Kê */}
           <div className="col-12 col-md-8">
-            <div className="row g-1.5">
-              <div className="col-12 col-sm-4">
-                <button
-                  type="button"
-                  className={`btn w-100 text-start p-2 rounded-2.5 d-flex align-items-center justify-content-between border transition-all ${
-                    activeSubView === 'communes'
-                      ? 'btn-brand text-white fw-bold shadow-sm'
-                      : 'btn-light text-dark hover-lift'
-                  }`}
-                  onClick={() => setActiveSubView('communes')}
-                >
-                  <div className="d-flex align-items-center gap-2">
-                    <MapPin size={16} className={activeSubView === 'communes' ? 'text-white' : 'text-success'} />
-                    <span className="small">Địa Bàn 3 Xã & Thôn</span>
-                  </div>
-                  <span className={`badge small ${activeSubView === 'communes' ? 'bg-white text-dark' : 'bg-success-subtle text-success'}`}>
-                    12 Thôn
-                  </span>
-                </button>
-              </div>
+            <div className="d-flex align-items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
+                  activeSubView === 'communes'
+                    ? 'btn-brand text-white fw-bold shadow-sm'
+                    : 'btn-light text-dark hover-lift'
+                }`}
+                onClick={() => setActiveSubView('communes')}
+              >
+                <MapPin size={15} className={activeSubView === 'communes' ? 'text-white' : 'text-success'} />
+                <span className="small">Địa Bàn 3 Xã</span>
+                <span className={`badge small ms-auto ${activeSubView === 'communes' ? 'bg-white text-dark' : 'bg-success-subtle text-success'}`}>
+                  12 Thôn
+                </span>
+              </button>
 
-              <div className="col-12 col-sm-4">
-                <button
-                  type="button"
-                  className={`btn w-100 text-start p-2 rounded-2.5 d-flex align-items-center justify-content-between border transition-all ${
-                    activeSubView === 'cbtd'
-                      ? 'btn-brand text-white fw-bold shadow-sm'
-                      : 'btn-light text-dark hover-lift'
-                  }`}
-                  onClick={() => setActiveSubView('cbtd')}
-                >
-                  <div className="d-flex align-items-center gap-2">
-                    <User size={16} className={activeSubView === 'cbtd' ? 'text-white' : 'text-primary'} />
-                    <span className="small">CBTD Quản Lý Chi Tiết</span>
-                  </div>
-                  <span className={`badge small ${activeSubView === 'cbtd' ? 'bg-white text-dark' : 'bg-primary-subtle text-primary'}`}>
-                    3 Cán Bộ
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
+                  activeSubView === 'cbtd'
+                    ? 'btn-brand text-white fw-bold shadow-sm'
+                    : 'btn-light text-dark hover-lift'
+                }`}
+                onClick={() => setActiveSubView('cbtd')}
+              >
+                <User size={15} className={activeSubView === 'cbtd' ? 'text-white' : 'text-primary'} />
+                <span className="small">CBTD Quản Lý</span>
+                <span className={`badge small ms-auto ${activeSubView === 'cbtd' ? 'bg-white text-dark' : 'bg-primary-subtle text-primary'}`}>
+                  3 Cán Bộ
+                </span>
+              </button>
 
-              <div className="col-12 col-sm-4">
-                <button
-                  type="button"
-                  className={`btn w-100 text-start p-2 rounded-2.5 d-flex align-items-center justify-content-between border transition-all ${
-                    activeSubView === 'products'
-                      ? 'btn-brand text-white fw-bold shadow-sm'
-                      : 'btn-light text-dark hover-lift'
-                  }`}
-                  onClick={() => setActiveSubView('products')}
-                >
-                  <div className="d-flex align-items-center gap-2">
-                    <PieChart size={16} className={activeSubView === 'products' ? 'text-white' : 'text-warning'} />
-                    <span className="small">Cơ Cấu Cho Vay & Vận Hành</span>
-                  </div>
-                  <span className={`badge small ${activeSubView === 'products' ? 'bg-white text-dark' : 'bg-warning-subtle text-warning-emphasis'}`}>
-                    3 Nhóm
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
+                  activeSubView === 'products'
+                    ? 'btn-brand text-white fw-bold shadow-sm'
+                    : 'btn-light text-dark hover-lift'
+                }`}
+                onClick={() => setActiveSubView('products')}
+              >
+                <PieChart size={15} className={activeSubView === 'products' ? 'text-white' : 'text-warning'} />
+                <span className="small">Cơ Cấu Vay</span>
+                <span className={`badge small ms-auto ${activeSubView === 'products' ? 'bg-white text-dark' : 'bg-warning-subtle text-warning-emphasis'}`}>
+                  3 Nhóm
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
+                  activeSubView === 'top_debt'
+                    ? 'btn-dark text-white fw-bold shadow-sm'
+                    : 'btn-light text-dark hover-lift'
+                }`}
+                style={activeSubView === 'top_debt' ? { backgroundColor: '#4338ca', borderColor: '#4338ca' } : {}}
+                onClick={() => setActiveSubView('top_debt')}
+              >
+                <Crown size={15} className={activeSubView === 'top_debt' ? 'text-warning' : 'text-primary'} />
+                <span className="small">Top 50 Dư Nợ</span>
+                <span className="badge bg-white text-dark ms-auto" style={{ fontSize: '0.68rem' }}>
+                  {top50DuNoDenNgay.length > 0 ? `${top50DuNoDenNgay.length} KH` : 'Top 50'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
+                  activeSubView === 'trend'
+                    ? 'btn-indigo text-white fw-bold shadow-sm'
+                    : 'btn-light text-dark hover-lift'
+                }`}
+                style={activeSubView === 'trend' ? { backgroundColor: '#0284c7', borderColor: '#0284c7' } : {}}
+                onClick={() => setActiveSubView('trend')}
+              >
+                <TrendingUp size={15} className={activeSubView === 'trend' ? 'text-white' : 'text-info'} />
+                <span className="small">Diễn Biến Tháng</span>
+                <span className="badge bg-white text-dark ms-auto" style={{ fontSize: '0.68rem' }}>
+                  {monthlyDebtTrend.length > 0 ? `${monthlyDebtTrend.length} Kỳ` : '12T'}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -2160,6 +2244,36 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 👑 PHÂN HỆ 4: TOP 50 DƯ NỢ ĐẾN NGÀY & DƯ NỢ BÌNH QUÂN CUỐI THÁNG          */}
+      {/* ========================================================================= */}
+      {activeSubView === 'top_debt' && (
+        <div className="content-fade-in">
+          <Top50DebtSection
+            top50DuNoDenNgay={top50DuNoDenNgay}
+            top50DuNoBinhQuanCuoiThang={top50DuNoBinhQuanCuoiThang}
+            totalDuNo={totalDuNo}
+            onOpenCustomerQuickView={onOpenCustomerQuickView}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📈 PHÂN HỆ 5: BIỂU ĐỒ DIỄN BIẾN DƯ NỢ THEO TỪNG THÁNG SAO KÊ             */}
+      {/* ========================================================================= */}
+      {activeSubView === 'trend' && (
+        <div className="content-fade-in">
+          <MonthlyDebtTrendChart monthlyDebtTrend={monthlyDebtTrend} />
+        </div>
+      )}
+
+      {/* Modal Trích Xuất Dữ Liệu Sao Kê HDTD_CORE_DN Từ SQL Core qua Python Daemon */}
+      <ExtractAsOfModal
+        isOpen={isExtractModalOpen}
+        onClose={() => setIsExtractModalOpen(false)}
+        onSuccess={() => fetchModeData('as_of_date')}
+      />
     </div>
   );
 }

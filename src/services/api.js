@@ -187,8 +187,8 @@ async function sendRequest(action, data = null, method = 'GET', useCache = true)
           }
 
           // Chỉ xóa cache khi thực sự có mutation làm thay đổi CSDL
-          // (Không xóa khi chỉ kích hoạt triggerSqlSync hoặc tra cứu)
-          if (!isReadOp && action !== 'triggerSqlSync') {
+          // (Không xóa khi chỉ kích hoạt triggerSqlSync, triggerAsOfExtract hoặc tra cứu)
+          if (!isReadOp && action !== 'triggerSqlSync' && action !== 'triggerAsOfExtract') {
             apiCache.clear();
           }
 
@@ -277,6 +277,7 @@ export const api = {
   reconcileUpload: (data) => sendRequest('reconcileUpload', data, 'POST'),
   getSyncStatus: () => sendRequest('getSyncStatus', null, 'GET', false),
   triggerSqlSync: () => sendRequest('triggerSqlSync', {}, 'POST'),
+  triggerAsOfExtract: (params = {}) => sendRequest('triggerAsOfExtract', params, 'POST'),
   getTemplates: (forceFresh = false) => sendRequest('getTemplates', null, 'GET', !forceFresh),
   saveTemplate: (data) => sendRequest('saveTemplate', data, 'POST'),
   deleteTemplate: (id) => sendRequest('deleteTemplate', { id }, 'POST'),
