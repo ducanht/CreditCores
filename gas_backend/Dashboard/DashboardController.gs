@@ -811,26 +811,41 @@ var DashboardController = {
     }
 
     // 4. Tự động kết nối và nạp số liệu chuỗi thời gian từ kho lưu trữ cuối tháng HDTD_CORE_ALL
+    // TỐI ƯU HÓA FREE QUOTA: Sử dụng Cold Cache (6 giờ) để triệt tiêu việc đọc lại <10.000 dòng từ Google Sheets
     try {
-      var sAll = ss.getSheetByName("HDTD_CORE_ALL");
-      if (sAll && sAll.getLastRow() > 2) {
-        var allStats = this._computeHdtdStats(sAll, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Lưu Trữ Cuối Tháng (HDTD_CORE_ALL)");
-        if (allStats && allStats.hasData) {
-          if (allStats.monthlyDebtTrend && allStats.monthlyDebtTrend.length > 0) {
-            finalResult.monthlyDebtTrend = allStats.monthlyDebtTrend;
+      var allStatsCacheKey = "dashboard_stats_HDTD_CORE_ALL";
+      var cachedAllStats = CacheHelper.getCachedData(allStatsCacheKey);
+
+      if (!cachedAllStats) {
+        var sAll = ss.getSheetByName("HDTD_CORE_ALL");
+        if (sAll && sAll.getLastRow() > 2) {
+          var allStats = this._computeHdtdStats(sAll, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Lưu Trữ Cuối Tháng (HDTD_CORE_ALL)");
+          if (allStats && allStats.hasData) {
+            cachedAllStats = {
+              monthlyDebtTrend: allStats.monthlyDebtTrend || [],
+              top50DuNoBinhQuanCuoiThang: allStats.top50DuNoBinhQuanCuoiThang || [],
+              allMonthlyStats: {
+                hasData: true,
+                sheetName: "HDTD_CORE_ALL",
+                asOfMetadata: allStats.asOfMetadata,
+                totalSnapshots: allStats.monthlyDebtTrend ? allStats.monthlyDebtTrend.length : 0,
+                totalDuNo: allStats.totalDuNo,
+                totalHopDong: allStats.totalHopDong
+              }
+            };
+            CacheHelper.setCachedData(allStatsCacheKey, cachedAllStats, CacheHelper.TIERS.COLD);
           }
-          if (allStats.top50DuNoBinhQuanCuoiThang && allStats.top50DuNoBinhQuanCuoiThang.length > 0) {
-            finalResult.top50DuNoBinhQuanCuoiThang = allStats.top50DuNoBinhQuanCuoiThang;
-          }
-          finalResult.allMonthlyStats = {
-            hasData: true,
-            sheetName: "HDTD_CORE_ALL",
-            asOfMetadata: allStats.asOfMetadata,
-            totalSnapshots: allStats.monthlyDebtTrend ? allStats.monthlyDebtTrend.length : 0,
-            totalDuNo: allStats.totalDuNo,
-            totalHopDong: allStats.totalHopDong
-          };
         }
+      }
+
+      if (cachedAllStats) {
+        if (cachedAllStats.monthlyDebtTrend && cachedAllStats.monthlyDebtTrend.length > 0) {
+          finalResult.monthlyDebtTrend = cachedAllStats.monthlyDebtTrend;
+        }
+        if (cachedAllStats.top50DuNoBinhQuanCuoiThang && cachedAllStats.top50DuNoBinhQuanCuoiThang.length > 0) {
+          finalResult.top50DuNoBinhQuanCuoiThang = cachedAllStats.top50DuNoBinhQuanCuoiThang;
+        }
+        finalResult.allMonthlyStats = cachedAllStats.allMonthlyStats;
       }
     } catch (eAll) {
       Logger.log("Lỗi nạp HDTD_CORE_ALL: " + eAll);

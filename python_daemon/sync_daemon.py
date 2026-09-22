@@ -588,12 +588,27 @@ def sync_records_to_sheet(sheet, headers, records, start_row=2, max_retries=3):
                 sheet.batch_clear([clear_range])
 
             end_col_letter = gspread.utils.rowcol_to_a1(1, num_cols).replace("1", "")
-            target_range = f"A{start_row}:{end_col_letter}{start_row + num_rows - 1}"
 
             if sheet.row_count < (start_row + num_rows):
                 sheet.add_rows(start_row + num_rows - sheet.row_count + 50)
 
-            sheet.update(values=values, range_name=target_range, value_input_option="USER_ENTERED")
+            # Tối ưu hóa ghi dữ liệu lớn (< 10.000 dòng): Chia chunk 2.000 dòng/batch
+            # Đảm bảo payload nhẹ (< 400KB), không timeout HTTP, tuân thủ 100% Free Quota Google API
+            CHUNK_SIZE = 2000
+            if num_rows <= CHUNK_SIZE:
+                target_range = f"A{start_row}:{end_col_letter}{start_row + num_rows - 1}"
+                sheet.update(values=values, range_name=target_range, value_input_option="USER_ENTERED")
+            else:
+                total_chunks = (num_rows + CHUNK_SIZE - 1) // CHUNK_SIZE
+                logger.info(f"📦 Dữ liệu lớn ({num_rows} dòng) -> Chia thành {total_chunks} lô (mỗi lô {CHUNK_SIZE} dòng) để ghi an toàn...")
+                for chunk_i in range(0, num_rows, CHUNK_SIZE):
+                    chunk_vals = values[chunk_i:chunk_i + CHUNK_SIZE]
+                    cur_start = start_row + chunk_i
+                    cur_end = cur_start + len(chunk_vals) - 1
+                    target_range = f"A{cur_start}:{end_col_letter}{cur_end}"
+                    sheet.update(values=chunk_vals, range_name=target_range, value_input_option="USER_ENTERED")
+                    time.sleep(0.2)
+
             logger.info(f"✅ Đã ghi {num_rows} bản ghi vào sheet '{sheet.title}' (Cột: {num_cols}).")
             return num_rows
         except gspread.exceptions.APIError as api_err:

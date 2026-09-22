@@ -46,6 +46,7 @@ var SyncController = {
     sheet.getRange(2, 8).setValue(paramStr);
 
     CacheHelper.invalidateModuleCache('dashboard');
+    CacheHelper.setCachedData("dashboard_stats_HDTD_CORE_ALL", null);
     return { 
       status: "success", 
       message: "Đã gửi lệnh " + command + " (" + targetSheet + ") tới Hàng đợi Lệnh Core!",
