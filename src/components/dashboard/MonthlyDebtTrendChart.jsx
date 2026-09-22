@@ -42,11 +42,14 @@ export default function MonthlyDebtTrendChart({ monthlyDebtTrend = [] }) {
           </div>
           <div>
             <h6 className="fw-bold mb-0 font-heading">Diễn Biến Dư Nợ Theo Các Mốc Sao Kê Cuối Tháng</h6>
-            <span className="small text-muted">Thống kê từ dữ liệu HDTD_CORE_DN qua các kỳ ({monthlyDebtTrend.length} mốc chốt)</span>
+            <span className="small text-muted">Thống kê chuỗi thời gian từ kho lưu trữ cuối tháng <strong>HDTD_CORE_ALL</strong> ({monthlyDebtTrend.length} mốc chốt)</span>
           </div>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span className="badge text-white px-2.5 py-1.5" style={{ backgroundColor: '#1e3a8a' }}>
+            Nguồn: HDTD_CORE_ALL
+          </span>
           <span className="badge px-2.5 py-1.5" style={{ backgroundColor: '#4338ca', color: '#fff' }}>
             Bình Quân: {formatCompactVN(avgDuNo)}
           </span>

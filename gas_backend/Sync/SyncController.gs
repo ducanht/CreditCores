@@ -31,19 +31,25 @@ var SyncController = {
     params = params || {};
     var asOfDate = params.asOfDate || formatGasDate(new Date());
     var mode = params.mode || "as_of_date";
+    var targetSheet = params.targetSheet || (mode === "month_ends" ? "HDTD_CORE_ALL" : "HDTD_CORE_DN");
+    var command = targetSheet === "HDTD_CORE_ALL" ? "EXTRACT_HDTD_ALL" : "EXTRACT_HDTD_DN";
     var paramStr = JSON.stringify(params);
 
-    sheet.getRange(2, 1).setValue("EXTRACT_HDTD_DN");
+    var noteMsg = targetSheet === "HDTD_CORE_ALL"
+      ? "Yêu cầu trích xuất HDTD_CORE_ALL (sao kê các ngày cuối tháng). Đang chờ Python Daemon..."
+      : "Yêu cầu trích xuất HDTD_CORE_DN mốc " + asOfDate + ". Đang chờ Python Daemon...";
+
+    sheet.getRange(2, 1).setValue(command);
     sheet.getRange(2, 2).setValue("PENDING");
     sheet.getRange(2, 3).setValue(new Date());
-    sheet.getRange(2, 7).setValue("Yêu cầu trích xuất HDTD_CORE_DN mốc " + asOfDate + ". Đang chờ Python Daemon...");
+    sheet.getRange(2, 7).setValue(noteMsg);
     sheet.getRange(2, 8).setValue(paramStr);
 
     CacheHelper.invalidateModuleCache('dashboard');
     return { 
       status: "success", 
-      message: "Đã gửi lệnh trích xuất HDTD_CORE_DN (Mốc: " + asOfDate + ") tới Hàng đợi Lệnh Core!",
-      data: { command: "EXTRACT_HDTD_DN", status: "PENDING", asOfDate: asOfDate, mode: mode }
+      message: "Đã gửi lệnh " + command + " (" + targetSheet + ") tới Hàng đợi Lệnh Core!",
+      data: { command: command, targetSheet: targetSheet, status: "PENDING", asOfDate: asOfDate, mode: mode }
     };
   },
 

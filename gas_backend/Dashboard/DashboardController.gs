@@ -28,6 +28,8 @@ var DashboardController = {
         var label = "Đến ngày (" + subName + ")";
         if (subName === "DN") {
           label = "Dữ liệu đến ngày (HDTD_CORE_DN)";
+        } else if (subName === "ALL") {
+          label = "Dữ liệu các ngày cuối tháng (HDTD_CORE_ALL)";
         } else if (/^\d{4}$/.test(subName)) {
           label = "Năm " + subName + " (" + name + ")";
         }
@@ -106,7 +108,7 @@ var DashboardController = {
     var asOfMetadataText = "";
     if (sHDTD && sHDTD.getLastRow() >= 1) {
       var firstCellVal = String(sHDTD.getRange(1, 1).getValue() || "").trim();
-      if (firstCellVal.indexOf("Sao kê") > -1 || sHDTD.getFrozenRows() >= 2 || sHDTD.getName().indexOf("HDTD_CORE_DN") > -1) {
+      if (firstCellVal.indexOf("Sao kê") > -1 || firstCellVal.indexOf("Lưu trữ") > -1 || sHDTD.getFrozenRows() >= 2 || sHDTD.getName().indexOf("HDTD_CORE_DN") > -1 || sHDTD.getName().indexOf("HDTD_CORE_ALL") > -1) {
         isTwoTier = true;
         asOfMetadataText = firstCellVal;
       }
@@ -806,6 +808,32 @@ var DashboardController = {
         },
         availableSnapshots: snapshotSheets
       };
+    }
+
+    // 4. Tự động kết nối và nạp số liệu chuỗi thời gian từ kho lưu trữ cuối tháng HDTD_CORE_ALL
+    try {
+      var sAll = ss.getSheetByName("HDTD_CORE_ALL");
+      if (sAll && sAll.getLastRow() > 2) {
+        var allStats = this._computeHdtdStats(sAll, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Lưu Trữ Cuối Tháng (HDTD_CORE_ALL)");
+        if (allStats && allStats.hasData) {
+          if (allStats.monthlyDebtTrend && allStats.monthlyDebtTrend.length > 0) {
+            finalResult.monthlyDebtTrend = allStats.monthlyDebtTrend;
+          }
+          if (allStats.top50DuNoBinhQuanCuoiThang && allStats.top50DuNoBinhQuanCuoiThang.length > 0) {
+            finalResult.top50DuNoBinhQuanCuoiThang = allStats.top50DuNoBinhQuanCuoiThang;
+          }
+          finalResult.allMonthlyStats = {
+            hasData: true,
+            sheetName: "HDTD_CORE_ALL",
+            asOfMetadata: allStats.asOfMetadata,
+            totalSnapshots: allStats.monthlyDebtTrend ? allStats.monthlyDebtTrend.length : 0,
+            totalDuNo: allStats.totalDuNo,
+            totalHopDong: allStats.totalHopDong
+          };
+        }
+      }
+    } catch (eAll) {
+      Logger.log("Lỗi nạp HDTD_CORE_ALL: " + eAll);
     }
 
     CacheHelper.setCachedData(cacheKey, finalResult, CacheHelper.TIERS.HOT);

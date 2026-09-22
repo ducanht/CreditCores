@@ -102,6 +102,17 @@ var SchemaSetup = {
       formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
       colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
     },
+    HDTD_CORE_ALL: {
+      headers: [
+        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
+        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "NgayDuLieu", "NgayCapNhat"
+      ],
+      color: "#1E3A8A",
+      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
+    },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
       headers: [

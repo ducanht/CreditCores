@@ -106,6 +106,7 @@ export default function Top50DebtSection({
             >
               <Crown size={15} />
               <span>Top 50 Dư Nợ Lớn Nhất Đến Ngày</span>
+              <span className="badge bg-white text-indigo border ms-1" style={{ fontSize: '0.68rem', color: '#4338ca' }}>HDTD_CORE_DN</span>
               <span className="badge bg-white text-primary ms-1">{top50DuNoDenNgay.length}</span>
             </button>
 
@@ -116,11 +117,12 @@ export default function Top50DebtSection({
                   ? 'btn-dark text-white shadow-sm fw-bold'
                   : 'btn-ghost text-secondary hover-lift'
               }`}
-              style={activeTab === 'average' ? { backgroundColor: '#4338ca', borderColor: '#4338ca' } : {}}
+              style={activeTab === 'average' ? { backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' } : {}}
               onClick={() => setActiveTab('average')}
             >
               <TrendingUp size={15} />
               <span>Top 50 Dư Nợ Bình Quân Cuối Tháng</span>
+              <span className="badge bg-white text-primary border ms-1" style={{ fontSize: '0.68rem', color: '#1e3a8a' }}>HDTD_CORE_ALL</span>
               <span className="badge bg-white text-dark ms-1">{top50DuNoBinhQuanCuoiThang.length}</span>
             </button>
           </div>

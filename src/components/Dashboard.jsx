@@ -135,7 +135,8 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
   const [modeData, setModeData] = useState(null);
   const [isLoadingMode, setIsLoadingMode] = useState(false);
   const [availableSnapshots, setAvailableSnapshots] = useState([
-    { sheetName: 'HDTD_CORE_DN', label: 'Dữ liệu đến ngày (HDTD_CORE_DN)', rowCount: 0 }
+    { sheetName: 'HDTD_CORE_DN', label: 'Dữ liệu đến ngày (HDTD_CORE_DN)', rowCount: 0 },
+    { sheetName: 'HDTD_CORE_ALL', label: 'Dữ liệu các ngày cuối tháng (HDTD_CORE_ALL)', rowCount: 0 }
   ]);
 
   // Nguồn dữ liệu thống kê chủ đạo phụ thuộc vào dashboardMode
@@ -594,17 +595,27 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         )}
       </div>
 
-      {/* Banner Dòng 1 Thông Tin Sao Kê Dữ Liệu HDTD_CORE_DN */}
+      {/* Banner Dòng 1 Thông Tin Sao Kê Dữ Liệu HDTD_CORE_DN / HDTD_CORE_ALL */}
       {dashboardMode === 'as_of_date' && asOfMetadata && (
-        <div className="card-modern p-3 border-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ background: 'linear-gradient(135deg, #312e81 0%, #4338ca 100%)', color: '#fff' }}>
+        <div
+          className="card-modern p-3 border-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3"
+          style={{
+            background: selectedSnapshotSheet === 'HDTD_CORE_ALL'
+              ? 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)'
+              : 'linear-gradient(135deg, #312e81 0%, #4338ca 100%)',
+            color: '#fff'
+          }}
+        >
           <div className="d-flex align-items-center gap-2.5">
             <div className="p-2 rounded-2 bg-white bg-opacity-20 text-white">
               <Database size={20} />
             </div>
             <div>
               <div className="fw-bold fs-6">{asOfMetadata}</div>
-              <div className="small text-white text-opacity-75">
-                Cấu trúc bảng 17 cột chuẩn mực (loại bỏ 6 cột CCCD, SĐT, TraLaiDenNgay, CBTD, TrangThaiHD; bổ sung NgayDuLieu & Banner Dòng 1).
+              <div className="small text-white text-opacity-80">
+                {selectedSnapshotSheet === 'HDTD_CORE_ALL'
+                  ? 'Kho lưu trữ dữ liệu sao kê các ngày cuối tháng (HDTD_CORE_ALL) phục vụ thống kê chuỗi thời gian & tính dư nợ bình quân.'
+                  : 'Bảng sao kê snapshot đến ngày cụ thể (HDTD_CORE_DN) phục vụ đối soát tức thời & Top 50 Dư nợ lớn nhất đến ngày.'}
               </div>
             </div>
           </div>
@@ -614,7 +625,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
             onClick={() => setIsExtractModalOpen(true)}
           >
             <Sparkles size={14} className="text-warning" />
-            <span>Sao Kê Lại Từ SQL Core</span>
+            <span>Trích Xuất Từ Core SQL</span>
           </button>
         </div>
       )}
@@ -2268,11 +2279,16 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         </div>
       )}
 
-      {/* Modal Trích Xuất Dữ Liệu Sao Kê HDTD_CORE_DN Từ SQL Core qua Python Daemon */}
+      {/* Modal Trích Xuất Dữ Liệu Sao Kê HDTD_CORE_DN & HDTD_CORE_ALL Từ SQL Core qua Python Daemon */}
       <ExtractAsOfModal
         isOpen={isExtractModalOpen}
         onClose={() => setIsExtractModalOpen(false)}
-        onSuccess={() => fetchModeData('as_of_date')}
+        onSuccess={(targetSheet) => {
+          if (targetSheet) {
+            setSelectedSnapshotSheet(targetSheet);
+          }
+          fetchModeData('as_of_date');
+        }}
       />
     </div>
   );

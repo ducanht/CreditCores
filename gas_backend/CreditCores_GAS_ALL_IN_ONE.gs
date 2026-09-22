@@ -494,6 +494,17 @@ var SchemaSetup = {
       formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
       colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
     },
+    HDTD_CORE_ALL: {
+      headers: [
+        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
+        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "NgayDuLieu", "NgayCapNhat"
+      ],
+      color: "#1E3A8A",
+      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
+    },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
       headers: [
@@ -806,6 +817,8 @@ var DashboardController = {
         var label = "Đến ngày (" + subName + ")";
         if (subName === "DN") {
           label = "Dữ liệu đến ngày (HDTD_CORE_DN)";
+        } else if (subName === "ALL") {
+          label = "Dữ liệu các ngày cuối tháng (HDTD_CORE_ALL)";
         } else if (/^\d{4}$/.test(subName)) {
           label = "Năm " + subName + " (" + name + ")";
         }
@@ -884,7 +897,7 @@ var DashboardController = {
     var asOfMetadataText = "";
     if (sHDTD && sHDTD.getLastRow() >= 1) {
       var firstCellVal = String(sHDTD.getRange(1, 1).getValue() || "").trim();
-      if (firstCellVal.indexOf("Sao kê") > -1 || sHDTD.getFrozenRows() >= 2 || sHDTD.getName().indexOf("HDTD_CORE_DN") > -1) {
+      if (firstCellVal.indexOf("Sao kê") > -1 || firstCellVal.indexOf("Lưu trữ") > -1 || sHDTD.getFrozenRows() >= 2 || sHDTD.getName().indexOf("HDTD_CORE_DN") > -1 || sHDTD.getName().indexOf("HDTD_CORE_ALL") > -1) {
         isTwoTier = true;
         asOfMetadataText = firstCellVal;
       }
@@ -1584,6 +1597,32 @@ var DashboardController = {
         },
         availableSnapshots: snapshotSheets
       };
+    }
+
+    // 4. Tự động kết nối và nạp số liệu chuỗi thời gian từ kho lưu trữ cuối tháng HDTD_CORE_ALL
+    try {
+      var sAll = ss.getSheetByName("HDTD_CORE_ALL");
+      if (sAll && sAll.getLastRow() > 2) {
+        var allStats = this._computeHdtdStats(sAll, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Lưu Trữ Cuối Tháng (HDTD_CORE_ALL)");
+        if (allStats && allStats.hasData) {
+          if (allStats.monthlyDebtTrend && allStats.monthlyDebtTrend.length > 0) {
+            finalResult.monthlyDebtTrend = allStats.monthlyDebtTrend;
+          }
+          if (allStats.top50DuNoBinhQuanCuoiThang && allStats.top50DuNoBinhQuanCuoiThang.length > 0) {
+            finalResult.top50DuNoBinhQuanCuoiThang = allStats.top50DuNoBinhQuanCuoiThang;
+          }
+          finalResult.allMonthlyStats = {
+            hasData: true,
+            sheetName: "HDTD_CORE_ALL",
+            asOfMetadata: allStats.asOfMetadata,
+            totalSnapshots: allStats.monthlyDebtTrend ? allStats.monthlyDebtTrend.length : 0,
+            totalDuNo: allStats.totalDuNo,
+            totalHopDong: allStats.totalHopDong
+          };
+        }
+      }
+    } catch (eAll) {
+      Logger.log("Lỗi nạp HDTD_CORE_ALL: " + eAll);
     }
 
     CacheHelper.setCachedData(cacheKey, finalResult, CacheHelper.TIERS.HOT);
@@ -4246,19 +4285,25 @@ var SyncController = {
     params = params || {};
     var asOfDate = params.asOfDate || formatGasDate(new Date());
     var mode = params.mode || "as_of_date";
+    var targetSheet = params.targetSheet || (mode === "month_ends" ? "HDTD_CORE_ALL" : "HDTD_CORE_DN");
+    var command = targetSheet === "HDTD_CORE_ALL" ? "EXTRACT_HDTD_ALL" : "EXTRACT_HDTD_DN";
     var paramStr = JSON.stringify(params);
 
-    sheet.getRange(2, 1).setValue("EXTRACT_HDTD_DN");
+    var noteMsg = targetSheet === "HDTD_CORE_ALL"
+      ? "Yêu cầu trích xuất HDTD_CORE_ALL (sao kê các ngày cuối tháng). Đang chờ Python Daemon..."
+      : "Yêu cầu trích xuất HDTD_CORE_DN mốc " + asOfDate + ". Đang chờ Python Daemon...";
+
+    sheet.getRange(2, 1).setValue(command);
     sheet.getRange(2, 2).setValue("PENDING");
     sheet.getRange(2, 3).setValue(new Date());
-    sheet.getRange(2, 7).setValue("Yêu cầu trích xuất HDTD_CORE_DN mốc " + asOfDate + ". Đang chờ Python Daemon...");
+    sheet.getRange(2, 7).setValue(noteMsg);
     sheet.getRange(2, 8).setValue(paramStr);
 
     CacheHelper.invalidateModuleCache('dashboard');
     return { 
       status: "success", 
-      message: "Đã gửi lệnh trích xuất HDTD_CORE_DN (Mốc: " + asOfDate + ") tới Hàng đợi Lệnh Core!",
-      data: { command: "EXTRACT_HDTD_DN", status: "PENDING", asOfDate: asOfDate, mode: mode }
+      message: "Đã gửi lệnh " + command + " (" + targetSheet + ") tới Hàng đợi Lệnh Core!",
+      data: { command: command, targetSheet: targetSheet, status: "PENDING", asOfDate: asOfDate, mode: mode }
     };
   },
 
