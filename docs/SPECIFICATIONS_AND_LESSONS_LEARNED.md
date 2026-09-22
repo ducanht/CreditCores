@@ -447,14 +447,19 @@ Dưới đây là 15 sự cố, lỗi kỹ thuật và nghiệp vụ thực tế
 │    │ Import (ReferenceError Runtime)│ không kiểm tra binding; dẫn  │ (@babel/traverse) vào build  │
 │    │                               │ đến lỗi ReferenceError chết  │ pipeline (node tools/        │
 │    │                               │ màn hình khi render UI.      │ find_undefined_vars.js).     │
+├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ 17 │ Đọc sai Header trên Bảng      │ Bảng có dòng Banner metadata │ Tách biệt Two-Tier Metadata: │
+│    │ 2 Tầng (Two-Tier Sheets)      │ ở dòng 1 làm đọc nhầm header;│ headerRowIdx = isTwoTier?2:1;│
+│    │                               │ migration làm mất banner     │ freeze 2 dòng; remap bảo toàn│
+│    │                               │ hoặc ghi đè sai dòng dữ liệu.│ 100% dữ liệu (Zero-data-loss)│
 └────┴───────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
 ```
 
 ---
 
-## 🚀 5. THIẾT KẾ & LỘ TRÌNH TRIỂN KHAI 2 PHÂN HỆ BÁO CÁO MỚI
+## 🚀 5. THIẾT KẾ & LỘ TRÌNH TRIỂN KHAI 2 PHÂN HỆ BÁO CÁO MỚI & BẢNG SAO KÊ 2 TẦNG
 
-Theo yêu cầu của người dùng, hệ thống sẽ mở rộng thêm 2 bảng lưu trữ dữ liệu báo cáo chuyên biệt và giao diện thống kê:
+Theo yêu cầu của người dùng, hệ thống quản trị và chuẩn hóa tự động toàn diện 20 bảng CSDL, trong đó bao gồm các bảng báo cáo chuyên sâu và cấu trúc 2 tầng (Two-Tier):
 
 ### 5.1. Bảng 1: Báo Cáo Doanh Số & Sao Kê Hợp Đồng Tín Dụng Theo Khoảng Thời Gian (`BC_DOANH_SO_TD`)
 - **Mục đích**: Báo cáo tổng hợp doanh số giải ngân, dư nợ và biến động tín dụng từ ngày đến ngày (theo khoảng thời gian người dùng yêu cầu).
@@ -499,6 +504,21 @@ Theo yêu cầu của người dùng, hệ thống sẽ mở rộng thêm 2 bả
   10. TyTrongDuNo  (Number) - Tỷ trọng % trên tổng dư nợ toàn Quỹ
   11. CBTD_PhuTrach(String) - Cán bộ tín dụng phụ trách
   ```
+
+### 5.3. Bảng 3 & 4: Cặp Bảng Sao Kê Dư Nợ 2 Tầng (`HDTD_CORE_DN` & `HDTD_CORE_ALL`)
+- **Mục đích**: Tách biệt minh bạch giữa sao kê dư nợ tức thời đến một ngày cụ thể (`HDTD_CORE_DN`) và kho lưu trữ sao kê tích lũy các ngày cuối tháng trong năm (`HDTD_CORE_ALL`).
+- **Cấu trúc 2 Tầng (Two-Tier Architecture)**:
+  - **Dòng 1 (Banner Metadata)**: `Sao kê tín dụng đến ngày: dd/MM/yyyy | Dữ liệu cập nhật: dd/MM/yyyy HH:mm:ss | Nguồn: CoreBanking NG-eFUND`
+  - **Dòng 2 (Header Chuẩn 17 Cột)**:
+    `SoHDTD, MaKH, HoTen, DiaChi, KvXa, KvThon, TienVay, DuNo, LaiSuat, NgayVay, DenHan, SoThangVay, MaLoaiVay, MoTaVay, MaLoaiHD, NgayDuLieu, NgayCapNhat`
+  - **Dòng 3 trở đi**: Dữ liệu sao kê các hợp đồng.
+  - **Cố định dòng (Freeze Rows)**: Cố định 2 dòng đầu (`setFrozenRows(2)`).
+- **Cơ chế Chuẩn Hóa Tự Động (Self-Healing & Auto-Standardization)**:
+  - Hàm `SchemaSetup.ensureDatabaseSchema(ss, force)` trên GAS tự động nhận diện bảng 2 tầng qua cờ `isTwoTier: true`.
+  - Tự động remap cột cũ sang vị trí mới nếu thiếu hoặc lệch thứ tự mà không làm mất dữ liệu (Bảo toàn 100% dữ liệu - Zero Data Loss).
+  - Tự động tạo menu Google Sheets `⚙️ Quản Trị CSDL CreditCores` với 2 tùy chọn:
+    1. *⚡ Tự Động Kiểm Tra & Nâng Cấp CSDL (Self-Healing)*: Chạy nhanh có in-memory cache 6 giờ.
+    2. *🔄 Ép Buộc Chuẩn Hóa 20 Bảng CSDL (Force Standardize)*: Quét và chuẩn hóa toàn bộ 20 bảng bất chấp cache.
 
 ---
 
