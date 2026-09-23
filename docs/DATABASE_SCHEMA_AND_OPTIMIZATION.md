@@ -97,6 +97,17 @@ Python Daemon chạy trực tiếp trên máy chủ SQL Server CoreBanking On-Pr
 | **21** | **`KvXa`** | String | **Xã chuẩn hóa**: `Xã Quý Lộc` / `Xã Yên Trường` / `Xã Vĩnh Lộc` |
 | **22** | **`KvThon`** | String | **Thôn chuẩn hóa**: `Thôn Tân Lộc`, `Thôn Đan Nê`, `Thôn Tu Mục`... |
 
+### 3.1.1. Tách Biệt Chiến Lược: `HDTD_CORE_DN` (As-Of Date) vs `HDTD_CORE_ALL` (Month-Ends Historic)
+- **Bản chất kiến trúc**:
+  1. *Nhu cầu xem tức thời*: Lãnh đạo và CBTD cần trích xuất tình hình tín dụng đến một ngày bất kỳ trong quá khứ (ví dụ: ngày 18/09/2026) để kiểm tra đột xuất hoặc chuẩn bị báo cáo kiểm toán/thanh tra.
+  2. *Nhu cầu phân tích xu hướng*: Cần số liệu chốt vào ngày cuối cùng của từng tháng (`31/01`, `28/02`, `31/03`...) qua các năm để vẽ biểu đồ tăng trưởng, đối sánh dư nợ các năm.
+  3. *Nguy cơ nếu gộp chung*: Dữ liệu bị trùng lặp, logic truy vấn phức tạp, tốn thời gian lọc và dễ vượt trần quota Google Sheets.
+- **Giải pháp Phân tách Minh bạch & Tối ưu Hóa Free Quota**:
+  * **`HDTD_CORE_DN`**: Chuyên phục vụ mốc "Đến một ngày cụ thể" (As-Of Date). Ghi đè snapshot duy nhất mỗi khi có yêu cầu trích xuất mới từ WebApp.
+  * **`HDTD_CORE_ALL`**: Chuyên phục vụ chuỗi lịch sử các mốc chốt cuối tháng (`month_ends`).
+  * **Cơ chế vòng lặp Python**: Khi trích xuất `HDTD_CORE_ALL`, Python Daemon chạy vòng lặp theo từng ngày cuối tháng (`for month_end in month_ends:`), truy vấn SQL Core và ghi theo từng khối chuẩn hóa. 
+  * **Kiểm soát dung lượng < 10.000 dòng**: Đảm bảo tổng số dòng luôn nằm dưới 10.000 dòng, thời gian đọc/ghi của Google Apps Script cực nhanh (< 1.5s), không tốn chi phí và 100% không chạm hạn mức Google Sheets API.
+
 ---
 
 ### 3.2. Bảng `KH_CORE` (Mở rộng thành Customer 360 Unified Profile)

@@ -452,6 +452,18 @@ Dưới đây là 15 sự cố, lỗi kỹ thuật và nghiệp vụ thực tế
 │    │ 2 Tầng (Two-Tier Sheets)      │ ở dòng 1 làm đọc nhầm header;│ headerRowIdx = isTwoTier?2:1;│
 │    │                               │ migration làm mất banner     │ freeze 2 dòng; remap bảo toàn│
 │    │                               │ hoặc ghi đè sai dòng dữ liệu.│ 100% dữ liệu (Zero-data-loss)│
+├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ 18 │ Chunk Loading Failures trong  │ Khi deploy bản build Vite mới│ 1. lazyWithRetry(importFn) bọc│
+│    │ SPA Deployment (Vite Dynamic  │ hash file thay đổi; cán bộ   │    tự động nạp lại có cờ lưu │
+│    │ Import Chunk Mismatch)        │ chuyển tab bị lỗi 404 làm sập│    sessionStorage chống lặp. │
+│    │                               │ "Failed to fetch module".    │ 2. Lắng nghe vite:preloadError│
+│    │                               │                              │ 3. ErrorBoundary xóa cache.   │
+├────┼───────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ 19 │ Đứt Gãy Mô Hình Master-Detail │ Đợt trích nợ lưu ở 2 bảng    │ Xây dựng API riêng           │
+│    │ trong Trích Nợ & Đối Soát     │ DOT_TRICH_NO và LICH_SU_     │ getDebitBatchDetails(maDot), │
+│    │ (DOT_TRICH_NO & LICH_SU)      │ TRICH_NO; đọc thiếu làm modal│ updateDebitBatchItemStatus và│
+│    │                               │ và trang đối soát rỗng món.  │ deleteDebitBatch (LockService│
+│    │                               │                              │ chống race condition).       │
 └────┴───────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
 ```
 

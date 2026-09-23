@@ -113,12 +113,22 @@ Tài liệu này định nghĩa chi tiết **14 bảng CSDL chuẩn** và **2 b�
 | V | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đồng bộ từ SQL Server hoặc phân công |
 
 ### 5.1. `HDTD_CORE_DN` (Hợp Đồng Vay & Dư Nợ Chốt Đến Ngày - As-Of-Date Snapshot)
-- **Mục đích**: Lưu trữ snapshot số liệu các hợp đồng và dư nợ trích xuất từ CoreBanking NG-eFUND theo **mốc Đến ngày** (người dùng nhập ngày vào để lấy).
+- **Mục đích**: Lưu trữ snapshot số liệu các hợp đồng và dư nợ trích xuất từ CoreBanking NG-eFUND theo **mốc Đến ngày cụ thể** (người dùng nhập ngày vào để lấy).
 - **Cấu trúc & Cột**: **22 cột dữ liệu chuẩn giống 100% `HDTD_CORE`** (`SoHDTD`, `MaKH`, `HoTen`, `CCCD`, `DienThoai`, `DiaChi`, `KvXa`, `KvThon`, `TienVay`, `DuNo`, `LaiSuat`, `NgayVay`, `DenHan`, `TraLaiDenNgay`, `SoThangVay`, `MaLoaiVay`, `MoTaVay`, `CBTD_PhuTrach`, `Ten_CBTD`, `TrangThaiHD`, `MaLoaiHD`, `NgayCapNhat`).
 - **Định dạng bảng**: Header màu tím hoàng gia đậm (`#312E81`, chữ trắng in đậm), dòng chẵn/lẻ xen kẽ, tự động định dạng số tiền `#,##0` và ngày tháng `dd/MM/yyyy`.
 - **Ứng dụng trên Dashboard**:
   * Chế độ **"Tổng Quan Đến Ngày"**: Lấy trực tiếp từ `HDTD_CORE_DN` để phản ánh tình hình dư nợ, số món, thành viên tại mốc lịch sử.
   * Chế độ **"Đối Sánh & Tăng Trưởng"**: So sánh giữa **Hiện Tại (`HDTD_CORE`)** vs **Đến Ngày (`HDTD_CORE_DN`)** hoặc các snapshot theo năm (`HDTD_CORE_2025`, `HDTD_CORE_2024`...) để tính mức tăng trưởng dư nợ ($\Delta$ VNĐ), % tăng trưởng, biến động hợp đồng và thành viên vay.
+
+### 5.2. `HDTD_CORE_ALL` (Sao Kê Dư Nợ Các Ngày Cuối Mỗi Tháng - Month-Ends Multi-Period Historical Snapshot)
+- **Mục đích**: Lưu trữ chuỗi sao kê dư nợ hợp đồng tín dụng chốt vào **các ngày cuối mỗi tháng** (`31/01`, `28/02`, `31/03`, `30/04`, `31/05`, `30/06`, `31/07`, `31/08`, `30/09`, `31/10`, `30/11`, `31/12`) qua các năm.
+- **Tính Tách Biệt & Minh Bạch Dữ Liệu**:
+  * Tách biệt hoàn toàn `HDTD_CORE_ALL` (phục vụ thống kê xu hướng tăng trưởng chu kỳ dài, đa tháng) khỏi `HDTD_CORE_DN` (phục vụ trích xuất tức thời đến một ngày duy nhất bất kỳ).
+  * Tránh xung đột hoặc chồng lấn dữ liệu giữa các lần truy vấn tức thì và các báo cáo định kỳ.
+- **Tối Ưu Hóa Đọc/Ghi < 10.000 Dòng Tuân Thủ Free Quota**:
+  * Khi đẩy dữ liệu từ SQL Server qua Python Daemon, hệ thống **lặp theo từng mốc ngày cuối tháng (`month_ends`)**, gom nhóm và ghi đè tuần tự theo block chuẩn hóa.
+  * Tổng dung lượng lưu trữ luôn được kiểm soát dưới 10.000 dòng, đảm bảo thời gian đọc ghi siêu tốc (< 1.5s), không chạm ngưỡng quota đọc/ghi miễn phí của Google Sheets API và Google Apps Script.
+- **Cấu trúc cột**: Bao gồm 23 cột (22 cột chuẩn của `HDTD_CORE` + Cột phân loại mốc chốt `MocCuoiThang` định dạng `dd/MM/yyyy`).
 
 ### 6. `DANG_KY_TRICH_NO` (Ủy Quyền Trích Nợ CASA)
 | Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
@@ -143,6 +153,31 @@ Tài liệu này định nghĩa chi tiết **14 bảng CSDL chuẩn** và **2 b�
 | E | `TongDaTrich` | Number | `#,##0` | Tổng tiền CoreBanking đã cắt thành công (VNĐ) |
 | F | `TongConNo` | Number | `#,##0` | Tổng tiền nợ chưa thu được (VNĐ) |
 | G | `TongSoKH` | Number | `#,##0` | Tổng số lượng khách hàng tham gia đợt |
+| H | `TrangThai` | Enum | `@` | Trạng thái (`CHO_TRICH_NO`, `DANG_TRICH`, `DA_CHOT`, `HOAN_TAT`) |
+| I | `NgayTao` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm khởi tạo đợt |
+| J | `NgayHoanTat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đối soát hoàn tất |
+
+### 8. `LICH_SU_TRICH_NO` / `CHI_TIET_TRICH_NO` (Bảng Detail Snapshot Món Nợ)
+- **Tên vật lý trên Google Sheets**: `LICH_SU_TRICH_NO` (được alias đồng bộ là `CHI_TIET_TRICH_NO` trong backend logic).
+- **Mục đích**: Lưu trữ snapshot vĩnh viễn và nhật ký đối soát chi tiết của từng hợp đồng/khách hàng trong mỗi đợt trích nợ. Hỗ trợ cập nhật trạng thái từng món (`handleUpdateDebitBatchItemStatus`) và truy vấn chi tiết đợt (`handleGetDebitBatchDetails`).
+
+| Cột | Tên Trường | Kiểu | Định Dạng | Mô Tả |
+| :--- | :--- | :---: | :---: | :--- |
+| A | `MaDot` | String | `@` | Mã đợt trích nợ (FK `DOT_TRICH_NO`) |
+| B | `MaKH` | String | `@` | Mã khách hàng |
+| C | `HoTen` | String | `@` | Họ và tên khách hàng |
+| D | `SoCCCD` | String | `@` | Số CCCD (12 chữ số) |
+| E | `SoTK_CASA` | String | `@` | Số tài khoản CASA |
+| F | `SoHDTD` | String | `@` | Số hợp đồng tín dụng / khế ước |
+| G | `DuNoGoc_Snap`| Number | `#,##0` | **Dư nợ gốc tại thời điểm lập đợt** (Snapshot vĩnh viễn) |
+| H | `LaiDuKien` | Number | `#,##0` | Tiền lãi phát sinh theo ngày thực tế TT 14/2017 (VNĐ) |
+| I | `GocDuKien` | Number | `#,##0` | Tiền gốc đến hạn (nếu có) (VNĐ) |
+| J | `SoTienTrichThucTe`| Number | `#,##0` | **Số tiền trích nợ sau khi CBTD điều chỉnh** (VNĐ) |
+| K | `DaTrich` | Number | `#,##0` | Số tiền CoreBanking đã cắt thành công (VNĐ) |
+| L | `ConNo` | Number | `#,##0` | Số tiền trích thiếu / thất bại (VNĐ) |
+| M | `TrangThai` | Enum | `@` | `CHO_XU_LY`, `THANH_CONG`, `TRICH_MOT_PHAN`, `THAT_BAI` |
+| N | `MaGiaoDichCore`| String | `@` | Mã bút toán ghi nhận từ CoreBanking |
+| O | `NgayCapNhat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm cập nhật trạng thái ||
 | H | `TrangThai` | Enum | `@` | Trạng thái (`CHO_TRICH_NO`, `DANG_TRICH`, `HOAN_TAT`) |
 | I | `NgayTao` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm khởi tạo đợt |
 | J | `NgayHoanTat` | DateTime | `dd/MM/yyyy HH:mm:ss` | Thời điểm đối soát hoàn tất |

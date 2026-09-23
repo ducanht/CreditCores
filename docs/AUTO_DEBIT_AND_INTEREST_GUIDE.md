@@ -66,3 +66,31 @@ $$\text{Tổng phải thu} = \text{Lãi} + \text{Gốc đến hạn} + \text{N�
   - `calculateCustomerBatchInterest(customer, monthStr, cycle, debtMap)`
 - **Google Apps Script Backend**: [`CreditCores/gas_backend/Utils/DateUtils.gs`](file:///d:/Antigravity%20Projects/CreditCores/gas_backend/Utils/DateUtils.gs)
 - **Unit Test Suite**: [`CreditCores/src/utils/interestUtils.test.mjs`](file:///d:/Antigravity%20Projects/CreditCores/src/utils/interestUtils.test.mjs) (PASS 100%).
+
+---
+
+## 🔄 5. Vòng Đời Vận Hành & Đối Soát Đợt Trích Nợ (Master - Detail Lifecycle)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       CHU TRÌNH TRÍCH NỢ & ĐỐI SOÁT                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. KHỞI TẠO ĐỢT    ► Tính lãi TT14 + Gốc đến hạn + Nợ tồn kỳ trước          │
+│                    ► Lưu Master: DOT_TRICH_NO, Lưu Detail: LICH_SU_TRICH_NO │
+│                                                                             │
+│ 2. XUẤT LỆNH       ► File CSV lệnh cắt nợ CoreBanking / Co-opBank           │
+│                    ► File Word (.doc) bảng kê có khối ký duyệt A4           │
+│                                                                             │
+│ 3. ĐỐI SOÁT        ► Tải tệp sao kê kết quả từ CoreBanking (.csv, .xlsx)    │
+│                    ► Tự động đối chiếu tài khoản, khớp số tiền thực trích   │
+│                    ► Cho phép chỉnh sửa trạng thái từng món trực tiếp       │
+│                                                                             │
+│ 4. CHỐT SỔ & LƯU   ► Lưu kết quả đối soát, cập nhật trạng thái đợt DA_CHOT  │
+│                    ► Tự động kết chuyển các khoản thiếu/thất bại sang        │
+│                      sổ theo dõi NO_TON_DONG cho đợt thu tiếp theo          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Tính toàn vẹn & An toàn dữ liệu**:
+  - Mọi thao tác ghi đợt, sửa món lẻ hoặc xóa đợt đều được bọc trong `LockService.getScriptLock()` với thời gian chờ 15s để chống xung đột race condition giữa các phiên làm việc đồng thời.
+  - Khi xóa đợt trích nợ (`deleteDebitBatch`), hệ thống tự động xóa sạch đồng thời cả dòng master tại `DOT_TRICH_NO` và tất cả các dòng chi tiết con tại `LICH_SU_TRICH_NO`, đảm bảo không để lại bản ghi rác.

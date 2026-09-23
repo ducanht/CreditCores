@@ -90,6 +90,14 @@ Tài liệu này mô tả chi tiết kiến trúc kỹ thuật 3 tầng phân t�
   - Tích hợp **Circuit Breaker**: Đánh dấu và cách ly tạm thời endpoint lỗi trong 3s, chuyển tiếp sang endpoint thay thế mà không gây đơ ứng dụng.
 - **Thuật Toán Tính Lãi Ngày Thực Tế (`interestUtils.js`)**:
   - Chuẩn hóa theo Thông tư 14/2017/TT-NHNN: "Tính ngày đầu, bỏ ngày cuối", mẫu số $36500$, tự động cộng dồn nợ tồn đọng và phân tách chi tiết từng khế ước.
+- **Cơ Chế Phục Hồi Chunk Tự Động (Resilient Dynamic Chunk Loading)**:
+  - Bọc 100% các dynamic imports trong `src/App.jsx` bằng helper `lazyWithRetry(componentImport)`, tự động bắt lỗi mạng hoặc phiên bản build mới (Vite chunk hash mismatch) và reload trang an toàn có cờ `sessionStorage` chống lặp vô hạn.
+  - Lắng nghe toàn cục sự kiện `vite:preloadError` của trình duyệt.
+  - `ErrorBoundary.jsx` chuyên trách: Khi phát hiện `ChunkLoadError` hoặc `dynamically imported module`, tự động xóa sạch cache trình duyệt (`window.caches`, `localStorage`) và hiển thị thông báo nâng cấp phiên bản thân thiện.
+- **Kiến Trúc Trích Nợ Tự Động Master-Detail & Đối Soát Trực Tiếp**:
+  - Tách biệt bảng tổng hợp đợt `DOT_TRICH_NO` và bảng chi tiết các món trích `LICH_SU_TRICH_NO`.
+  - Hệ thống API chuyên biệt `getDebitBatchDetails`, `updateDebitBatchItemStatus`, `deleteDebitBatch` (bảo vệ bằng `LockService`).
+  - Phân hệ Đối Soát (`Reconciliation.jsx`) hỗ trợ nạp tệp sao kê từ CoreBanking, đối chiếu tự động, chỉnh sửa trạng thái/số tiền trực tiếp và lưu đồng bộ sang `NO_TON_DONG`.
 - **Responsive Modal System (`src/index.css`)**:
   - Tối ưu 100% cho mọi thiết bị: Mobile (375px - 430px), Tablet (768px), Desktop (1024px+).
   - Khóa chiều cao linh hoạt `max-height: calc(85vh - 130px)` kết hợp touch scrolling `-webkit-overflow-scrolling: touch`.

@@ -91,27 +91,32 @@ TỔNG THỂ            ██████████████████�
 | Nút In 1-click trên bảng & trong modal | ✅ Done | Tích hợp icon Printer trên từng dòng và footer modal sửa |
 
 ### 6. Khởi Tạo & Quản Lý Đợt Trích Nợ
-**Mức hoàn thành: 100%**
+**Mức hoàn thành: 100% (Đã Hoàn Thiện Toàn Diện)**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
 | Phân rã Component `DebitBatchTable` | ✅ Done | Tách riêng sổ theo dõi các đợt trích nợ & phân trang & nút Xem |
 | Engine tính lãi thực tế TT 14/2017 | ✅ Done | Tính ngày đầu bỏ ngày cuối, mẫu số 36500 |
-| Snapshot bất biến Master-Detail | ✅ Done | `DOT_TRICH_NO` + `CT_DOT_TRICH_NO` |
+| Snapshot bất biến Master-Detail | ✅ Done | `DOT_TRICH_NO` + `LICH_SU_TRICH_NO` |
 | LockService chống race condition | ✅ Done | Khóa an toàn 15s cho giao dịch ghi |
+| API Nạp chi tiết đợt `getDebitBatchDetails` | ✅ Done | Tự động đọc danh sách các món trích từ `LICH_SU_TRICH_NO` |
+| Cập nhật trạng thái món trích lẻ | ✅ Done | `handleUpdateDebitBatchItemStatus` cập nhật trạng thái, số tiền thực trích, mã Core |
+| Xóa an toàn đợt trích nợ (`Trash2`) | ✅ Done | `handleDeleteDebitBatch` xóa cascade cả master và toàn bộ chi tiết con |
 | Xuất tệp lệnh CoreBanking / Co-opBank | ✅ Done | CSV định dạng lệnh trích tài khoản thanh toán nộp ngân hàng |
 | Xuất Bảng kê Word (.doc) A4 3 chữ ký | ✅ Done | Chuẩn văn bản kế toán (CBTD, Kế toán trưởng, Giám đốc) |
 
 ### 7. Đối Soát & Phân Loại Kết Quả
-**Mức hoàn thành: 88%**
+**Mức hoàn thành: 100% (Đã Hoàn Thiện)**
 
 | Tính Năng | Trạng Thái | Ghi Chú |
 |:---|:---:|:---|
 | Chuẩn hóa SegControl & StatusBadge | ✅ Done | Thay thế button group thô, đồng bộ màu tương phản cao |
-| Phân loại 4 trạng thái kết quả | ✅ Done | Đã trích đủ, 1 phần, Thất bại, Chờ |
-| Upload tệp CSV kết quả CoreBanking | ✅ Done | Đối soát tự động mã giao dịch |
-| Chốt sổ kỳ → HOAN_TAT | ✅ Done | Ghi nhận nợ tồn vào sổ theo dõi |
-| Cảnh báo tỷ lệ thất bại cao | 🔲 Todo | Tích hợp cảnh báo Telegram |
+| Nạp tự động chi tiết đợt từ CSDL | ✅ Done | Tự động tải danh sách các món khi chuyển đợt hoặc tải lại |
+| Phân loại 4 trạng thái kết quả | ✅ Done | Đã trích đủ, 1 phần, Thất bại, Chờ trích |
+| Upload & Phân tích tệp CoreBanking | ✅ Done | Đọc file `.csv`/`.xlsx`, đối chiếu tài khoản & hợp đồng tự động |
+| Điều chỉnh kết quả trực tiếp trên bảng | ✅ Done | Chỉnh sửa trạng thái, số tiền thực trích (khi trích 1 phần) và ghi chú |
+| Lưu & Chốt kết quả đối soát | ✅ Done | Tự động cập nhật `LICH_SU_TRICH_NO`, chốt `DOT_TRICH_NO` và ghi nợ tồn vào `NO_TON_DONG` |
+| In biên bản & Xuất Word (.doc) đối soát | ✅ Done | Hỗ trợ in chuẩn A4 và xuất biên bản Word có khối chữ ký kiểm soát |
 
 ### 8. Sổ Theo Dõi Nợ Tồn Đọng
 **Mức hoàn thành: 82%**
