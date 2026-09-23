@@ -19,12 +19,23 @@ export default class ErrorBoundary extends React.Component {
   handleReload = () => {
     try {
       localStorage.removeItem('CREDITCORES_ACTIVE_TAB');
+      sessionStorage.removeItem('creditcores_chunk_retry');
+      if (typeof window !== 'undefined' && window.caches) {
+        window.caches.keys().then((names) => {
+          names.forEach((name) => window.caches.delete(name));
+        });
+      }
     } catch (e) {}
-    window.location.href = window.location.origin + window.location.pathname;
+    window.location.href = window.location.origin + window.location.pathname + '?refresh=' + Date.now();
   };
 
   render() {
     if (this.state.hasError) {
+      const isChunkError =
+        this.state.error?.name === 'ChunkLoadError' ||
+        this.state.error?.message?.includes('dynamically imported module') ||
+        this.state.error?.message?.includes('Failed to fetch');
+
       return (
         <div className="min-vh-100 d-flex align-items-center justify-content-center p-4" style={{ backgroundColor: 'var(--bg-app)' }}>
           <div className="card-modern p-5 text-center shadow-lg" style={{ maxWidth: 540 }}>
@@ -36,14 +47,16 @@ export default class ErrorBoundary extends React.Component {
             </div>
 
             <h4 className="fw-bold text-danger mb-2 font-heading">
-              Đã Xảy Ra Sự Cố Giao Diện
+              {isChunkError ? 'Cập Nhật Phiên Bản Ứng Dụng' : 'Đã Xảy Ra Sự Cố Giao Diện'}
             </h4>
 
             <p className="text-muted small mb-4">
-              Hệ thống CreditCores đã tự động bảo vệ dữ liệu và cô lập sự cố. Vui lòng bấm nút làm mới bên dưới để tiếp tục làm việc.
+              {isChunkError
+                ? 'Hệ thống vừa cập nhật phiên bản mới nhất. Vui lòng bấm nút làm mới bên dưới để đồng bộ và tiếp tục làm việc.'
+                : 'Hệ thống CreditCores đã tự động bảo vệ dữ liệu và cô lập sự cố. Vui lòng bấm nút làm mới bên dưới để tiếp tục làm việc.'}
             </p>
 
-            <div className="p-3 bg-light rounded-3 text-start small font-monospace text-danger mb-4 text-truncate">
+            <div className="p-3 bg-light dark:bg-slate-800 rounded-3 text-start small font-monospace text-danger mb-4 text-truncate">
               {this.state.error?.message || 'Lỗi không xác định'}
             </div>
 

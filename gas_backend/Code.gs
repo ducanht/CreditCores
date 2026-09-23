@@ -46,6 +46,9 @@ function doGet(e) {
       case "getDebitBatches":
         result = DebitController.handleGetDebitBatches(ss);
         break;
+      case "getDebitBatchDetails":
+        result = DebitController.handleGetDebitBatchDetails(ss, e.parameter || {});
+        break;
       case "getDebtWarnings":
         result = DebtWarningController.handleGetDebtWarnings(ss);
         break;
@@ -121,6 +124,7 @@ function doPost(e) {
     "saveAppraisalReport", "addApprovalOpinion", "saveLoanInspection",
     "saveDebitRegister", "saveBatchDebitRegister", "updateDebitRegister",
     "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch", "saveDebitConfig",
+    "updateDebitBatchItemStatus", "deleteDebitBatch",
     "reconcileUpload", "assignContractCBTD", "initDatabase",
     "saveTemplate", "deleteTemplate", "saveDriveSettings",
     "saveCollateral", "deleteCollateral", "triggerAsOfExtract"
@@ -202,6 +206,15 @@ function doPost(e) {
         break;
       case "createDebitBatch":
         result = DebitController.handleCreateDebitBatch(ss, data);
+        break;
+      case "getDebitBatchDetails":
+        result = DebitController.handleGetDebitBatchDetails(ss, data);
+        break;
+      case "updateDebitBatchItemStatus":
+        result = DebitController.handleUpdateDebitBatchItemStatus(ss, data);
+        break;
+      case "deleteDebitBatch":
+        result = DebitController.handleDeleteDebitBatch(ss, data);
         break;
       case "reconcileUpload":
         result = ReconciliationController.handleReconcileUpload(ss, data);

@@ -12,7 +12,12 @@ import {
   Calendar,
   Layers,
   Clock,
-  UserCheck
+  UserCheck,
+  Trash2,
+  Edit3,
+  Check,
+  X,
+  Loader2
 } from 'lucide-react';
 import { formatCurrencyVN, formatDateVN, getTodayVN } from '../../utils/dateUtils';
 import Pagination from '../Pagination';
@@ -21,12 +26,17 @@ export default function DebitBatchDetailModal({
   show,
   onClose,
   batch = null,
+  onUpdateItem,
+  onDeleteBatch,
   onOpenCustomerQuickView
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({ trangThai: '', daTrich: 0, maGiaoDichCore: '', lyDo: '' });
+  const [savingItem, setSavingItem] = useState(false);
 
   if (!show || !batch) return null;
 
@@ -230,6 +240,37 @@ export default function DebitBatchDetailModal({
     window.print();
   };
 
+  const handleStartEdit = (item) => {
+    setEditingItem(item);
+    setEditForm({
+      trangThai: item.trangThai || 'CHUA_XU_LY',
+      daTrich: item.daTrich !== undefined ? item.daTrich : (item.trangThai === 'THANH_CONG' ? (item.soTienTrich || item.tongDuKien || 0) : 0),
+      maGiaoDichCore: item.maGiaoDichCore || '',
+      lyDo: item.lyDo || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem || !onUpdateItem) return;
+    setSavingItem(true);
+    try {
+      await onUpdateItem({
+        maDot: batch.maDot,
+        soHDTD: editingItem.soHDTD,
+        maKH: editingItem.maKH,
+        trangThai: editForm.trangThai,
+        daTrich: Number(editForm.daTrich) || 0,
+        maGiaoDichCore: editForm.maGiaoDichCore,
+        lyDo: editForm.lyDo
+      });
+      setEditingItem(null);
+    } catch (err) {
+      alert('Lỗi cập nhật: ' + err.message);
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1055 }}>
       <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -277,6 +318,19 @@ export default function DebitBatchDetailModal({
               >
                 <Printer size={14} /> In Bảng Kê
               </button>
+              {onDeleteBatch && (
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm fw-semibold d-flex align-items-center gap-1 shadow-sm"
+                  onClick={() => {
+                    onDeleteBatch(batch);
+                    onClose();
+                  }}
+                  title="Xóa toàn bộ đợt trích nợ này"
+                >
+                  <Trash2 size={14} /> Xóa Đợt
+                </button>
+              )}
               <button type="button" className="btn-close ms-2" onClick={onClose} />
             </div>
           </div>
@@ -331,7 +385,7 @@ export default function DebitBatchDetailModal({
               <div className="d-flex align-items-center gap-2">
                 <select
                   className="form-select form-select-sm"
-                  style={{ width: 160 }}
+                  style={{ width: 180 }}
                   value={filterStatus}
                   onChange={(e) => {
                     setFilterStatus(e.target.value);
@@ -339,82 +393,182 @@ export default function DebitBatchDetailModal({
                   }}
                 >
                   <option value="ALL">Tất cả trạng thái</option>
-                  <option value="THANH_CONG">Đã trích đủ</option>
+                  <option value="THANH_CONG">Đã trích đủ (Thành công)</option>
+                  <option value="TRICH_MOT_PHAN">Trích một phần</option>
                   <option value="THAT_BAI">Trích thất bại</option>
-                  <option value="CHUA_XU_LY">Chưa xử lý</option>
+                  <option value="CHUA_XU_LY">Chưa xử lý (Chờ trích)</option>
                 </select>
               </div>
             </div>
 
             {/* Table Detail */}
-            <div className="table-responsive">
-              <table className="table table-custom align-middle small">
-                <thead>
-                  <tr>
-                    <th>Mã KH</th>
-                    <th>Họ và Tên</th>
-                    <th>Số TK CASA</th>
-                    <th>Số HĐTD</th>
-                    <th className="text-end">Dư Nợ Gốc</th>
-                    <th className="text-end">Lãi TT14</th>
-                    <th className="text-end">Nợ Tồn</th>
-                    <th className="text-end">Phải Thu</th>
-                    <th className="text-end">Đã Trích</th>
-                    <th className="text-center">Kết Quả</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedItems.length > 0 ? (
-                    paginatedItems.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="fw-bold font-monospace">
-                          <button
-                            type="button"
-                            className="btn btn-link p-0 fw-bold font-monospace text-decoration-none text-primary"
-                            onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen })}
-                          >
-                            {item.maKH}
-                          </button>
-                        </td>
-                        <td className="fw-semibold text-slate-900">{item.hoTen}</td>
-                        <td className="font-monospace text-muted">{item.soTK}</td>
-                        <td className="font-monospace text-muted">{item.soHDTD}</td>
-                        <td className="text-end num-tabular">{formatCurrencyVN(item.tongDuNo)}</td>
-                        <td className="text-end num-tabular text-primary">{formatCurrencyVN(item.laiPhatSinh)}</td>
-                        <td className="text-end num-tabular text-danger">{formatCurrencyVN(item.noTon)}</td>
-                        <td className="text-end fw-bold num-tabular">{formatCurrencyVN(item.soTienTrich || item.tongDuKien)}</td>
-                        <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(item.daTrich || 0)}</td>
-                        <td className="text-center">
-                          {item.trangThai === 'THANH_CONG' ? (
-                            <span className="badge bg-success-subtle text-success">Đã trích</span>
-                          ) : item.trangThai === 'THAT_BAI' ? (
-                            <span className="badge bg-danger-subtle text-danger" title={item.lyDo || 'Không đủ số dư'}>
-                              Thất bại
-                            </span>
-                          ) : (
-                            <span className="badge bg-secondary-subtle text-secondary">Chờ trích</span>
-                          )}
+            {items.length === 0 ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary spinner-border-sm mb-2" role="status"></div>
+                <div className="text-muted small">Đang nạp chi tiết các món trích nợ từ CSDL Google Sheets...</div>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-custom align-middle small">
+                  <thead>
+                    <tr>
+                      <th>Mã KH</th>
+                      <th>Họ và Tên</th>
+                      <th>Số TK CASA</th>
+                      <th>Số HĐTD</th>
+                      <th className="text-end">Dư Nợ Gốc</th>
+                      <th className="text-end">Lãi TT14</th>
+                      <th className="text-end">Nợ Tồn</th>
+                      <th className="text-end">Phải Thu</th>
+                      <th className="text-end">Đã Trích</th>
+                      <th className="text-center">Kết Quả</th>
+                      {onUpdateItem && <th className="text-center" style={{ width: 90 }}>Thao Tác</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedItems.length > 0 ? (
+                      paginatedItems.map((item, idx) => {
+                        const isEditing = editingItem && ((editingItem.soHDTD && editingItem.soHDTD === item.soHDTD) || (editingItem.maKH === item.maKH));
+                        return (
+                          <React.Fragment key={idx}>
+                            <tr>
+                              <td className="fw-bold font-monospace">
+                                <button
+                                  type="button"
+                                  className="btn btn-link p-0 fw-bold font-monospace text-decoration-none text-primary"
+                                  onClick={() => onOpenCustomerQuickView && onOpenCustomerQuickView({ maKH: item.maKH, hoTen: item.hoTen })}
+                                >
+                                  {item.maKH}
+                                </button>
+                              </td>
+                              <td className="fw-semibold text-slate-900">{item.hoTen}</td>
+                              <td className="font-monospace text-muted">{item.soTK}</td>
+                              <td className="font-monospace text-muted">{item.soHDTD}</td>
+                              <td className="text-end num-tabular">{formatCurrencyVN(item.tongDuNo)}</td>
+                              <td className="text-end num-tabular text-primary">{formatCurrencyVN(item.laiPhatSinh)}</td>
+                              <td className="text-end num-tabular text-danger">{formatCurrencyVN(item.noTon)}</td>
+                              <td className="text-end fw-bold num-tabular">{formatCurrencyVN(item.soTienTrich || item.tongDuKien)}</td>
+                              <td className="text-end fw-bold text-success num-tabular">{formatCurrencyVN(item.daTrich || 0)}</td>
+                              <td className="text-center">
+                                {item.trangThai === 'THANH_CONG' ? (
+                                  <span className="badge bg-success-subtle text-success">Đã trích đủ</span>
+                                ) : item.trangThai === 'TRICH_MOT_PHAN' ? (
+                                  <span className="badge bg-warning-subtle text-warning">Trích 1 phần</span>
+                                ) : item.trangThai === 'THAT_BAI' ? (
+                                  <span className="badge bg-danger-subtle text-danger" title={item.lyDo || 'Không đủ số dư'}>
+                                    Thất bại
+                                  </span>
+                                ) : (
+                                  <span className="badge bg-secondary-subtle text-secondary">Chờ trích</span>
+                                )}
+                              </td>
+                              {onUpdateItem && (
+                                <td className="text-center">
+                                  <button
+                                    type="button"
+                                    className={`btn btn-sm py-0 px-2 ${isEditing ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                    onClick={() => isEditing ? setEditingItem(null) : handleStartEdit(item)}
+                                    title={isEditing ? 'Đóng chế độ sửa' : 'Cập nhật kết quả trích nợ'}
+                                  >
+                                    <Edit3 size={12} />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                            {isEditing && (
+                              <tr className="bg-light">
+                                <td colSpan={onUpdateItem ? 11 : 10} className="p-3 border-bottom">
+                                  <div className="card p-3 border shadow-sm">
+                                    <h6 className="fw-bold text-primary mb-2 small">
+                                      Cập Nhật Kết Quả Trích Nợ: {item.hoTen} ({item.soHDTD})
+                                    </h6>
+                                    <div className="row g-2 align-items-end">
+                                      <div className="col-md-3">
+                                        <label className="form-label small text-muted mb-1">Trạng Thái Kết Quả</label>
+                                        <select
+                                          className="form-select form-select-sm"
+                                          value={editForm.trangThai}
+                                          onChange={(e) => {
+                                            const newSt = e.target.value;
+                                            setEditForm(prev => ({
+                                              ...prev,
+                                              trangThai: newSt,
+                                              daTrich: newSt === 'THANH_CONG' ? (item.soTienTrich || item.tongDuKien || 0) : (newSt === 'THAT_BAI' ? 0 : prev.daTrich)
+                                            }));
+                                          }}
+                                        >
+                                          <option value="THANH_CONG">Đã trích đủ (Thành công)</option>
+                                          <option value="TRICH_MOT_PHAN">Trích một phần</option>
+                                          <option value="THAT_BAI">Trích thất bại (Không đủ số dư)</option>
+                                          <option value="CHUA_XU_LY">Chờ trích (Chưa xử lý)</option>
+                                        </select>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <label className="form-label small text-muted mb-1">Số Tiền Thực Trích (VNĐ)</label>
+                                        <input
+                                          type="number"
+                                          className="form-control form-control-sm font-monospace"
+                                          value={editForm.daTrich}
+                                          onChange={(e) => setEditForm(prev => ({ ...prev, daTrich: e.target.value }))}
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                      <div className="col-md-3">
+                                        <label className="form-label small text-muted mb-1">Mã Giao Dịch Core (Ref)</label>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm font-monospace"
+                                          value={editForm.maGiaoDichCore}
+                                          onChange={(e) => setEditForm(prev => ({ ...prev, maGiaoDichCore: e.target.value }))}
+                                          placeholder="VD: FT2609..."
+                                        />
+                                      </div>
+                                      <div className="col-md-3 d-flex gap-2">
+                                        <button
+                                          type="button"
+                                          className="btn btn-primary btn-sm flex-fill fw-bold d-inline-flex align-items-center justify-content-center gap-1"
+                                          onClick={handleSaveEdit}
+                                          disabled={savingItem}
+                                        >
+                                          {savingItem ? <Loader2 size={13} className="fa-spin" /> : <Check size={13} />} Lưu
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-outline-secondary btn-sm"
+                                          onClick={() => setEditingItem(null)}
+                                        >
+                                          <X size={13} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={onUpdateItem ? 11 : 10} className="text-center text-muted py-3">
+                          Không có bản ghi phù hợp với điều kiện tìm kiếm.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="10" className="text-center text-muted py-3">
-                        Không có bản ghi phù hợp với điều kiện tìm kiếm.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            <Pagination
-              currentPage={page}
-              totalItems={filteredItems.length}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
+            {items.length > 0 && (
+              <Pagination
+                currentPage={page}
+                totalItems={filteredItems.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            )}
           </div>
 
           <div className="modal-footer border-0 pt-0">

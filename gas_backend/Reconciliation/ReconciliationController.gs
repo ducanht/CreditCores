@@ -34,16 +34,20 @@ var ReconciliationController = {
     ];
 
     var newNoTonRows = [];
+    var lsColMap = sLS ? HeaderUtils.getHeaderMap(sLS) : null;
+    var lsRows = (sLS && sLS.getLastRow() > 1) ? sLS.getRange(2, 1, sLS.getLastRow() - 1, sLS.getLastColumn()).getValues() : [];
+
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
-      var phaiThu = Number(it.phaiThu) || 0;
-      var daTrich = Number(it.daTrich) || 0;
+      var phaiThu = Number(it.phaiThu !== undefined ? it.phaiThu : (it.soTienTrich || it.tongDuKien || 0)) || 0;
+      var daTrich = Number(it.daTrich !== undefined ? it.daTrich : 0);
       var conNo = Math.max(0, phaiThu - daTrich);
+      var ketQua = String(it.ketQua || (conNo === 0 ? "THANH_CONG" : (daTrich > 0 ? "TRICH_MOT_PHAN" : "THAT_BAI"))).trim();
 
       totalDaTrich += daTrich;
       totalConNo += conNo;
 
-      if (it.ketQua === "THANH_CONG") {
+      if (ketQua === "THANH_CONG") {
         countSuccess++;
       } else {
         countFailed++;
@@ -51,7 +55,7 @@ var ReconciliationController = {
           var dict = {
             SoHDTD: it.soHDTD || "",
             MaKH: it.maKH || "",
-            TenKH: it.tenKH || "",
+            TenKH: it.tenKH || it.hoTen || "",
             GocTon: Number(it.gocTon || 0) || 0,
             LaiTon: conNo,
             TongNoTon: conNo,
@@ -61,6 +65,30 @@ var ReconciliationController = {
             NgayCapNhat: new Date()
           };
           newNoTonRows.push(HeaderUtils.dictToRow(dict, noTonColMap, noTonDefaultHeaders));
+        }
+      }
+
+      // Cập nhật từng món trong bảng LICH_SU_TRICH_NO
+      if (sLS && lsColMap && lsRows.length > 0) {
+        var itMaKH = String(it.maKH || "").replace(/^'/, "").trim();
+        var itSoHD = String(it.soHDTD || "").trim();
+
+        for (var rIdx = 0; rIdx < lsRows.length; rIdx++) {
+          var rMaDot = String(HeaderUtils.getCell(lsRows[rIdx], lsColMap, "MaDot", "")).trim();
+          var rMaKH = String(HeaderUtils.getCell(lsRows[rIdx], lsColMap, "MaKH", "")).replace(/^'/, "").trim();
+          var rSoHD = String(HeaderUtils.getCell(lsRows[rIdx], lsColMap, "SoHDTD", "")).trim();
+
+          if (rMaDot === maDot && (rSoHD === itSoHD || (rMaKH === itMaKH && !itSoHD))) {
+            var targetRow = rIdx + 2;
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "DaTrich", daTrich);
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "ConNo", conNo);
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "TrangThaiCore", ketQua);
+            if (it.maGiaoDichCore) {
+              HeaderUtils.setCell(sLS, targetRow, lsColMap, "MaGiaoDichCore", it.maGiaoDichCore);
+            }
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "NgayTrich", new Date());
+            break;
+          }
         }
       }
     }
@@ -86,6 +114,7 @@ var ReconciliationController = {
     }
 
     CacheHelper.invalidateModuleCache('reconciliation');
+    CacheHelper.invalidateModuleCache('debit');
 
     return {
       status: "success",

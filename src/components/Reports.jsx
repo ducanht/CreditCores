@@ -147,7 +147,7 @@ export default function Reports() {
   const ltvAvg = kpiMetrics.ltvAvg ?? reportsData?.summary?.ltvAvg ?? null;
   const avgLoanSize = totalMembers > 0 && totalDuNo > 0 ? Math.round(totalDuNo / totalMembers) : 0;
 
-  // Xuất file CSV báo cáo quản trị thông minh theo Tab hoặc Tổng Thể
+  // Xuất file CSV báo cáo quản trị đa chiều theo Tab hoặc Tổng Thể
   const handleExportCSV = () => {
     let csvContent = '\uFEFF'; // UTF-8 BOM
 

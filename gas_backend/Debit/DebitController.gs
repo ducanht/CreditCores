@@ -485,5 +485,152 @@ var DebitController = {
         tongPhaiThu: totalPhaiThu
       }
     };
+  },
+
+  handleGetDebitBatchDetails: function(ss, data) {
+    var maDot = String(data.maDot || "").trim();
+    if (!maDot) {
+      return { status: "error", message: "Mã đợt trích nợ không được để trống!" };
+    }
+
+    var cacheKey = 'debit_batch_detail_' + maDot;
+    var cached = CacheHelper.getCachedData(cacheKey);
+    if (cached) return { status: "success", data: cached };
+
+    var sDetail = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
+    if (!sDetail || sDetail.getLastRow() <= 1) {
+      return { status: "success", data: [] };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sDetail);
+    var rows = sDetail.getRange(2, 1, sDetail.getLastRow() - 1, sDetail.getLastColumn()).getValues();
+    var results = [];
+
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var rMaDot = String(HeaderUtils.getCell(r, colMap, "MaDot", "")).trim();
+      if (rMaDot === maDot) {
+        var soHDTD = String(HeaderUtils.getCell(r, colMap, "SoHDTD", "")).trim();
+        var rawMaKH = String(HeaderUtils.getCell(r, colMap, "MaKH", "")).replace(/^'/, "").trim();
+        var tenKH = String(HeaderUtils.getCell(r, colMap, "TenKH", "")).trim();
+        var soTK = String(HeaderUtils.getCell(r, colMap, "SoTK", "")).replace(/^'/, "").trim();
+        var phaiThu = Number(HeaderUtils.getCell(r, colMap, "TongTienPhaiThu", 0)) || 0;
+        var daTrich = Number(HeaderUtils.getCell(r, colMap, "DaTrich", 0)) || 0;
+        var conNo = Number(HeaderUtils.getCell(r, colMap, "ConNo", phaiThu - daTrich)) || 0;
+        var trangThai = String(HeaderUtils.getCell(r, colMap, "TrangThaiCore", "CHO_TRICH_NO")).trim();
+        var maGiaoDichCore = String(HeaderUtils.getCell(r, colMap, "MaGiaoDichCore", "")).trim();
+        var ngayTrich = formatGasDateTime(HeaderUtils.getCell(r, colMap, "NgayTrich", ""));
+
+        results.push({
+          maDot: maDot,
+          soHDTD: soHDTD,
+          maKH: rawMaKH,
+          hoTen: tenKH,
+          tenKH: tenKH,
+          soTK: soTK,
+          soTienTrich: phaiThu,
+          tongDuKien: phaiThu,
+          phaiThu: phaiThu,
+          daTrich: daTrich,
+          conNo: conNo,
+          trangThai: trangThai,
+          maGiaoDichCore: maGiaoDichCore,
+          ngayTrich: ngayTrich
+        });
+      }
+    }
+
+    CacheHelper.setCachedData(cacheKey, results, 60);
+    return { status: "success", data: results };
+  },
+
+  handleUpdateDebitBatchItemStatus: function(ss, data) {
+    var maDot = String(data.maDot || "").trim();
+    var soHDTD = String(data.soHDTD || "").trim();
+    var maKH = String(data.maKH || "").replace(/^'/, "").trim();
+    var newStatus = String(data.trangThai || "THANH_CONG").trim();
+    var daTrich = Number(data.daTrich !== undefined ? data.daTrich : 0);
+    var maGiaoDichCore = String(data.maGiaoDichCore || "").trim();
+
+    var sDetail = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
+    if (!sDetail || sDetail.getLastRow() <= 1) {
+      return { status: "error", message: "Bảng chi tiết trích nợ rỗng!" };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sDetail);
+    var rows = sDetail.getRange(2, 1, sDetail.getLastRow() - 1, sDetail.getLastColumn()).getValues();
+    var targetRow = -1;
+    var phaiThu = 0;
+
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var rMaDot = String(HeaderUtils.getCell(r, colMap, "MaDot", "")).trim();
+      var rMaKH = String(HeaderUtils.getCell(r, colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var rSoHD = String(HeaderUtils.getCell(r, colMap, "SoHDTD", "")).trim();
+
+      if (rMaDot === maDot && (rSoHD === soHDTD || (rMaKH === maKH && !soHDTD))) {
+        targetRow = i + 2;
+        phaiThu = Number(HeaderUtils.getCell(r, colMap, "TongTienPhaiThu", 0)) || 0;
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      return { status: "error", message: "Không tìm thấy món trích nợ trong đợt " + maDot };
+    }
+
+    var conNo = Math.max(0, phaiThu - daTrich);
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "DaTrich", daTrich);
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "ConNo", conNo);
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "TrangThaiCore", newStatus);
+    if (maGiaoDichCore) {
+      HeaderUtils.setCell(sDetail, targetRow, colMap, "MaGiaoDichCore", maGiaoDichCore);
+    }
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "NgayTrich", new Date());
+
+    CacheHelper.invalidateModuleCache('debit');
+    return {
+      status: "success",
+      message: "Đã cập nhật trạng thái món trích nợ thành công!",
+      data: { maDot: maDot, maKH: maKH, soHDTD: soHDTD, trangThai: newStatus, daTrich: daTrich, conNo: conNo }
+    };
+  },
+
+  handleDeleteDebitBatch: function(ss, data) {
+    var maDot = String(data.maDot || "").trim();
+    if (!maDot) {
+      return { status: "error", message: "Mã đợt trích nợ không được để trống!" };
+    }
+
+    var sDot = ss.getSheetByName("DOT_TRICH_NO");
+    var sDetail = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
+
+    // 1. Xóa trong master DOT_TRICH_NO
+    if (sDot && sDot.getLastRow() > 1) {
+      var colMap = HeaderUtils.getHeaderMap(sDot);
+      var rows = sDot.getRange(2, 1, sDot.getLastRow() - 1, sDot.getLastColumn()).getValues();
+      for (var i = rows.length - 1; i >= 0; i--) {
+        var curMa = String(HeaderUtils.getCell(rows[i], colMap, "MaDot", "")).trim();
+        if (curMa === maDot) {
+          sDot.deleteRow(i + 2);
+          break;
+        }
+      }
+    }
+
+    // 2. Xóa các dòng chi tiết trong LICH_SU_TRICH_NO
+    if (sDetail && sDetail.getLastRow() > 1) {
+      var dColMap = HeaderUtils.getHeaderMap(sDetail);
+      var dRows = sDetail.getRange(2, 1, sDetail.getLastRow() - 1, sDetail.getLastColumn()).getValues();
+      for (var j = dRows.length - 1; j >= 0; j--) {
+        var dMa = String(HeaderUtils.getCell(dRows[j], dColMap, "MaDot", "")).trim();
+        if (dMa === maDot) {
+          sDetail.deleteRow(j + 2);
+        }
+      }
+    }
+
+    CacheHelper.invalidateModuleCache('debit');
+    return { status: "success", message: "Đã xóa toàn bộ đợt trích nợ " + maDot + " thành công!" };
   }
 };

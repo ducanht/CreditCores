@@ -3,7 +3,6 @@ import {
   X,
   Database,
   Calendar,
-  Sparkles,
   Send,
   CheckCircle2,
   AlertCircle,

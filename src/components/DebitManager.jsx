@@ -196,6 +196,74 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
     }
   };
 
+  // Xem chi tiết đợt trích nợ (tự động nạp chi tiết các món từ CSDL)
+  const handleSelectBatchDetail = async (batch) => {
+    setSelectedBatchDetail(batch);
+    if (!batch.items || batch.items.length === 0) {
+      try {
+        const res = await api.getDebitBatchDetails(batch.maDot, true);
+        if (res.status === 'success' && Array.isArray(res.data)) {
+          setSelectedBatchDetail(prev => ({
+            ...(prev || batch),
+            items: res.data,
+            chiTietDanhSach: res.data
+          }));
+        }
+      } catch (err) {
+        console.error('Lỗi tải chi tiết đợt trích nợ:', err);
+      }
+    }
+  };
+
+  // Cập nhật trạng thái từng món trong đợt
+  const handleUpdateBatchItem = async (updatedItem) => {
+    try {
+      const res = await api.updateDebitBatchItemStatus(updatedItem);
+      if (res.status === 'success') {
+        setSelectedBatchDetail(prev => {
+          if (!prev) return null;
+          const currentItems = prev.items || prev.chiTietDanhSach || [];
+          const updatedItems = currentItems.map(i => {
+            if ((i.soHDTD && i.soHDTD === updatedItem.soHDTD) || (i.maKH && i.maKH === updatedItem.maKH)) {
+              return { ...i, ...updatedItem };
+            }
+            return i;
+          });
+          return { ...prev, items: updatedItems, chiTietDanhSach: updatedItems };
+        });
+        fetchData();
+      } else {
+        alert('Lỗi cập nhật: ' + res.message);
+      }
+    } catch (err) {
+      alert('Lỗi hệ thống: ' + err.message);
+    }
+  };
+
+  // Xóa đợt trích nợ
+  const handleDeleteBatch = async (batch) => {
+    if (!window.confirm(`XÁC NHẬN: Bạn có chắc chắn muốn XÓA đợt trích nợ "${batch.maDot}" cùng toàn bộ chi tiết giao dịch liên quan khỏi hệ thống? Thao tác này không thể hoàn tác.`)) {
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const res = await api.deleteDebitBatch(batch.maDot);
+      if (res.status === 'success') {
+        alert(res.message || 'Xóa đợt trích nợ thành công!');
+        if (selectedBatchDetail?.maDot === batch.maDot) {
+          setSelectedBatchDetail(null);
+        }
+        fetchData();
+      } else {
+        alert('Lỗi: ' + res.message);
+      }
+    } catch (err) {
+      alert('Lỗi kết nối: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Lưu cấu hình đợt trích nợ theo ngày vay
   const handleSaveConfig = async (configPayload) => {
     try {
@@ -320,7 +388,8 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
           batchPageSize={batchPageSize}
           setBatchPageSize={setBatchPageSize}
           loading={loading}
-          onSelectBatchDetail={setSelectedBatchDetail}
+          onSelectBatchDetail={handleSelectBatchDetail}
+          onDeleteBatch={handleDeleteBatch}
           onOpenCreateBatch={() => setShowBatchModal(true)}
         />
       )}
@@ -365,6 +434,8 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         show={!!selectedBatchDetail}
         onClose={() => setSelectedBatchDetail(null)}
         batch={selectedBatchDetail}
+        onUpdateItem={handleUpdateBatchItem}
+        onDeleteBatch={handleDeleteBatch}
         onOpenCustomerQuickView={onOpenCustomerQuickView}
       />
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Trash2 } from 'lucide-react';
 import { formatCurrencyVN } from '../../utils/dateUtils';
 import Pagination from '../Pagination';
 import { StatusBadge, EmptyState } from '../shared';
@@ -13,6 +13,7 @@ export default function DebitBatchTable({
   setBatchPageSize,
   loading,
   onSelectBatchDetail,
+  onDeleteBatch,
   onOpenCreateBatch
 }) {
   return (
@@ -71,18 +72,33 @@ export default function DebitBatchTable({
                   </td>
                   <td className="small text-muted">{b.ngayTao || '---'}</td>
                   <td className="text-center">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary py-1 px-2 d-inline-flex align-items-center gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectBatchDetail(b);
-                      }}
-                      title="Xem chi tiết đợt trích nợ"
-                    >
-                      <Eye size={13} />
-                      <span className="small">Chi tiết</span>
-                    </button>
+                    <div className="d-flex align-items-center justify-content-center gap-1">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary py-1 px-2 d-inline-flex align-items-center gap-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectBatchDetail(b);
+                        }}
+                        title="Xem chi tiết đợt trích nợ"
+                      >
+                        <Eye size={13} />
+                        <span className="small">Chi tiết</span>
+                      </button>
+                      {onDeleteBatch && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger py-1 px-2 d-inline-flex align-items-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteBatch(b);
+                          }}
+                          title="Xóa đợt trích nợ này"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

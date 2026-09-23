@@ -25,6 +25,7 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
   const [selectedBatch, setSelectedBatch] = useState('');
   const [batches, setBatches] = useState([]);
   const [loadingBatches, setLoadingBatches] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState(null);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'THANH_CONG' | 'TRICH_MOT_PHAN' | 'THAT_BAI'
@@ -34,6 +35,46 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [items, setItems] = useState([]);
 
+  const loadBatchItems = async (batchId) => {
+    if (!batchId) {
+      setItems([]);
+      return;
+    }
+    setLoadingItems(true);
+    try {
+      const res = await api.getDebitBatchDetails(batchId, true);
+      if (res.status === 'success' && Array.isArray(res.data)) {
+        const mapped = res.data.map((item) => {
+          const phaiThu = Number(item.soTienTrich || item.tongDuKien || item.phaiThu) || 0;
+          let daTrich = Number(item.daTrich !== undefined ? item.daTrich : 0);
+          let ketQua = item.trangThai || item.ketQua || 'CHUA_XU_LY';
+          if (ketQua === 'THANH_CONG' && daTrich === 0) {
+            daTrich = phaiThu;
+          }
+          return {
+            maKH: item.maKH || '',
+            soHDTD: item.soHDTD || '',
+            hoTen: item.hoTen || '',
+            soTK: item.soTK || '',
+            phaiThu: phaiThu,
+            daTrich: daTrich,
+            ketQua: ketQua,
+            lyDoLoi: item.lyDo || item.lyDoLoi || '',
+            maGiaoDichCore: item.maGiaoDichCore || ''
+          };
+        });
+        setItems(mapped);
+      } else {
+        setItems([]);
+      }
+    } catch (err) {
+      console.error('Lỗi nạp chi tiết đợt trích nợ:', err);
+      setItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
   useEffect(() => {
     async function loadBatches() {
       setLoadingBatches(true);
@@ -42,10 +83,9 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
         if (res.status === 'success' && Array.isArray(res.data)) {
           setBatches(res.data);
           if (res.data.length > 0) {
-            setSelectedBatch(res.data[0].maDot);
-            if (res.data[0].items || res.data[0].chiTietDanhSach) {
-              setItems(res.data[0].items || res.data[0].chiTietDanhSach);
-            }
+            const firstBatch = res.data[0].maDot;
+            setSelectedBatch(firstBatch);
+            loadBatchItems(firstBatch);
           }
         }
       } catch (err) {
@@ -59,23 +99,91 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
 
   const handleBatchChange = (newBatchId) => {
     setSelectedBatch(newBatchId);
-    const b = batches.find((x) => x.maDot === newBatchId);
-    if (b && (b.items || b.chiTietDanhSach)) {
-      setItems(b.items || b.chiTietDanhSach);
-    } else {
-      setItems([]);
-    }
     setPage(1);
+    loadBatchItems(newBatchId);
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setUploadedFileName(file.name);
-    }
+    if (!file) return;
+    setUploadedFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target?.result;
+        if (!text || typeof text !== 'string') return;
+        const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0);
+        if (lines.length < 2) return;
+
+        setItems((prevItems) => {
+          let matchedCount = 0;
+          const updated = prevItems.map((item) => {
+            const matchedLine = lines.find((l) => {
+              const cleaned = l.replace(/["\t]/g, '');
+              return (
+                (item.soTK && cleaned.includes(item.soTK)) ||
+                (item.soHDTD && cleaned.includes(item.soHDTD)) ||
+                (item.maKH && cleaned.includes(item.maKH))
+              );
+            });
+
+            if (matchedLine) {
+              matchedCount++;
+              const parts = matchedLine.split(/,|\t/).map((p) => p.trim().replace(/^"|"$/g, ''));
+              let detectedDaTrich = item.phaiThu;
+              let detectedStatus = 'THANH_CONG';
+              let detectedLyDo = 'Đã đối chiếu thành công từ tệp CoreBanking';
+
+              for (const part of parts) {
+                const num = Number(part.replace(/\./g, '').replace(/,/g, ''));
+                if (!isNaN(num) && num > 0 && num <= item.phaiThu * 1.5) {
+                  detectedDaTrich = num;
+                  break;
+                }
+              }
+
+              const lowerLine = matchedLine.toLowerCase();
+              if (
+                lowerLine.includes('that bai') ||
+                lowerLine.includes('không đủ') ||
+                lowerLine.includes('khong du') ||
+                lowerLine.includes('loi')
+              ) {
+                detectedStatus = 'THAT_BAI';
+                detectedDaTrich = 0;
+                detectedLyDo = 'Số dư tài khoản không đủ / Lỗi giao dịch';
+              } else if (detectedDaTrich < item.phaiThu) {
+                detectedStatus = 'TRICH_MOT_PHAN';
+                detectedLyDo = 'Trích một phần số dư tài khoản';
+              }
+
+              return {
+                ...item,
+                daTrich: detectedDaTrich,
+                ketQua: detectedStatus,
+                lyDoLoi: detectedLyDo
+              };
+            }
+            return item;
+          });
+
+          alert(`Đã nhận diện tệp "${file.name}" và đối soát thành công ${matchedCount} món trích nợ!`);
+          return updated;
+        });
+      } catch (err) {
+        console.error('Lỗi đọc tệp kết quả:', err);
+        alert('Lỗi đọc tệp kết quả đối soát: ' + err.message);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
   };
 
   const handleProcessReconcile = async () => {
+    if (!selectedBatch) {
+      alert('Vui lòng chọn đợt trích nợ cần đối soát!');
+      return;
+    }
     setReconciling(true);
     try {
       const res = await api.reconcileUpload({
@@ -84,7 +192,10 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
       });
       if (res.status === 'success') {
         setReconcileResult(res);
-        alert(res.message || 'Đối soát số liệu thành công!');
+        alert(res.message || 'Đối soát số liệu và cập nhật nợ tồn đọng thành công!');
+        loadBatchItems(selectedBatch);
+      } else {
+        alert('Lỗi: ' + res.message);
       }
     } catch (e) {
       alert('Lỗi đối soát: ' + e.message);
@@ -280,6 +391,35 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
 
   const paginatedItems = filteredItems.slice((page - 1) * pageSize, page * pageSize);
 
+  const handleUpdateItemField = (itemKey, field, val) => {
+    setItems((prev) =>
+      prev.map((i) => {
+        const match =
+          (itemKey.soHDTD && i.soHDTD === itemKey.soHDTD) ||
+          (itemKey.maKH && i.maKH === itemKey.maKH);
+        if (match) {
+          let updated = { ...i, [field]: val };
+          if (field === 'ketQua') {
+            if (val === 'THANH_CONG') {
+              updated.daTrich = i.phaiThu;
+              updated.lyDoLoi = 'Đã trích đủ từ tài khoản';
+            } else if (val === 'THAT_BAI') {
+              updated.daTrich = 0;
+              updated.lyDoLoi = 'Số dư tài khoản không đủ';
+            } else if (val === 'TRICH_MOT_PHAN') {
+              if (i.daTrich === 0 || i.daTrich >= i.phaiThu) {
+                updated.daTrich = Math.round(i.phaiThu / 2);
+              }
+              updated.lyDoLoi = 'Trích một phần số dư tài khoản';
+            }
+          }
+          return updated;
+        }
+        return i;
+      })
+    );
+  };
+
   return (
     <div className="d-flex flex-column gap-3">
       {/* 1. Sleek Single-Row Control & Compact Icon Export Toolbar */}
@@ -334,15 +474,27 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
             className="btn btn-sm btn-brand fw-medium d-flex align-items-center gap-1 text-white shadow-sm"
             style={{ height: '32px' }}
             onClick={handleProcessReconcile}
-            disabled={reconciling}
+            disabled={reconciling || loadingItems}
           >
             <CheckCircle2 size={14} />
-            <span>{reconciling ? 'Đang chạy...' : 'Đối Soát'}</span>
+            <span>{reconciling ? 'Đang lưu...' : 'Lưu Kết Quả Đối Soát'}</span>
           </button>
         </div>
 
         {/* Action Icon Group (Word, Excel, PDF, Print, Reload) */}
         <div className="d-flex align-items-center gap-1.5">
+          {/* Nút Tải lại */}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary p-1.5 rounded-2 d-flex align-items-center justify-content-center"
+            style={{ width: '32px', height: '32px' }}
+            onClick={() => loadBatchItems(selectedBatch)}
+            disabled={loadingItems}
+            title="Tải lại chi tiết đợt từ Google Sheets"
+          >
+            <RefreshCw size={14} className={loadingItems ? 'fa-spin' : ''} />
+          </button>
+
           {/* Nút Xuất Excel (.csv / .xlsx) */}
           <button
             type="button"
@@ -529,14 +681,22 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
                 <th className="text-end">Phải Thu</th>
                 <th className="text-end">Đã Trích</th>
                 <th className="text-end">Còn Nợ (Tồn)</th>
-                <th className="text-center">Kết Quả</th>
-                <th>Lý Do / Ghi Chú</th>
+                <th className="text-center" style={{ width: 140 }}>Kết Quả Đối Soát</th>
+                <th style={{ minWidth: 160 }}>Lý Do / Ghi Chú</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedItems.length > 0 ? (
+              {loadingItems ? (
+                <tr>
+                  <td colSpan="9" className="text-center py-5">
+                    <div className="spinner-border text-primary spinner-border-sm mb-2" role="status"></div>
+                    <div className="text-muted small">Đang nạp chi tiết các món trích nợ đợt {selectedBatch} từ Google Sheets...</div>
+                  </td>
+                </tr>
+              ) : paginatedItems.length > 0 ? (
                 paginatedItems.map((it, idx) => {
                   const conNo = Math.max(0, it.phaiThu - it.daTrich);
+                  const isPartial = it.ketQua === 'TRICH_MOT_PHAN';
                   return (
                     <tr key={idx}>
                       <td className="fw-medium font-monospace">
@@ -552,13 +712,55 @@ export default function Reconciliation({ onOpenCustomerQuickView }) {
                       <td className="fw-medium text-slate-900">{it.hoTen}</td>
                       <td className="font-monospace text-muted">{it.soTK}</td>
                       <td className="text-end num-tabular fw-medium">{formatCurrencyVN(it.phaiThu)}</td>
-                      <td className="text-end num-tabular text-success fw-medium">{formatCurrencyVN(it.daTrich)}</td>
+                      <td className="text-end num-tabular">
+                        {isPartial ? (
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-end font-monospace py-0 px-1 d-inline-block text-warning fw-bold"
+                            style={{ maxWidth: 110, fontSize: '0.82rem' }}
+                            value={it.daTrich}
+                            onChange={(e) => handleUpdateItemField(it, 'daTrich', Number(e.target.value) || 0)}
+                            title="Nhập số tiền thực trích được từ tài khoản"
+                          />
+                        ) : (
+                          <span className={`fw-medium ${it.daTrich > 0 ? 'text-success' : 'text-muted'}`}>
+                            {formatCurrencyVN(it.daTrich)}
+                          </span>
+                        )}
+                      </td>
                       <td className="text-end num-tabular text-danger fw-medium">{formatCurrencyVN(conNo)}</td>
                       <td className="text-center">
-                        <StatusBadge status={it.ketQua} />
+                        <select
+                          className="form-select form-select-sm py-0 px-1 fw-semibold"
+                          style={{
+                            fontSize: '0.78rem',
+                            color:
+                              it.ketQua === 'THANH_CONG'
+                                ? '#16a34a'
+                                : it.ketQua === 'TRICH_MOT_PHAN'
+                                ? '#d97706'
+                                : it.ketQua === 'THAT_BAI'
+                                ? '#dc2626'
+                                : '#64748b'
+                          }}
+                          value={it.ketQua || 'CHUA_XU_LY'}
+                          onChange={(e) => handleUpdateItemField(it, 'ketQua', e.target.value)}
+                        >
+                          <option value="THANH_CONG">Đã trích đủ</option>
+                          <option value="TRICH_MOT_PHAN">Trích 1 phần</option>
+                          <option value="THAT_BAI">Trích thất bại</option>
+                          <option value="CHUA_XU_LY">Chờ trích</option>
+                        </select>
                       </td>
-                      <td className="text-muted" style={{ fontSize: '0.78rem' }}>
-                        {it.lyDoLoi || 'Hoàn tất'}
+                      <td>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm py-0 px-1 text-muted"
+                          style={{ fontSize: '0.78rem' }}
+                          value={it.lyDoLoi || ''}
+                          placeholder="Ghi chú lý do..."
+                          onChange={(e) => handleUpdateItemField(it, 'lyDoLoi', e.target.value)}
+                        />
                       </td>
                     </tr>
                   );

@@ -6,20 +6,56 @@ import LoginModal from './components/LoginModal';
 import { api } from './services/api';
 import { AuthService } from './services/auth';
 
-// Tối ưu Code-Splitting: Lazy loading các phân hệ để khởi chạy trang Tổng Quan tức thì
-const Customer360 = lazy(() => import('./components/Customer360'));
-const CollateralManager = lazy(() => import('./components/CollateralManager'));
-const Appraisal = lazy(() => import('./components/Appraisal'));
-const LoanInspection = lazy(() => import('./components/LoanInspection'));
-const DebitManager = lazy(() => import('./components/DebitManager'));
-const Reconciliation = lazy(() => import('./components/Reconciliation'));
-const DebtWarning = lazy(() => import('./components/DebtWarning'));
-const Reports = lazy(() => import('./components/Reports'));
-const TemplateManager = lazy(() => import('./components/TemplateManager'));
-const UserManagement = lazy(() => import('./components/UserManagement'));
-const Settings = lazy(() => import('./components/Settings'));
-const ChangePasswordModal = lazy(() => import('./components/ChangePasswordModal'));
-const CustomerQuickModal = lazy(() => import('./components/CustomerQuickModal'));
+// Lắng nghe sự kiện Vite Preload Error để tự động reload khi phiên bản ứng dụng vừa được cập nhật trên máy chủ
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', () => {
+    console.warn('[CreditCores Vite Preload] Module chunk mismatch detected. Auto-reloading page...');
+    window.location.reload();
+  });
+}
+
+// Helper tự động thử lại và làm mới trang khi gặp lỗi tải chunk động (Failed to fetch dynamically imported module)
+function lazyWithRetry(componentImport) {
+  return lazy(async () => {
+    const isRetried = JSON.parse(
+      (typeof window !== 'undefined' && window.sessionStorage.getItem('creditcores_chunk_retry')) || 'false'
+    );
+    try {
+      const component = await componentImport();
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('creditcores_chunk_retry', 'false');
+      }
+      return component;
+    } catch (error) {
+      const isChunkError =
+        error.name === 'ChunkLoadError' ||
+        error.message?.includes('dynamically imported module') ||
+        error.message?.includes('Failed to fetch');
+
+      if (!isRetried && isChunkError && typeof window !== 'undefined') {
+        window.sessionStorage.setItem('creditcores_chunk_retry', 'true');
+        window.location.reload();
+        return new Promise(() => {}); // Chờ reload trang
+      }
+      throw error;
+    }
+  });
+}
+
+// Tối ưu Code-Splitting: Lazy loading an toàn với cơ chế tự phục hồi khi cập nhật phiên bản
+const Customer360 = lazyWithRetry(() => import('./components/Customer360'));
+const CollateralManager = lazyWithRetry(() => import('./components/CollateralManager'));
+const Appraisal = lazyWithRetry(() => import('./components/Appraisal'));
+const LoanInspection = lazyWithRetry(() => import('./components/LoanInspection'));
+const DebitManager = lazyWithRetry(() => import('./components/DebitManager'));
+const Reconciliation = lazyWithRetry(() => import('./components/Reconciliation'));
+const DebtWarning = lazyWithRetry(() => import('./components/DebtWarning'));
+const Reports = lazyWithRetry(() => import('./components/Reports'));
+const TemplateManager = lazyWithRetry(() => import('./components/TemplateManager'));
+const UserManagement = lazyWithRetry(() => import('./components/UserManagement'));
+const Settings = lazyWithRetry(() => import('./components/Settings'));
+const ChangePasswordModal = lazyWithRetry(() => import('./components/ChangePasswordModal'));
+const CustomerQuickModal = lazyWithRetry(() => import('./components/CustomerQuickModal'));
 
 // Dynamic Prefetching Map
 const TAB_PREFETCHERS = {

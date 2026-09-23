@@ -8,7 +8,7 @@
  *              - Tối ưu tra cứu O(1) Hash Map cho 5.175+ khách hàng & 549+ hợp đồng
  *              - Thẩm định, Trích nợ Auto-Debit, Kiểm tra vốn, In hợp đồng Mail Merge
  *              - Độc lập hoàn toàn, không nghẽn Timeout, Zero Mock Data
- * @updated     22/9/2026
+ * @updated     23/9/2026
  * @version     3.1 Header-Based Resilient Engine
  * ========================================================================================
  */
@@ -3793,6 +3793,153 @@ var DebitController = {
         tongPhaiThu: totalPhaiThu
       }
     };
+  },
+
+  handleGetDebitBatchDetails: function(ss, data) {
+    var maDot = String(data.maDot || "").trim();
+    if (!maDot) {
+      return { status: "error", message: "Mã đợt trích nợ không được để trống!" };
+    }
+
+    var cacheKey = 'debit_batch_detail_' + maDot;
+    var cached = CacheHelper.getCachedData(cacheKey);
+    if (cached) return { status: "success", data: cached };
+
+    var sDetail = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
+    if (!sDetail || sDetail.getLastRow() <= 1) {
+      return { status: "success", data: [] };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sDetail);
+    var rows = sDetail.getRange(2, 1, sDetail.getLastRow() - 1, sDetail.getLastColumn()).getValues();
+    var results = [];
+
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var rMaDot = String(HeaderUtils.getCell(r, colMap, "MaDot", "")).trim();
+      if (rMaDot === maDot) {
+        var soHDTD = String(HeaderUtils.getCell(r, colMap, "SoHDTD", "")).trim();
+        var rawMaKH = String(HeaderUtils.getCell(r, colMap, "MaKH", "")).replace(/^'/, "").trim();
+        var tenKH = String(HeaderUtils.getCell(r, colMap, "TenKH", "")).trim();
+        var soTK = String(HeaderUtils.getCell(r, colMap, "SoTK", "")).replace(/^'/, "").trim();
+        var phaiThu = Number(HeaderUtils.getCell(r, colMap, "TongTienPhaiThu", 0)) || 0;
+        var daTrich = Number(HeaderUtils.getCell(r, colMap, "DaTrich", 0)) || 0;
+        var conNo = Number(HeaderUtils.getCell(r, colMap, "ConNo", phaiThu - daTrich)) || 0;
+        var trangThai = String(HeaderUtils.getCell(r, colMap, "TrangThaiCore", "CHO_TRICH_NO")).trim();
+        var maGiaoDichCore = String(HeaderUtils.getCell(r, colMap, "MaGiaoDichCore", "")).trim();
+        var ngayTrich = formatGasDateTime(HeaderUtils.getCell(r, colMap, "NgayTrich", ""));
+
+        results.push({
+          maDot: maDot,
+          soHDTD: soHDTD,
+          maKH: rawMaKH,
+          hoTen: tenKH,
+          tenKH: tenKH,
+          soTK: soTK,
+          soTienTrich: phaiThu,
+          tongDuKien: phaiThu,
+          phaiThu: phaiThu,
+          daTrich: daTrich,
+          conNo: conNo,
+          trangThai: trangThai,
+          maGiaoDichCore: maGiaoDichCore,
+          ngayTrich: ngayTrich
+        });
+      }
+    }
+
+    CacheHelper.setCachedData(cacheKey, results, 60);
+    return { status: "success", data: results };
+  },
+
+  handleUpdateDebitBatchItemStatus: function(ss, data) {
+    var maDot = String(data.maDot || "").trim();
+    var soHDTD = String(data.soHDTD || "").trim();
+    var maKH = String(data.maKH || "").replace(/^'/, "").trim();
+    var newStatus = String(data.trangThai || "THANH_CONG").trim();
+    var daTrich = Number(data.daTrich !== undefined ? data.daTrich : 0);
+    var maGiaoDichCore = String(data.maGiaoDichCore || "").trim();
+
+    var sDetail = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
+    if (!sDetail || sDetail.getLastRow() <= 1) {
+      return { status: "error", message: "Bảng chi tiết trích nợ rỗng!" };
+    }
+
+    var colMap = HeaderUtils.getHeaderMap(sDetail);
+    var rows = sDetail.getRange(2, 1, sDetail.getLastRow() - 1, sDetail.getLastColumn()).getValues();
+    var targetRow = -1;
+    var phaiThu = 0;
+
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var rMaDot = String(HeaderUtils.getCell(r, colMap, "MaDot", "")).trim();
+      var rMaKH = String(HeaderUtils.getCell(r, colMap, "MaKH", "")).replace(/^'/, "").trim();
+      var rSoHD = String(HeaderUtils.getCell(r, colMap, "SoHDTD", "")).trim();
+
+      if (rMaDot === maDot && (rSoHD === soHDTD || (rMaKH === maKH && !soHDTD))) {
+        targetRow = i + 2;
+        phaiThu = Number(HeaderUtils.getCell(r, colMap, "TongTienPhaiThu", 0)) || 0;
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      return { status: "error", message: "Không tìm thấy món trích nợ trong đợt " + maDot };
+    }
+
+    var conNo = Math.max(0, phaiThu - daTrich);
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "DaTrich", daTrich);
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "ConNo", conNo);
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "TrangThaiCore", newStatus);
+    if (maGiaoDichCore) {
+      HeaderUtils.setCell(sDetail, targetRow, colMap, "MaGiaoDichCore", maGiaoDichCore);
+    }
+    HeaderUtils.setCell(sDetail, targetRow, colMap, "NgayTrich", new Date());
+
+    CacheHelper.invalidateModuleCache('debit');
+    return {
+      status: "success",
+      message: "Đã cập nhật trạng thái món trích nợ thành công!",
+      data: { maDot: maDot, maKH: maKH, soHDTD: soHDTD, trangThai: newStatus, daTrich: daTrich, conNo: conNo }
+    };
+  },
+
+  handleDeleteDebitBatch: function(ss, data) {
+    var maDot = String(data.maDot || "").trim();
+    if (!maDot) {
+      return { status: "error", message: "Mã đợt trích nợ không được để trống!" };
+    }
+
+    var sDot = ss.getSheetByName("DOT_TRICH_NO");
+    var sDetail = ss.getSheetByName("LICH_SU_TRICH_NO") || ss.getSheetByName("CHI_TIET_TRICH_NO") || ss.getSheetByName("LICH_SU_GIAO_DICH");
+
+    // 1. Xóa trong master DOT_TRICH_NO
+    if (sDot && sDot.getLastRow() > 1) {
+      var colMap = HeaderUtils.getHeaderMap(sDot);
+      var rows = sDot.getRange(2, 1, sDot.getLastRow() - 1, sDot.getLastColumn()).getValues();
+      for (var i = rows.length - 1; i >= 0; i--) {
+        var curMa = String(HeaderUtils.getCell(rows[i], colMap, "MaDot", "")).trim();
+        if (curMa === maDot) {
+          sDot.deleteRow(i + 2);
+          break;
+        }
+      }
+    }
+
+    // 2. Xóa các dòng chi tiết trong LICH_SU_TRICH_NO
+    if (sDetail && sDetail.getLastRow() > 1) {
+      var dColMap = HeaderUtils.getHeaderMap(sDetail);
+      var dRows = sDetail.getRange(2, 1, sDetail.getLastRow() - 1, sDetail.getLastColumn()).getValues();
+      for (var j = dRows.length - 1; j >= 0; j--) {
+        var dMa = String(HeaderUtils.getCell(dRows[j], dColMap, "MaDot", "")).trim();
+        if (dMa === maDot) {
+          sDetail.deleteRow(j + 2);
+        }
+      }
+    }
+
+    CacheHelper.invalidateModuleCache('debit');
+    return { status: "success", message: "Đã xóa toàn bộ đợt trích nợ " + maDot + " thành công!" };
   }
 };
 
@@ -3838,16 +3985,20 @@ var ReconciliationController = {
     ];
 
     var newNoTonRows = [];
+    var lsColMap = sLS ? HeaderUtils.getHeaderMap(sLS) : null;
+    var lsRows = (sLS && sLS.getLastRow() > 1) ? sLS.getRange(2, 1, sLS.getLastRow() - 1, sLS.getLastColumn()).getValues() : [];
+
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
-      var phaiThu = Number(it.phaiThu) || 0;
-      var daTrich = Number(it.daTrich) || 0;
+      var phaiThu = Number(it.phaiThu !== undefined ? it.phaiThu : (it.soTienTrich || it.tongDuKien || 0)) || 0;
+      var daTrich = Number(it.daTrich !== undefined ? it.daTrich : 0);
       var conNo = Math.max(0, phaiThu - daTrich);
+      var ketQua = String(it.ketQua || (conNo === 0 ? "THANH_CONG" : (daTrich > 0 ? "TRICH_MOT_PHAN" : "THAT_BAI"))).trim();
 
       totalDaTrich += daTrich;
       totalConNo += conNo;
 
-      if (it.ketQua === "THANH_CONG") {
+      if (ketQua === "THANH_CONG") {
         countSuccess++;
       } else {
         countFailed++;
@@ -3855,7 +4006,7 @@ var ReconciliationController = {
           var dict = {
             SoHDTD: it.soHDTD || "",
             MaKH: it.maKH || "",
-            TenKH: it.tenKH || "",
+            TenKH: it.tenKH || it.hoTen || "",
             GocTon: Number(it.gocTon || 0) || 0,
             LaiTon: conNo,
             TongNoTon: conNo,
@@ -3865,6 +4016,30 @@ var ReconciliationController = {
             NgayCapNhat: new Date()
           };
           newNoTonRows.push(HeaderUtils.dictToRow(dict, noTonColMap, noTonDefaultHeaders));
+        }
+      }
+
+      // Cập nhật từng món trong bảng LICH_SU_TRICH_NO
+      if (sLS && lsColMap && lsRows.length > 0) {
+        var itMaKH = String(it.maKH || "").replace(/^'/, "").trim();
+        var itSoHD = String(it.soHDTD || "").trim();
+
+        for (var rIdx = 0; rIdx < lsRows.length; rIdx++) {
+          var rMaDot = String(HeaderUtils.getCell(lsRows[rIdx], lsColMap, "MaDot", "")).trim();
+          var rMaKH = String(HeaderUtils.getCell(lsRows[rIdx], lsColMap, "MaKH", "")).replace(/^'/, "").trim();
+          var rSoHD = String(HeaderUtils.getCell(lsRows[rIdx], lsColMap, "SoHDTD", "")).trim();
+
+          if (rMaDot === maDot && (rSoHD === itSoHD || (rMaKH === itMaKH && !itSoHD))) {
+            var targetRow = rIdx + 2;
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "DaTrich", daTrich);
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "ConNo", conNo);
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "TrangThaiCore", ketQua);
+            if (it.maGiaoDichCore) {
+              HeaderUtils.setCell(sLS, targetRow, lsColMap, "MaGiaoDichCore", it.maGiaoDichCore);
+            }
+            HeaderUtils.setCell(sLS, targetRow, lsColMap, "NgayTrich", new Date());
+            break;
+          }
         }
       }
     }
@@ -3890,6 +4065,7 @@ var ReconciliationController = {
     }
 
     CacheHelper.invalidateModuleCache('reconciliation');
+    CacheHelper.invalidateModuleCache('debit');
 
     return {
       status: "success",
@@ -5018,6 +5194,9 @@ function doGet(e) {
       case "getDebitBatches":
         result = DebitController.handleGetDebitBatches(ss);
         break;
+      case "getDebitBatchDetails":
+        result = DebitController.handleGetDebitBatchDetails(ss, e.parameter || {});
+        break;
       case "getDebtWarnings":
         result = DebtWarningController.handleGetDebtWarnings(ss);
         break;
@@ -5093,6 +5272,7 @@ function doPost(e) {
     "saveAppraisalReport", "addApprovalOpinion", "saveLoanInspection",
     "saveDebitRegister", "saveBatchDebitRegister", "updateDebitRegister",
     "toggleDebitRegisterStatus", "deleteDebitRegister", "createDebitBatch", "saveDebitConfig",
+    "updateDebitBatchItemStatus", "deleteDebitBatch",
     "reconcileUpload", "assignContractCBTD", "initDatabase",
     "saveTemplate", "deleteTemplate", "saveDriveSettings",
     "saveCollateral", "deleteCollateral", "triggerAsOfExtract"
@@ -5174,6 +5354,15 @@ function doPost(e) {
         break;
       case "createDebitBatch":
         result = DebitController.handleCreateDebitBatch(ss, data);
+        break;
+      case "getDebitBatchDetails":
+        result = DebitController.handleGetDebitBatchDetails(ss, data);
+        break;
+      case "updateDebitBatchItemStatus":
+        result = DebitController.handleUpdateDebitBatchItemStatus(ss, data);
+        break;
+      case "deleteDebitBatch":
+        result = DebitController.handleDeleteDebitBatch(ss, data);
         break;
       case "reconcileUpload":
         result = ReconciliationController.handleReconcileUpload(ss, data);

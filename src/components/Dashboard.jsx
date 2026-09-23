@@ -17,7 +17,6 @@ import {
   CalendarRange,
   GitCompare,
   FileSpreadsheet,
-  Sparkles,
   ArrowUp,
   ArrowDown,
   Minus,
@@ -564,7 +563,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                 onClick={() => setIsExtractModalOpen(true)}
                 title="Gửi lệnh trích xuất dữ liệu sao kê HDTD_CORE_DN từ SQL Core qua Python Daemon"
               >
-                <Sparkles size={13} className="text-warning" />
+                <Database size={13} className="text-primary" />
                 <span className="fw-semibold">Trích Xuất Từ SQL Core</span>
               </button>
               <span className="badge text-white px-2 py-1" style={{ backgroundColor: '#4f46e5' }}>
@@ -624,7 +623,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
             className="btn btn-sm btn-light text-indigo fw-bold d-flex align-items-center gap-1.5 shadow-sm"
             onClick={() => setIsExtractModalOpen(true)}
           >
-            <Sparkles size={14} className="text-warning" />
+            <Database size={14} className="text-indigo" />
             <span>Trích Xuất Từ Core SQL</span>
           </button>
         </div>
