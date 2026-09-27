@@ -28,6 +28,12 @@ export const MODULE_REGISTRY = [
     description: 'Hồ sơ 360 độ khách hàng, khế ước tín dụng, tài khoản CASA và vốn góp'
   },
   {
+    id: 'credit_statement',
+    label: 'Sao kê tín dụng',
+    category: 'Tín dụng',
+    description: 'Sao kê đến ngày (@denngay), chuỗi cuối tháng, theo năm, Top 50 và cơ cấu vay'
+  },
+  {
     id: 'collateral',
     label: 'Tài sản thế chấp & Hợp đồng',
     category: 'Tín dụng',
@@ -172,13 +178,13 @@ export const AuthService = {
   getDefaultPermissionsForRole(role) {
     const r = (role || '').toUpperCase().trim();
     const defaultRolePerms = {
-      ADMIN: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates', 'user_management', 'settings'],
-      CBTD: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports', 'templates'],
-      KETOAN: ['dashboard', 'customer360', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates'],
-      BKS: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debt_warning', 'reports', 'templates'],
-      LANHDAO: ['dashboard', 'customer360', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates']
+      ADMIN: ['dashboard', 'customer360', 'credit_statement', 'collateral', 'appraisal', 'inspection', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates', 'user_management', 'settings'],
+      CBTD: ['dashboard', 'customer360', 'credit_statement', 'collateral', 'appraisal', 'inspection', 'debit_register', 'debt_warning', 'reports', 'templates'],
+      KETOAN: ['dashboard', 'customer360', 'credit_statement', 'debit_register', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates'],
+      BKS: ['dashboard', 'customer360', 'credit_statement', 'collateral', 'appraisal', 'inspection', 'debt_warning', 'reports', 'templates'],
+      LANHDAO: ['dashboard', 'customer360', 'credit_statement', 'collateral', 'appraisal', 'inspection', 'debit_batch', 'reconciliation', 'debt_warning', 'reports', 'templates']
     };
-    return defaultRolePerms[r] || ['dashboard', 'customer360', 'reports'];
+    return defaultRolePerms[r] || ['dashboard', 'customer360', 'credit_statement', 'reports'];
   },
 
   /**

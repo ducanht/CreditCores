@@ -44,6 +44,7 @@ function lazyWithRetry(componentImport) {
 
 // Tối ưu Code-Splitting: Lazy loading an toàn với cơ chế tự phục hồi khi cập nhật phiên bản
 const Customer360 = lazyWithRetry(() => import('./components/Customer360'));
+const CreditStatement = lazyWithRetry(() => import('./components/CreditStatement'));
 const CollateralManager = lazyWithRetry(() => import('./components/CollateralManager'));
 const Appraisal = lazyWithRetry(() => import('./components/Appraisal'));
 const LoanInspection = lazyWithRetry(() => import('./components/LoanInspection'));
@@ -60,6 +61,7 @@ const CustomerQuickModal = lazyWithRetry(() => import('./components/CustomerQuic
 // Dynamic Prefetching Map
 const TAB_PREFETCHERS = {
   customer360: () => import('./components/Customer360'),
+  credit_statement: () => import('./components/CreditStatement'),
   collateral: () => import('./components/CollateralManager'),
   appraisal: () => import('./components/Appraisal'),
   inspection: () => import('./components/LoanInspection'),
@@ -118,6 +120,7 @@ function TabLoadingSkeleton({ title = 'Đang nạp phân hệ...' }) {
 const TAB_TITLES = {
   dashboard: 'Tổng Quan',
   customer360: 'Tra Cứu Khách Hàng & Hợp Đồng',
+  credit_statement: 'Sao Kê Tín Dụng',
   collateral: 'Tài Sản Thế Chấp & Hợp Đồng (TSBD_CORE)',
   appraisal: 'Thẩm Định Tín Dụng & TSĐB',
   inspection: 'Kiểm Tra Sử Dụng Vốn',
@@ -128,7 +131,7 @@ const TAB_TITLES = {
   reports: 'Báo Cáo Thống Kê Dư Nợ',
   templates: 'Quản Lý Biểu Mẫu Trộn Tài Liệu',
   user_management: 'Phân Quyền & Quản Lý Tài Khoản',
-  settings: 'Cấu Hình & Giám Sát Đồng Bộ Core'
+  settings: 'Cấu Hình Hệ Thống'
 };
 
 export default function App() {
@@ -366,6 +369,13 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'credit_statement' && (
+              <CreditStatement
+                currentUser={currentUser}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
+
             {activeTab === 'collateral' && (
               <CollateralManager
                 onOpenCustomerQuickView={handleOpenCustomerQuickView}
@@ -403,10 +413,20 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'reconciliation' && <Reconciliation />}
+            {activeTab === 'reconciliation' && (
+              <DebitManager 
+                initialSubTab="reconciliation"
+                prefilledCustomer={null}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
+            )}
 
             {activeTab === 'debt_warning' && (
-              <DebtWarning onOpenCustomerQuickView={handleOpenCustomerQuickView} />
+              <DebitManager 
+                initialSubTab="warning"
+                prefilledCustomer={null}
+                onOpenCustomerQuickView={handleOpenCustomerQuickView}
+              />
             )}
 
             {activeTab === 'reports' && <Reports />}

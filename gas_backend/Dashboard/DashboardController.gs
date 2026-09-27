@@ -123,6 +123,7 @@ var DashboardController = {
         asOfMetadata: asOfMetadataText,
         isTwoTier: isTwoTier,
         totalDuNo: 0,
+        totalTienVay: 0,
         totalHopDong: 0,
         totalThanhVienVay: 0,
         duNoBinhQuanHD: 0,
@@ -147,6 +148,7 @@ var DashboardController = {
     }
 
     var totalDuNo = 0;
+    var totalTienVay = 0;
     var totalHopDong = 0;
     var totalDuThuLai = 0;
 
@@ -287,6 +289,7 @@ var DashboardController = {
     for (var i = 0; i < hdValues.length; i++) {
       var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
       var duNo = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "DuNo", 0)) || 0;
+      var tienVay = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "TienVay", 0)) || 0;
       var laiSuat = Number(String(HeaderUtils.getCell(hdValues[i], colMapHD, "LaiSuat", 0)).replace(',', '.')) || 0;
       var maLoaiVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiVay", "")).trim();
       var moTaVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MoTaVay", "")).trim();
@@ -302,6 +305,7 @@ var DashboardController = {
 
       if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
         totalDuNo += duNo;
+        totalTienVay += tienVay;
         totalHopDong++;
         totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
         totalWeightedLai += (duNo * laiSuat);
@@ -702,6 +706,7 @@ var DashboardController = {
       asOfMetadata: asOfMetadataText,
       isTwoTier: isTwoTier,
       totalDuNo: totalDuNo,
+      totalTienVay: totalTienVay,
       totalHopDong: totalHopDong,
       totalThanhVienVay: totalThanhVienVay,
       duNoBinhQuanHD: totalHopDong > 0 ? Math.round(totalDuNo / totalHopDong) : 0,

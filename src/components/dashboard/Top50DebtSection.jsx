@@ -97,7 +97,7 @@ export default function Top50DebtSection({
           <div className="d-flex align-items-center gap-1.5 p-1 bg-light rounded-3 border flex-wrap">
             <button
               type="button"
-              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 transition-all ${
                 activeTab === 'as_of'
                   ? 'btn-primary shadow-sm fw-bold'
                   : 'btn-ghost text-secondary hover-lift'
@@ -105,14 +105,15 @@ export default function Top50DebtSection({
               onClick={() => setActiveTab('as_of')}
             >
               <Crown size={15} />
-              <span>Top 50 Dư Nợ Lớn Nhất Đến Ngày</span>
-              <span className="badge bg-white text-indigo border ms-1" style={{ fontSize: '0.68rem', color: '#4338ca' }}>HDTD_CORE_DN</span>
-              <span className="badge bg-white text-primary ms-1">{top50DuNoDenNgay.length}</span>
+              <span>Đến ngày</span>
+              <span className={`badge ms-1 ${activeTab === 'as_of' ? 'bg-white text-dark' : 'bg-primary-subtle text-primary'}`}>
+                {top50DuNoDenNgay.length}
+              </span>
             </button>
 
             <button
               type="button"
-              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 transition-all ${
                 activeTab === 'average'
                   ? 'btn-dark text-white shadow-sm fw-bold'
                   : 'btn-ghost text-secondary hover-lift'
@@ -121,9 +122,10 @@ export default function Top50DebtSection({
               onClick={() => setActiveTab('average')}
             >
               <TrendingUp size={15} />
-              <span>Top 50 Dư Nợ Bình Quân Cuối Tháng</span>
-              <span className="badge bg-white text-primary border ms-1" style={{ fontSize: '0.68rem', color: '#1e3a8a' }}>HDTD_CORE_ALL</span>
-              <span className="badge bg-white text-dark ms-1">{top50DuNoBinhQuanCuoiThang.length}</span>
+              <span>Theo tháng (Bình quân)</span>
+              <span className={`badge ms-1 ${activeTab === 'average' ? 'bg-white text-dark' : 'bg-secondary-subtle text-secondary'}`}>
+                {top50DuNoBinhQuanCuoiThang.length}
+              </span>
             </button>
           </div>
 

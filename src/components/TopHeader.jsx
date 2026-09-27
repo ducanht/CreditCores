@@ -83,14 +83,13 @@ export default function TopHeader({
           {activeTabTitle}
         </h1>
 
-        {/* Sheets Live Status Pill */}
+        {/* System Online Status Indicator - Chỉ hiện icon nhấp nháy tình trạng */}
         <div
-          className="badge bg-success-subtle text-success border border-success-subtle d-none d-lg-flex align-items-center gap-1.5 py-1 px-2.5 rounded-pill small fw-medium ms-2"
-          style={{ fontSize: '0.72rem' }}
-          title="Kết nối trực tiếp CSDL Google Sheets & Google Apps Script (Zero Mock)"
+          className="d-flex align-items-center justify-content-center ms-2"
+          title="Hệ thống trực tuyến"
+          style={{ width: '24px', height: '24px' }}
         >
           <span className="pulse-online"></span>
-          <span>Google Sheets Live {syncStatus?.totalContracts ? `(${syncStatus.totalContracts} HĐTD)` : ''}</span>
         </div>
       </div>
 
@@ -140,15 +139,15 @@ export default function TopHeader({
                 <div className="d-flex align-items-start gap-2 p-2 rounded-2 bg-light dark:bg-slate-800">
                   <CheckCircle2 size={15} className="text-success mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="fw-medium text-body fs-8">CSDL Google Sheets</div>
-                    <div className="text-muted fs-8">Kết nối ổn định, tốc độ &lt; 1s</div>
+                    <div className="fw-medium text-body fs-8">Trạng thái vận hành</div>
+                    <div className="text-muted fs-8">Hệ thống hoạt động bình thường</div>
                   </div>
                 </div>
                 <div className="d-flex align-items-start gap-2 p-2 rounded-2 bg-light dark:bg-slate-800">
                   <Clock size={15} className="text-primary mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="fw-medium text-body fs-8">Đồng bộ gần nhất</div>
-                    <div className="text-muted fs-8">{syncStatus?.lastSyncTime || 'Sẵn sàng'}</div>
+                    <div className="fw-medium text-body fs-8">Cập nhật gần nhất</div>
+                    <div className="text-muted fs-8">{syncStatus?.lastSyncTime || 'Hôm nay'}</div>
                   </div>
                 </div>
               </div>

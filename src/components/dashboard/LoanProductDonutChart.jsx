@@ -172,7 +172,7 @@ export default function LoanProductDonutChart({
         {/* COMMUNE CONTEXT TAG */}
         <div className="d-flex align-items-center justify-content-between pt-1 pb-2 border-top border-light mb-2">
           <span className="small text-muted" style={{ fontSize: '0.78rem' }}>
-            Phạm vi: <strong className="text-dark">{activeArea ? activeArea.name : 'Toàn Bộ 3 Xã'}</strong>
+            Phạm vi: <strong className="text-dark">{activeArea ? activeArea.name : 'Toàn Địa Bàn'}</strong>
           </span>
           {activeArea && (
             <button

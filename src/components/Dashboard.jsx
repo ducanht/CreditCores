@@ -1,59 +1,32 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Landmark,
   TrendingUp,
-  Crown,
   Users,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  ArrowUpRight,
-  ShieldCheck,
   Zap,
-  ArrowLeftRight,
-  FileCheck2,
   RefreshCw,
-  Calendar,
-  CalendarRange,
-  GitCompare,
-  FileSpreadsheet,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Database,
-  Layers,
   MapPin,
-  PieChart,
-  Bell,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  ClipboardList,
-  AlertTriangle,
-  HelpCircle,
-  User,
-  Briefcase,
-  Filter,
-  Search,
-  Table,
-  LayoutGrid,
-  Check,
   Building2,
-  BarChart3
+  Calendar,
+  AlertTriangle,
+  CheckCircle2,
+  FileCheck2,
+  ClipboardList,
+  User,
+  ArrowUpRight,
+  FileSpreadsheet,
+  Clock,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
-import { formatCurrencyVN, formatCurrency, getTodayVN } from '../utils/dateUtils';
-import { api } from '../services/api';
+import { formatCurrencyVN } from '../utils/dateUtils';
 import CommuneComparisonChart from './dashboard/CommuneComparisonChart';
-import LoanProductDonutChart from './dashboard/LoanProductDonutChart';
-import MonthlyDebtTrendChart from './dashboard/MonthlyDebtTrendChart';
-import Top50DebtSection from './dashboard/Top50DebtSection';
-import ExtractAsOfModal from './dashboard/ExtractAsOfModal';
 
-// Helper rút gọn tiền tệ sang Tỷ / Triệu hiển thị trực quan
+// Helper rút gọn tiền tệ sang Tỷ / Triệu
 const formatCompactVN = (amount) => {
   const num = Number(amount) || 0;
   if (Math.abs(num) >= 1e9) {
-    const val = (num / 1e9).toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
+    const val = (num / 1e9).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
     return `${val} tỷ`;
   }
   if (Math.abs(num) >= 1e6) {
@@ -63,53 +36,28 @@ const formatCompactVN = (amount) => {
   return num.toLocaleString('vi-VN') + ' đ';
 };
 
-// Helper tính tỷ trọng phần trăm chuẩn dạng số (làm tròn 1 chữ số thập phân)
-const calcPercentNum = (part, total) => {
-  const p = Number(part) || 0;
-  const t = Number(total) || 0;
-  if (t <= 0) return 0;
-  return Number(((p / t) * 100).toFixed(1));
-};
-
-// --- Skeleton Loader cho Dashboard ---
+// Skeleton Loader khi nạp dữ liệu
 function DashboardSkeleton() {
   return (
-    <div className="dashboard-container d-flex flex-column gap-4 pb-4 content-fade-in">
+    <div className="dashboard-container d-flex flex-column gap-3 pb-4 content-fade-in">
       <div className="card-modern p-3">
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <span className="skeleton skeleton-text" style={{ width: 280, height: 24 }} />
-          <span className="skeleton skeleton-btn" style={{ width: 220, height: 32 }} />
+          <span className="skeleton skeleton-text" style={{ width: 220, height: 20 }} />
+          <span className="skeleton skeleton-btn" style={{ width: 140, height: 32 }} />
         </div>
       </div>
       <div className="row g-3">
         {[1, 2, 3, 4].map(i => (
           <div className="col-12 col-sm-6 col-xl-3" key={i}>
-            <div className="skeleton-card" style={{ minHeight: 120 }}>
-              <span className="skeleton skeleton-text sm" style={{ width: '60%' }} />
-              <span className="skeleton skeleton-stat mt-2" style={{ width: '80%' }} />
-              <div className="d-flex justify-content-between mt-3 pt-2 border-top">
-                <span className="skeleton skeleton-text sm" style={{ width: '45%' }} />
-                <span className="skeleton skeleton-badge" />
-              </div>
+            <div className="skeleton-card" style={{ minHeight: 105 }}>
+              <span className="skeleton skeleton-text sm" style={{ width: '45%' }} />
+              <span className="skeleton skeleton-stat mt-2" style={{ width: '70%' }} />
             </div>
           </div>
         ))}
       </div>
       <div className="card-modern p-3">
-        <div className="row g-3">
-          <div className="col-12 col-lg-8">
-            <span className="skeleton skeleton-title mb-3" />
-            <div className="d-flex flex-column gap-2">
-              <span className="skeleton skeleton-card" style={{ height: 68 }} />
-              <span className="skeleton skeleton-card" style={{ height: 68 }} />
-              <span className="skeleton skeleton-card" style={{ height: 68 }} />
-            </div>
-          </div>
-          <div className="col-12 col-lg-4">
-            <span className="skeleton skeleton-title mb-3" />
-            <span className="skeleton skeleton-card" style={{ height: 220 }} />
-          </div>
-        </div>
+        <div className="skeleton-card" style={{ height: 260 }} />
       </div>
     </div>
   );
@@ -120,2175 +68,402 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
     return <DashboardSkeleton />;
   }
 
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTabOverview, setActiveTabOverview] = useState('communes'); // 'communes' | 'cbtd'
 
-  // Chế độ Dashboard:
-  // - 'current': Tổng quan (Hiện tại) - Đọc trực tiếp từ HDTD_CORE (Mặc định)
-  // - 'as_of_date': Tổng quan đến ngày - Đọc từ HDTD_CORE_DN hoặc sheet mốc
-  // - 'compare': Đối sánh tăng trưởng & các năm (Hiện tại vs Đến ngày / Các năm)
-  const [dashboardMode, setDashboardMode] = useState('current');
-  const [asOfDate, setAsOfDate] = useState(() => getTodayVN());
-  const [selectedSnapshotSheet, setSelectedSnapshotSheet] = useState('HDTD_CORE_DN');
-  const [selectedCompareSheet, setSelectedCompareSheet] = useState('HDTD_CORE_DN');
-  const [modeData, setModeData] = useState(null);
-  const [isLoadingMode, setIsLoadingMode] = useState(false);
-  const [availableSnapshots, setAvailableSnapshots] = useState([
-    { sheetName: 'HDTD_CORE_DN', label: 'Dữ liệu đến ngày (HDTD_CORE_DN)', rowCount: 0 },
-    { sheetName: 'HDTD_CORE_ALL', label: 'Dữ liệu các ngày cuối tháng (HDTD_CORE_ALL)', rowCount: 0 }
-  ]);
-
-  // Nguồn dữ liệu thống kê chủ đạo phụ thuộc vào dashboardMode
-  const activeStats = useMemo(() => {
-    if (dashboardMode === 'current') return stats || {};
-    if (dashboardMode === 'as_of_date') return (modeData?.hasData ? modeData : stats) || {};
-    if (dashboardMode === 'compare') return modeData?.current || stats || {};
-    return stats || {};
-  }, [dashboardMode, modeData, stats]);
-
-  // Dữ liệu phục vụ đối sánh so sánh
-  const compareStats = useMemo(() => {
-    if (dashboardMode !== 'compare') return null;
-    return modeData?.asOf || null;
-  }, [dashboardMode, modeData]);
-
-  const comparisonDelta = useMemo(() => {
-    if (dashboardMode !== 'compare') return null;
-    return modeData?.comparison || null;
-  }, [dashboardMode, modeData]);
-
-  // Cập nhật danh sách snapshot sheets khi có từ stats ban đầu
-  useEffect(() => {
-    if (stats?.availableSnapshots && Array.isArray(stats.availableSnapshots) && stats.availableSnapshots.length > 0) {
-      setAvailableSnapshots(stats.availableSnapshots);
-    }
-  }, [stats]);
-
-  // Hàm tải dữ liệu chuyên sâu theo chế độ
-  const fetchModeData = async (modeToFetch, overrides = {}) => {
-    const targetMode = modeToFetch || dashboardMode;
-    if (targetMode === 'current') {
-      if (onRefresh) await onRefresh();
-      return;
-    }
-
-    setIsLoadingMode(true);
-    try {
-      const targetSheet = targetMode === 'compare' 
-        ? (overrides.compareSheet || selectedCompareSheet)
-        : (overrides.snapshotSheet || selectedSnapshotSheet);
-
-      const payload = {
-        mode: targetMode,
-        asOfDate: overrides.asOfDate !== undefined ? overrides.asOfDate : asOfDate,
-        sheetName: targetSheet,
-        compareSheet: overrides.compareSheet || selectedCompareSheet
-      };
-
-      const res = await api.getDashboardStats(payload, true);
-      if (res && res.status === 'success' && res.data) {
-        setModeData(res.data);
-        if (res.data.availableSnapshots && Array.isArray(res.data.availableSnapshots) && res.data.availableSnapshots.length > 0) {
-          setAvailableSnapshots(res.data.availableSnapshots);
-        }
-      }
-    } catch (err) {
-      console.error('Lỗi nạp số liệu Dashboard mode:', err);
-    } finally {
-      setIsLoadingMode(false);
-    }
-  };
-
-  const handleSwitchMode = async (newMode) => {
-    setDashboardMode(newMode);
-    if (newMode !== 'current') {
-      await fetchModeData(newMode);
-    }
-  };
-
-  // Phân hệ hiển thị: 'communes' (3 Xã & Thôn) | 'cbtd' (CBTD Portfolio) | 'products' (Cơ Cấu Cho Vay & Nghiệp Vụ)
-  const [activeSubView, setActiveSubView] = useState('communes');
-
-  // Chế độ xem: 'cards' (Thẻ trực quan) | 'table' (Bảng đối soát chi tiết)
-  const [viewMode, setViewMode] = useState('cards');
-
-  // Bộ lọc địa bàn
-  const [selectedCommuneFilter, setSelectedCommuneFilter] = useState('ALL');
-
-  // Từ khóa tìm kiếm nhanh thôn / cán bộ
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Trạng thái mở rộng accordion từng xã
-  const [expandedCommunes, setExpandedCommunes] = useState({
-    'Xã Quý Lộc': true,
-    'Xã Yên Trường': true,
-    'Xã Vĩnh Lộc': true
-  });
-
-  // Trạng thái mở rộng accordion từng CBTD
-  const [expandedCbtds, setExpandedCbtds] = useState({
-    'qtdyentho.huyennhu': true,
-    'qtdyentho.luudinh': true,
-    'qtdyentho.huunhan': true
-  });
-
-  const toggleCommuneExpand = (name) => {
-    setExpandedCommunes(prev => ({ ...prev, [name]: !prev[name] }));
-  };
-
-  const toggleCbtdExpand = (user) => {
-    setExpandedCbtds(prev => ({ ...prev, [user]: !prev[user] }));
-  };
-
-  const handleManualRefresh = async () => {
-    if (isRefreshing || isLoadingMode) return;
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    if (dashboardMode === 'current') {
-      if (onRefresh) {
-        await onRefresh();
-      }
-    } else {
-      await fetchModeData();
+    try {
+      if (onRefresh) await onRefresh();
+    } finally {
+      setIsRefreshing(false);
     }
-    setTimeout(() => setIsRefreshing(false), 600);
   };
 
-  // Tính toán các chỉ số phái sinh từ activeStats
-  const totalDuNo = activeStats?.totalDuNo || 0;
-  const totalHopDong = activeStats?.totalHopDong || 0;
-  const totalThanhVienVay = activeStats?.totalThanhVienVay || 435;
-  const duNoBinhQuanHD = activeStats?.duNoBinhQuanHD || (totalHopDong > 0 ? Math.round(totalDuNo / totalHopDong) : 0);
-  const duNoBinhQuanTV = activeStats?.duNoBinhQuanTV || (totalThanhVienVay > 0 ? Math.round(totalDuNo / totalThanhVienVay) : 0);
-  const laiSuatBinhQuan = activeStats?.laiSuatBinhQuan || 10.4;
-  const totalDuThuLai = activeStats?.totalDuThuLai || 0;
-  const totalKhachHangTrichNo = activeStats?.totalKhachHangTrichNo || 0;
-  const totalNoTon = activeStats?.totalNoTon || 0;
-  const countNoTon = activeStats?.countNoTon || 0;
-  const pendingAppraisals = activeStats?.pendingAppraisals || 0;
-  const pendingInspections = activeStats?.pendingInspections || 0;
-  const [isExtractModalOpen, setIsExtractModalOpen] = useState(false);
+  // Trích xuất số liệu từ stats
+  const totalDuNo = stats.totalDuNo || 0;
+  const totalTienVay = stats.totalTienVay || 0;
+  const totalHopDong = stats.totalHopDong || 0;
+  const totalThanhVienVay = stats.totalThanhVienVay || 0;
+  const laiSuatBinhQuan = stats.laiSuatBinhQuan || '0';
+  const duNoBinhQuanHD = totalHopDong > 0 ? Math.round(totalDuNo / totalHopDong) : 0;
+  const duNoBinhQuanTV = totalThanhVienVay > 0 ? Math.round(totalDuNo / totalThanhVienVay) : 0;
+  const totalDuThuLai = stats.totalDuThuLai || 0;
+  const totalKhachHangTrichNo = stats.totalKhachHangTrichNo || 0;
+  const autoDebitCoverageRate = stats.autoDebitCoverageRate || 0;
+  const totalNoTon = stats.totalNoTon || 0;
 
-  // Dữ liệu Top 50 và Diễn biến tháng
-  const top50DuNoDenNgay = useMemo(() => {
-    return (activeStats?.top50DuNoDenNgay && Array.isArray(activeStats.top50DuNoDenNgay))
-      ? activeStats.top50DuNoDenNgay
-      : [];
-  }, [activeStats?.top50DuNoDenNgay]);
-
-  const top50DuNoBinhQuanCuoiThang = useMemo(() => {
-    return (activeStats?.top50DuNoBinhQuanCuoiThang && Array.isArray(activeStats.top50DuNoBinhQuanCuoiThang))
-      ? activeStats.top50DuNoBinhQuanCuoiThang
-      : [];
-  }, [activeStats?.top50DuNoBinhQuanCuoiThang]);
-
-  const monthlyDebtTrend = useMemo(() => {
-    return (activeStats?.monthlyDebtTrend && Array.isArray(activeStats.monthlyDebtTrend))
-      ? activeStats.monthlyDebtTrend
-      : [];
-  }, [activeStats?.monthlyDebtTrend]);
-
-  const asOfMetadata = activeStats?.asOfMetadata || '';
-
-  // Tỷ lệ bao phủ trích nợ tự động trên số hợp đồng
-  const autoDebitCoverageRate = totalHopDong > 0 ? Math.min(100, Math.round((totalKhachHangTrichNo / totalHopDong) * 100)) : 0;
-
-  // Dữ liệu 3 Xã chuẩn hóa
-  const areaStats = useMemo(() => {
-    if (!activeStats?.areaStats || !Array.isArray(activeStats.areaStats)) return [];
-    return activeStats.areaStats;
-  }, [activeStats?.areaStats]);
-
-  // Dữ liệu CBTD chuẩn hóa
-  const cbtdStats = useMemo(() => {
-    if (!activeStats?.cbtdStats || !Array.isArray(activeStats.cbtdStats)) return [];
-    return activeStats.cbtdStats;
-  }, [activeStats?.cbtdStats]);
-
-  // Dữ liệu Cơ cấu cho vay 3 nhóm chính
-  const loanGroups = useMemo(() => {
-    if (activeStats?.loanGroups && Array.isArray(activeStats.loanGroups)) return activeStats.loanGroups;
-    if (activeStats?.loanTypes && Array.isArray(activeStats.loanTypes)) return activeStats.loanTypes;
-    return [];
-  }, [activeStats?.loanGroups, activeStats?.loanTypes]);
-
-  // Lọc danh sách Xã & Thôn theo Bộ lọc và Từ khóa
-  const filteredAreas = useMemo(() => {
-    return areaStats
-      .filter(area => selectedCommuneFilter === 'ALL' || area.name === selectedCommuneFilter)
-      .map(area => {
-        if (!searchQuery.trim()) return area;
-        const q = searchQuery.toLowerCase().trim();
-        const matchesArea = area.name.toLowerCase().includes(q) || (area.cbqlName && area.cbqlName.toLowerCase().includes(q));
-        const filteredThons = (area.thons || []).filter(th => th.name.toLowerCase().includes(q));
-        if (matchesArea) return area;
-        if (filteredThons.length > 0) {
-          return { ...area, thons: filteredThons };
-        }
-        return null;
-      })
-      .filter(Boolean);
-  }, [areaStats, selectedCommuneFilter, searchQuery]);
-
-  // Lọc CBTD theo từ khóa
-  const filteredCbtds = useMemo(() => {
-    if (!searchQuery.trim()) return cbtdStats;
-    const q = searchQuery.toLowerCase().trim();
-    return cbtdStats.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      c.user.toLowerCase().includes(q) || 
-      c.assignedArea.toLowerCase().includes(q) ||
-      (c.communes && c.communes.some(cm => (cm.thons || []).some(th => th.name.toLowerCase().includes(q))))
-    );
-  }, [cbtdStats, searchQuery]);
-
-  // Tổng hợp toàn Quỹ cho bảng đối soát
-  const summaryTotals = useMemo(() => {
-    let nn = 0, td = 0, tm = 0;
-    areaStats.forEach(a => {
-      if (a.loanGroups) {
-        nn += (a.loanGroups['Nông nghiệp'] || 0);
-        td += (a.loanGroups['Tiêu dùng - Đời sống'] || 0);
-        tm += (a.loanGroups['Thương mại - Dịch vụ'] || 0);
-      }
-    });
-    return {
-      duNo: totalDuNo,
-      countHD: totalHopDong,
-      countKH: totalThanhVienVay,
-      duNoBinhQuanHD,
-      duNoBinhQuanTV,
-      nn,
-      td,
-      tm
-    };
-  }, [areaStats, totalDuNo, totalHopDong, totalThanhVienVay, duNoBinhQuanHD, duNoBinhQuanTV]);
+  // Dữ liệu địa bàn & CBTD
+  const areaStats = stats.areaStats || [];
+  const cbtdStats = stats.cbtdStats || [];
 
   return (
-    <div className="dashboard-container d-flex flex-column gap-4 pb-4">
-      {/* ========================================================================= */}
-      {/* 🌟 1. EXECUTIVE HEADER: CHÀO MỪNG, TRẠNG THÁI & BỘ LỌC CHU KỲ           */}
-      {/* ========================================================================= */}
+    <div className="dashboard-container d-flex flex-column gap-3 pb-4 content-fade-in">
+      {/* 1. Header Bảng Điều Hành & Nút Thao Tác Nhanh */}
       <div className="card-modern p-3">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-          <div className="d-flex align-items-center gap-2.5 text-muted small flex-wrap">
-            <span>Xin chào, <strong className="text-dark">{currentUser?.fullName || 'Cán bộ Quản trị'}</strong> ({currentUser?.role || 'ADMIN'})</span>
-            <span>•</span>
-            <span className="d-flex align-items-center gap-1">
-              <Calendar size={13} /> {getTodayVN()}
-            </span>
-            <span>•</span>
-            <span className="d-flex align-items-center gap-1 text-success fw-medium">
-              <span className="p-1 rounded-circle bg-success d-inline-block"></span> Core SQL: {syncStatus?.status === 'SUCCESS' ? 'Đã đồng bộ' : 'Online'}
-            </span>
-          </div>
-
-          <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-between justify-content-md-end">
-            {/* Bộ chọn chu kỳ */}
-            <div className="seg-control" role="tablist">
-              <button
-                type="button"
-                className={`seg-item ${selectedPeriod === 'month' ? 'active' : ''}`}
-                onClick={() => setSelectedPeriod('month')}
-              >
-                Tháng Này
-              </button>
-              <button
-                type="button"
-                className={`seg-item ${selectedPeriod === 'quarter' ? 'active' : ''}`}
-                onClick={() => setSelectedPeriod('quarter')}
-              >
-                Quý Này
-              </button>
-              <button
-                type="button"
-                className={`seg-item ${selectedPeriod === 'year' ? 'active' : ''}`}
-                onClick={() => setSelectedPeriod('year')}
-              >
-                Năm 2026
-              </button>
-            </div>
-
-            {/* Nút Làm Mới */}
-            <button
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 px-2.5 py-1.5"
-              onClick={handleManualRefresh}
-              title="Làm mới số liệu từ máy chủ Google Apps Script"
-            >
-              <RefreshCw size={13} className={isRefreshing ? 'spin-animation text-primary' : ''} />
-              <span className="d-none d-sm-inline small">{isRefreshing ? 'Đang tải...' : 'Làm mới'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 🚀 CHẾ ĐỘ BÁO CÁO & ĐỐI SÁNH: HIỆN TẠI vs ĐẾN NGÀY vs CÁC NĂM            */}
-      {/* ========================================================================= */}
-      <div className="card-modern p-3 border-start border-4 border-primary">
-        <div className="d-flex flex-column flex-xl-row justify-content-between align-items-start align-items-xl-center gap-3">
-          {/* 3 Tabs Chuyển Đổi Chế Độ */}
-          <div className="d-flex align-items-center gap-1.5 p-1 bg-light rounded-3 border flex-wrap">
-            <button
-              type="button"
-              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
-                dashboardMode === 'current'
-                  ? 'btn-primary shadow-sm fw-bold'
-                  : 'btn-ghost text-secondary hover-lift'
-              }`}
-              onClick={() => handleSwitchMode('current')}
-            >
-              <Zap size={14} />
-              <span>Tổng Quan (Hiện Tại)</span>
-              <span className="badge bg-white text-primary ms-1" style={{ fontSize: '0.68rem' }}>Mặc định</span>
-            </button>
-
-            <button
-              type="button"
-              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
-                dashboardMode === 'as_of_date'
-                  ? 'btn-dark text-white shadow-sm fw-bold'
-                  : 'btn-ghost text-secondary hover-lift'
-              }`}
-              style={dashboardMode === 'as_of_date' ? { backgroundColor: '#4338ca', borderColor: '#4338ca' } : {}}
-              onClick={() => handleSwitchMode('as_of_date')}
-            >
-              <CalendarRange size={14} />
-              <span>Tổng Quan Đến Ngày</span>
-              <span className="badge bg-white text-dark ms-1" style={{ fontSize: '0.68rem' }}>HDTD_CORE_DN</span>
-            </button>
-
-            <button
-              type="button"
-              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-2 transition-all ${
-                dashboardMode === 'compare'
-                  ? 'btn-success text-white shadow-sm fw-bold'
-                  : 'btn-ghost text-secondary hover-lift'
-              }`}
-              onClick={() => handleSwitchMode('compare')}
-            >
-              <GitCompare size={14} />
-              <span>Đối Sánh & Tăng Trưởng</span>
-              <span className="badge bg-white text-success ms-1" style={{ fontSize: '0.68rem' }}>Đa kỳ / Các năm</span>
-            </button>
-          </div>
-
-          {/* Công cụ chọn ngày & Sheet khi ở chế độ Đến Ngày hoặc Đối Sánh */}
-          {dashboardMode !== 'current' && (
-            <div className="d-flex align-items-center gap-2 flex-wrap w-100 w-xl-auto justify-content-xl-end">
-              {dashboardMode === 'as_of_date' && (
-                <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <div className="input-group input-group-sm" style={{ width: 175 }}>
-                    <span className="input-group-text bg-white text-muted">
-                      <Calendar size={13} />
-                    </span>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="dd/MM/yyyy"
-                      value={asOfDate}
-                      onChange={(e) => setAsOfDate(e.target.value)}
-                      title="Nhập mốc ngày chốt dữ liệu (dd/MM/yyyy)"
-                    />
-                  </div>
-
-                  <select
-                    className="form-select form-select-sm"
-                    style={{ minWidth: 220 }}
-                    value={selectedSnapshotSheet}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedSnapshotSheet(val);
-                      fetchModeData('as_of_date', { snapshotSheet: val });
-                    }}
-                  >
-                    {availableSnapshots.map((s, idx) => (
-                      <option key={idx} value={s.sheetName}>
-                        {s.label || s.sheetName} {s.rowCount ? `(${s.rowCount} HĐ)` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {dashboardMode === 'compare' && (
-                <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <span className="text-muted small fw-medium">Kỳ đối chiếu:</span>
-                  <select
-                    className="form-select form-select-sm"
-                    style={{ minWidth: 230 }}
-                    value={selectedCompareSheet}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedCompareSheet(val);
-                      fetchModeData('compare', { compareSheet: val });
-                    }}
-                  >
-                    {availableSnapshots.map((s, idx) => (
-                      <option key={idx} value={s.sheetName}>
-                        {s.label || s.sheetName} {s.rowCount ? `(${s.rowCount} HĐ)` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5 px-3 py-1.5"
-                onClick={() => fetchModeData()}
-                disabled={isLoadingMode}
-              >
-                <RefreshCw size={13} className={isLoadingMode ? 'spin-animation text-primary' : ''} />
-                <span className="small fw-medium">{isLoadingMode ? 'Đang nạp...' : 'Tải Dữ Liệu'}</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Thanh trạng thái phụ thuộc vào chế độ */}
-        {dashboardMode === 'as_of_date' && (
-          <div className="mt-2.5 pt-2.5 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 text-dark small" style={{ backgroundColor: '#f5f3ff', margin: '0.75rem -0.75rem -0.75rem -0.75rem', padding: '0.75rem 1rem', borderRadius: '0 0 10px 10px' }}>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="p-1 rounded-circle d-inline-block" style={{ backgroundColor: '#6366f1' }}></span>
-              <span>Đang hiển thị tổng quan chốt đến ngày: <strong className="text-indigo">{asOfDate || 'Hiện tại'}</strong></span>
-              <span>•</span>
-              <span>Nguồn bảng: <strong className="font-monospace text-primary">{activeStats?.sheetDisplayName || selectedSnapshotSheet}</strong></span>
-              <span>•</span>
-              <span className="text-muted">Tổng {totalHopDong} hợp đồng • {totalThanhVienVay} thành viên vay</span>
-            </div>
-            <div className="d-flex align-items-center gap-2">
-              <button
-                type="button"
-                className="btn btn-xs btn-outline-primary d-flex align-items-center gap-1.5 py-1 px-2.5 rounded-2 bg-white shadow-sm"
-                onClick={() => setIsExtractModalOpen(true)}
-                title="Gửi lệnh trích xuất dữ liệu sao kê HDTD_CORE_DN từ SQL Core qua Python Daemon"
-              >
-                <Database size={13} className="text-primary" />
-                <span className="fw-semibold">Trích Xuất Từ SQL Core</span>
-              </button>
-              <span className="badge text-white px-2 py-1" style={{ backgroundColor: '#4f46e5' }}>
-                Snapshot Đến Ngày
-              </span>
-            </div>
-          </div>
-        )}
-
-        {dashboardMode === 'compare' && (
-          <div className="mt-2.5 pt-2.5 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 small" style={{ backgroundColor: '#f0fdf4', margin: '0.75rem -0.75rem -0.75rem -0.75rem', padding: '0.75rem 1rem', borderRadius: '0 0 10px 10px' }}>
-            <div className="d-flex align-items-center gap-2 flex-wrap text-success">
-              <span className="p-1 rounded-circle bg-success d-inline-block"></span>
-              <span>Đang đối chiếu: <strong className="text-dark">Hiện Tại (HDTD_CORE)</strong> vs <strong className="text-primary">{selectedCompareSheet}</strong></span>
-              {comparisonDelta?.diffDuNo !== undefined && (
-                <>
-                  <span>•</span>
-                  <span>Tăng trưởng dư nợ: <strong className={comparisonDelta.diffDuNo >= 0 ? 'text-success' : 'text-danger'}>
-                    {comparisonDelta.diffDuNo >= 0 ? '+' : ''}{formatCurrencyVN(comparisonDelta.diffDuNo)} ({comparisonDelta.growthDuNo >= 0 ? '+' : ''}{comparisonDelta.growthDuNo}%)
-                  </strong></span>
-                </>
-              )}
-            </div>
-            <span className="badge bg-success text-white px-2 py-1">
-              Phân Tích Tăng Trưởng & Đối Sánh
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Banner Dòng 1 Thông Tin Sao Kê Dữ Liệu HDTD_CORE_DN / HDTD_CORE_ALL */}
-      {dashboardMode === 'as_of_date' && asOfMetadata && (
-        <div
-          className="card-modern p-3 border-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3"
-          style={{
-            background: selectedSnapshotSheet === 'HDTD_CORE_ALL'
-              ? 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)'
-              : 'linear-gradient(135deg, #312e81 0%, #4338ca 100%)',
-            color: '#fff'
-          }}
-        >
-          <div className="d-flex align-items-center gap-2.5">
-            <div className="p-2 rounded-2 bg-white bg-opacity-20 text-white">
-              <Database size={20} />
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <div className="p-2 rounded-2.5 bg-primary-subtle text-primary">
+              <Landmark size={20} />
             </div>
             <div>
-              <div className="fw-bold fs-6">{asOfMetadata}</div>
-              <div className="small text-white text-opacity-80">
-                {selectedSnapshotSheet === 'HDTD_CORE_ALL'
-                  ? 'Kho lưu trữ dữ liệu sao kê các ngày cuối tháng (HDTD_CORE_ALL) phục vụ thống kê chuỗi thời gian & tính dư nợ bình quân.'
-                  : 'Bảng sao kê snapshot đến ngày cụ thể (HDTD_CORE_DN) phục vụ đối soát tức thời & Top 50 Dư nợ lớn nhất đến ngày.'}
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm btn-light text-indigo fw-bold d-flex align-items-center gap-1.5 shadow-sm"
-            onClick={() => setIsExtractModalOpen(true)}
-          >
-            <Database size={14} className="text-indigo" />
-            <span>Trích Xuất Từ Core SQL</span>
-          </button>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 📊 KHỐI ĐỐI SÁNH TĂNG TRƯỞNG & CÁC NĂM (CHỈ HIỂN THỊ KHI Ở CHẾ ĐỘ COMPARE)  */}
-      {/* ========================================================================= */}
-      {dashboardMode === 'compare' && (
-        <div className="d-flex flex-column gap-3 animate-fade-in">
-          {/* 4 Thẻ Bento Metric Đối Sánh Tăng Trưởng */}
-          <div className="row g-3">
-            {/* Thẻ 1: Tăng trưởng Dư nợ */}
-            <div className="col-12 col-sm-6 col-xl-3">
-              <div className="card-modern p-3 border-start border-4 border-success h-100">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
-                    Tăng Trưởng Dư Nợ
-                  </span>
-                  <div className={`badge ${comparisonDelta?.diffDuNo >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fw-bold`}>
-                    {comparisonDelta?.growthDuNo >= 0 ? '+' : ''}{comparisonDelta?.growthDuNo || 0}%
-                  </div>
-                </div>
-                <div>
-                  <div className="d-flex align-items-center gap-1.5 mb-1">
-                    {comparisonDelta?.diffDuNo >= 0 ? (
-                      <ArrowUp size={20} className="text-success" />
-                    ) : (
-                      <ArrowDown size={20} className="text-danger" />
-                    )}
-                    <h3 className={`fw-bold mb-0 fs-4 num-tabular ${comparisonDelta?.diffDuNo >= 0 ? 'text-success' : 'text-danger'}`}>
-                      {comparisonDelta?.diffDuNo >= 0 ? '+' : ''}{formatCompactVN(comparisonDelta?.diffDuNo || 0)}
-                    </h3>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
-                    <span>Hiện tại: <strong className="text-dark">{formatCompactVN(totalDuNo)}</strong></span>
-                    <span>Kỳ SS: <strong className="text-secondary">{formatCompactVN(compareStats?.totalDuNo || 0)}</strong></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Thẻ 2: Tăng trưởng Số Hợp Đồng */}
-            <div className="col-12 col-sm-6 col-xl-3">
-              <div className="card-modern p-3 border-start border-4 border-primary h-100">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
-                    Biến Động Số Hợp Đồng
-                  </span>
-                  <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(14, 165, 233, 0.15)', '--icon-color': '#0ea5e9' }}>
-                    <FileCheck2 size={16} />
-                  </div>
-                </div>
-                <div>
-                  <div className="d-flex align-items-baseline gap-2 mb-1">
-                    <h3 className={`fw-bold mb-0 fs-4 num-tabular ${(comparisonDelta?.diffHopDong || 0) >= 0 ? 'text-primary' : 'text-danger'}`}>
-                      {(comparisonDelta?.diffHopDong || 0) >= 0 ? '+' : ''}{comparisonDelta?.diffHopDong || 0}
-                    </h3>
-                    <span className="text-muted small">Hợp đồng</span>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
-                    <span>Hiện tại: <strong className="text-dark">{totalHopDong} HĐ</strong></span>
-                    <span>Kỳ SS: <strong className="text-secondary">{compareStats?.totalHopDong || 0} HĐ</strong></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Thẻ 3: Biến động Thành viên vay */}
-            <div className="col-12 col-sm-6 col-xl-3">
-              <div className="card-modern p-3 border-start border-4 border-info h-100">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
-                    Biến Động Thành Viên Vay
-                  </span>
-                  <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(99, 102, 241, 0.15)', '--icon-color': '#6366f1' }}>
-                    <Users size={16} />
-                  </div>
-                </div>
-                <div>
-                  <div className="d-flex align-items-baseline gap-2 mb-1">
-                    <h3 className={`fw-bold mb-0 fs-4 num-tabular ${(comparisonDelta?.diffThanhVien || 0) >= 0 ? 'text-indigo' : 'text-danger'}`} style={{ color: '#4f46e5' }}>
-                      {(comparisonDelta?.diffThanhVien || 0) >= 0 ? '+' : ''}{comparisonDelta?.diffThanhVien || 0}
-                    </h3>
-                    <span className="text-muted small">Thành viên</span>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
-                    <span>Hiện tại: <strong className="text-dark">{totalThanhVienVay} TV</strong></span>
-                    <span>Kỳ SS: <strong className="text-secondary">{compareStats?.totalThanhVienVay || 0} TV</strong></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Thẻ 4: Dư nợ bình quân / HĐ */}
-            <div className="col-12 col-sm-6 col-xl-3">
-              <div className="card-modern p-3 border-start border-4 border-warning h-100">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
-                    Dư Nợ BQ / Hợp Đồng
-                  </span>
-                  <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(245, 158, 11, 0.15)', '--icon-color': '#f59e0b' }}>
-                    <TrendingUp size={16} />
-                  </div>
-                </div>
-                <div>
-                  <div className="d-flex align-items-baseline gap-2 mb-1">
-                    <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular">
-                      {formatCompactVN(duNoBinhQuanHD)}
-                    </h4>
-                    <span className="text-muted small">/ HĐ</span>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted small mt-2 pt-2 border-top">
-                    <span>Kỳ SS: <strong className="text-secondary">{formatCompactVN(compareStats?.duNoBinhQuanHD || 0)}</strong></span>
-                    <span className="badge bg-light text-dark fw-bold">
-                      {duNoBinhQuanHD >= (compareStats?.duNoBinhQuanHD || 0) ? '+' : ''}
-                      {formatCompactVN(duNoBinhQuanHD - (compareStats?.duNoBinhQuanHD || 0))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bảng Đối Soát Tăng Trưởng Chi Tiết 3 Xã */}
-          <div className="card-modern p-3">
-            <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2 border-bottom pb-2">
               <div className="d-flex align-items-center gap-2">
-                <MapPin size={18} className="text-success" />
-                <h5 className="fw-bold mb-0 text-dark">Đối Soát Tăng Trưởng Dư Nợ Theo 3 Xã</h5>
+                <h5 className="fw-bold mb-0 font-heading text-dark">Tổng Quan Điều Hành</h5>
+                {/* Icon nhấp nháy tình trạng trực tuyến */}
+                <span className="pulse-online" title="Hệ thống trực tuyến" />
               </div>
-              <span className="badge bg-light text-muted border">
-                So sánh: Hiện Tại vs {selectedCompareSheet}
+              <span className="small text-muted">
+                Bảng số liệu điều hành tín dụng và quản trị rủi ro QTDND Yên Thọ
               </span>
             </div>
+          </div>
 
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0" style={{ minWidth: 680 }}>
-                <thead className="table-light text-secondary small text-uppercase" style={{ fontSize: '0.75rem' }}>
-                  <tr>
-                    <th style={{ width: '22%' }}>Địa Bàn Xã</th>
-                    <th className="text-end" style={{ width: '18%' }}>Dư Nợ Hiện Tại</th>
-                    <th className="text-end" style={{ width: '18%' }}>Dư Nợ Kỳ Đối Chiếu</th>
-                    <th className="text-end" style={{ width: '18%' }}>Chênh Lệch (Δ)</th>
-                    <th className="text-center" style={{ width: '12%' }}>% Tăng Trưởng</th>
-                    <th className="text-end" style={{ width: '12%' }}>Số HĐ (HT/Kỳ)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {['Xã Quý Lộc', 'Xã Yên Trường', 'Xã Vĩnh Lộc'].map(communeName => {
-                    const curArea = areaStats.find(a => a.name === communeName) || { duno: 0, countHD: 0 };
-                    const compAreas = compareStats?.areaStats || [];
-                    const compArea = compAreas.find(a => a.name === communeName) || { duno: 0, countHD: 0 };
-                    const diffAreaDuNo = curArea.duno - compArea.duno;
-                    const growthAreaRate = compArea.duno > 0 ? ((diffAreaDuNo / compArea.duno) * 100).toFixed(1) : (curArea.duno > 0 ? 100 : 0);
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-2"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Làm mới số liệu"
+            >
+              <RefreshCw size={13} className={isRefreshing ? 'spin-animation' : ''} />
+              <span className="small">{isRefreshing ? 'Đang tải...' : 'Làm mới'}</span>
+            </button>
 
-                    return (
-                      <tr key={communeName}>
-                        <td className="fw-bold text-dark">
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="p-1.5 rounded-circle bg-success-subtle text-success">
-                              <Building2 size={14} />
-                            </span>
-                            <span>{communeName}</span>
-                          </div>
-                        </td>
-                        <td className="text-end fw-bold text-dark num-tabular">
-                          {formatCurrencyVN(curArea.duno)}
-                        </td>
-                        <td className="text-end text-secondary num-tabular">
-                          {formatCurrencyVN(compArea.duno)}
-                        </td>
-                        <td className={`text-end fw-bold num-tabular ${diffAreaDuNo >= 0 ? 'text-success' : 'text-danger'}`}>
-                          {diffAreaDuNo >= 0 ? '+' : ''}{formatCurrencyVN(diffAreaDuNo)}
-                        </td>
-                        <td className="text-center">
-                          <span className={`badge ${diffAreaDuNo >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} fw-bold`}>
-                            {diffAreaDuNo >= 0 ? '+' : ''}{growthAreaRate}%
-                          </span>
-                        </td>
-                        <td className="text-end num-tabular small">
-                          <strong className="text-dark">{curArea.countHD}</strong> / <span className="text-muted">{compArea.countHD}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="table-light fw-bold">
-                  <tr>
-                    <td>TỔNG TOÀN QUỸ</td>
-                    <td className="text-end text-dark num-tabular">{formatCurrencyVN(totalDuNo)}</td>
-                    <td className="text-end text-secondary num-tabular">{formatCurrencyVN(compareStats?.totalDuNo || 0)}</td>
-                    <td className={`text-end num-tabular ${comparisonDelta?.diffDuNo >= 0 ? 'text-success' : 'text-danger'}`}>
-                      {comparisonDelta?.diffDuNo >= 0 ? '+' : ''}{formatCurrencyVN(comparisonDelta?.diffDuNo || 0)}
-                    </td>
-                    <td className="text-center">
-                      <span className={`badge ${comparisonDelta?.diffDuNo >= 0 ? 'bg-success text-white' : 'bg-danger text-white'}`}>
-                        {comparisonDelta?.growthDuNo >= 0 ? '+' : ''}{comparisonDelta?.growthDuNo || 0}%
-                      </span>
-                    </td>
-                    <td className="text-end num-tabular small">
-                      {totalHopDong} / {compareStats?.totalHopDong || 0}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-2 shadow-xs fw-semibold"
+              onClick={() => onNavigate && onNavigate('credit_statement')}
+              title="Mở phân hệ Sao kê tín dụng chuyên sâu"
+            >
+              <FileSpreadsheet size={14} />
+              <span>Sao kê tín dụng</span>
+              <ChevronRight size={13} />
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ========================================================================= */}
-      {/* 📊 2. HỆ THỐNG 4 THẺ BENTO KPI METRICS CAO CẤP                             */}
-      {/* ========================================================================= */}
+      {/* 2. Hệ Thống 4 Thẻ Chỉ Số Trọng Yếu */}
       <div className="row g-3">
-        {/* KPI 1: Tổng Dư Nợ Tín Dụng */}
+        {/* Thẻ 1: Tổng Dư Nợ */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="kpi-bento-card h-100 cursor-pointer"
-            onClick={() => onNavigate('customer360')}
-            title="Bấm để xem danh sách khách hàng & hợp đồng"
+            className="card-modern p-3 h-100 cursor-pointer hover-lift border-start border-4 border-success"
+            onClick={() => onNavigate && onNavigate('credit_statement')}
+            title="Bấm để xem chi tiết sao kê"
           >
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
-                Tổng Dư Nợ Tín Dụng
+            <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
+              <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
+                Tổng Dư Nợ Thực Tế (DuNo)
               </span>
-              <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(154, 205, 50, 0.15)', '--icon-color': '#4d7c0f' }}>
-                <Landmark size={18} />
-              </div>
+              <Landmark size={16} className="text-success" />
             </div>
             <div>
-              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular">
+              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular font-numeric">
                 {formatCurrencyVN(totalDuNo)}
               </h3>
               <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
-                <span className="d-flex align-items-center gap-1 text-success fw-semibold">
-                  <TrendingUp size={13} /> {totalHopDong} HĐ • {totalThanhVienVay} TV
+                <span className="text-success fw-medium">
+                  {totalHopDong} HĐ • {totalThanhVienVay} Khách vay
                 </span>
-                <span className="text-primary font-monospace" style={{ fontSize: '0.72rem' }}>Tra cứu HĐTD →</span>
+                {totalTienVay > 0 ? (
+                  <span className="text-muted font-numeric" style={{ fontSize: '0.72rem' }} title="Tổng vốn giải ngân ban đầu">
+                    Vốn vay: {formatCompactVN(totalTienVay)}
+                  </span>
+                ) : (
+                  <span className="text-primary font-monospace" style={{ fontSize: '0.72rem' }}>Sao kê →</span>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* KPI 2: Dư Nợ Bình Quân & Lãi Suất */}
+        {/* Thẻ 2: Dư Nợ Bình Quân & Lãi Suất */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="kpi-bento-card h-100 cursor-pointer"
-            onClick={() => setActiveSubView('communes')}
-            title="Bấm để xem phân tích địa bàn chi tiết"
+            className="card-modern p-3 h-100 cursor-pointer hover-lift border-start border-4 border-primary"
+            onClick={() => onNavigate && onNavigate('credit_statement')}
+            title="Xem chi tiết sao kê"
           >
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+            <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
+              <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
                 Dư Nợ Bình Quân & Lãi Suất
               </span>
-              <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(2, 132, 199, 0.15)', '--icon-color': '#0284c7' }}>
-                <Users size={18} />
-              </div>
+              <Users size={16} className="text-primary" />
             </div>
             <div>
               <div className="d-flex align-items-baseline gap-2 mb-1">
-                <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular">
+                <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular font-numeric">
                   {formatCompactVN(duNoBinhQuanHD)}
                 </h4>
                 <span className="text-muted small">/ Hợp đồng</span>
               </div>
               <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
-                <span>BQ/Thành viên: <strong className="text-dark num-tabular">{formatCompactVN(duNoBinhQuanTV)}</strong></span>
-                <span className="badge bg-info-subtle text-info fw-bold">LS BQ: {laiSuatBinhQuan}%</span>
+                <span>BQ/Thành viên: <strong className="text-dark num-tabular font-numeric">{formatCompactVN(duNoBinhQuanTV)}</strong></span>
+                <span className="badge bg-primary-subtle text-primary fw-bold font-monospace">LS: {laiSuatBinhQuan}%</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* KPI 3: Dự Thu Lãi Kỳ Này */}
+        {/* Thẻ 3: Dự Thu Lãi Kỳ Này */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="kpi-bento-card h-100 cursor-pointer"
-            onClick={() => onNavigate('debit_batch')}
-            title="Bấm để xem hoặc khởi tạo đợt trích nợ"
+            className="card-modern p-3 h-100 cursor-pointer hover-lift border-start border-4 border-warning"
+            onClick={() => onNavigate && onNavigate('debit_batch')}
+            title="Quản lý đợt trích nợ"
           >
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+            <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
+              <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
                 Dự Thu Lãi Kỳ Này
               </span>
-              <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(4, 120, 87, 0.15)', '--icon-color': '#047857' }}>
-                <TrendingUp size={18} />
-              </div>
+              <TrendingUp size={16} className="text-warning" />
             </div>
             <div>
-              <h3 className="fw-bold text-success mb-1 fs-4 num-tabular">
+              <h3 className="fw-bold text-dark mb-1 fs-4 num-tabular font-numeric">
                 {formatCurrencyVN(totalDuThuLai)}
               </h3>
               <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
-                <span>Tính ngày thực tế TT14</span>
-                <span className="text-success font-monospace" style={{ fontSize: '0.72rem' }}>3 Kỳ (05, 15, 25) →</span>
+                <span>Tính ngày TT 14</span>
+                <span className="text-warning-emphasis font-monospace" style={{ fontSize: '0.72rem' }}>3 Kỳ (05, 15, 25) →</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* KPI 4: Trích Nợ CASA & Nợ Tồn */}
+        {/* Thẻ 4: Ủy Quyền CASA & Nợ Tồn */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div
-            className="kpi-bento-card h-100 cursor-pointer"
-            onClick={() => onNavigate('debit_register')}
-            title="Bấm để quản lý danh sách đăng ký trích nợ"
+            className="card-modern p-3 h-100 cursor-pointer hover-lift border-start border-4 border-danger"
+            onClick={() => onNavigate && onNavigate('debit_register')}
+            title="Quản lý đăng ký trích nợ CASA"
           >
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-secondary small fw-medium text-uppercase" style={{ letterSpacing: '0.3px', fontSize: '0.74rem' }}>
+            <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
+              <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
                 Ủy Quyền CASA & Nợ Tồn
               </span>
-              <div className="kpi-icon-wrapper" style={{ '--icon-bg': 'rgba(234, 88, 12, 0.15)', '--icon-color': '#ea580c' }}>
-                <Zap size={18} />
-              </div>
+              <Zap size={16} className="text-danger" />
             </div>
             <div>
               <div className="d-flex align-items-baseline gap-2 mb-1">
-                <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular">
-                  {totalKhachHangTrichNo} <span className="fs-6 fw-normal text-muted">TV trích nợ</span>
+                <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular font-numeric">
+                  {totalKhachHangTrichNo} <span className="fs-6 fw-normal text-muted">TV đăng ký</span>
                 </h4>
               </div>
               <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
-                <span>Bao phủ: <strong className="text-dark">{autoDebitCoverageRate}%</strong> khách vay</span>
-                <span className="text-danger fw-semibold">Nợ tồn: {formatCurrencyVN(totalNoTon)}</span>
+                <span>Bao phủ: <strong className="text-dark font-numeric">{autoDebitCoverageRate}%</strong></span>
+                <span className="text-danger fw-semibold">Nợ tồn: {formatCompactVN(totalNoTon)}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 🧭 3. THANH ĐIỀU HƯỚNG PHÂN HỆ THỐNG KÊ (GRID / FLEX-WRAP - KHÔNG KÉO CUỘN) */}
-      {/* ========================================================================= */}
-      <div className="card-modern p-2.5">
-        <div className="row g-2 align-items-center">
-          {/* Các Nút Phân Hệ Thống Kê */}
-          <div className="col-12 col-md-8">
-            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
-                  activeSubView === 'communes'
-                    ? 'btn-brand text-white fw-bold shadow-sm'
-                    : 'btn-light text-dark hover-lift'
-                }`}
-                onClick={() => setActiveSubView('communes')}
-              >
-                <MapPin size={15} className={activeSubView === 'communes' ? 'text-white' : 'text-success'} />
-                <span className="small">Địa Bàn 3 Xã</span>
-                <span className={`badge small ms-auto ${activeSubView === 'communes' ? 'bg-white text-dark' : 'bg-success-subtle text-success'}`}>
-                  12 Thôn
-                </span>
-              </button>
+      {/* 3. Phân Hệ Thống Kê Địa Bàn & Cán Bộ Tín Dụng */}
+      <div className="card-modern p-3">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
+          <div className="d-flex align-items-center gap-1.5">
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ${
+                activeTabOverview === 'communes'
+                  ? 'btn-primary text-white fw-bold shadow-xs'
+                  : 'btn-light text-muted'
+              }`}
+              onClick={() => setActiveTabOverview('communes')}
+            >
+              <MapPin size={14} />
+              <span>Phân Bổ Địa Bàn ({areaStats.length} Xã)</span>
+            </button>
 
-              <button
-                type="button"
-                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
-                  activeSubView === 'cbtd'
-                    ? 'btn-brand text-white fw-bold shadow-sm'
-                    : 'btn-light text-dark hover-lift'
-                }`}
-                onClick={() => setActiveSubView('cbtd')}
-              >
-                <User size={15} className={activeSubView === 'cbtd' ? 'text-white' : 'text-primary'} />
-                <span className="small">CBTD Quản Lý</span>
-                <span className={`badge small ms-auto ${activeSubView === 'cbtd' ? 'bg-white text-dark' : 'bg-primary-subtle text-primary'}`}>
-                  3 Cán Bộ
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
-                  activeSubView === 'products'
-                    ? 'btn-brand text-white fw-bold shadow-sm'
-                    : 'btn-light text-dark hover-lift'
-                }`}
-                onClick={() => setActiveSubView('products')}
-              >
-                <PieChart size={15} className={activeSubView === 'products' ? 'text-white' : 'text-warning'} />
-                <span className="small">Cơ Cấu Vay</span>
-                <span className={`badge small ms-auto ${activeSubView === 'products' ? 'bg-white text-dark' : 'bg-warning-subtle text-warning-emphasis'}`}>
-                  3 Nhóm
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
-                  activeSubView === 'top_debt'
-                    ? 'btn-dark text-white fw-bold shadow-sm'
-                    : 'btn-light text-dark hover-lift'
-                }`}
-                style={activeSubView === 'top_debt' ? { backgroundColor: '#4338ca', borderColor: '#4338ca' } : {}}
-                onClick={() => setActiveSubView('top_debt')}
-              >
-                <Crown size={15} className={activeSubView === 'top_debt' ? 'text-warning' : 'text-primary'} />
-                <span className="small">Top 50 Dư Nợ</span>
-                <span className="badge bg-white text-dark ms-auto" style={{ fontSize: '0.68rem' }}>
-                  {top50DuNoDenNgay.length > 0 ? `${top50DuNoDenNgay.length} KH` : 'Top 50'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={`btn btn-sm text-start p-2 rounded-2.5 d-flex align-items-center gap-2 border transition-all flex-grow-1 ${
-                  activeSubView === 'trend'
-                    ? 'btn-indigo text-white fw-bold shadow-sm'
-                    : 'btn-light text-dark hover-lift'
-                }`}
-                style={activeSubView === 'trend' ? { backgroundColor: '#0284c7', borderColor: '#0284c7' } : {}}
-                onClick={() => setActiveSubView('trend')}
-              >
-                <TrendingUp size={15} className={activeSubView === 'trend' ? 'text-white' : 'text-info'} />
-                <span className="small">Diễn Biến Tháng</span>
-                <span className="badge bg-white text-dark ms-auto" style={{ fontSize: '0.68rem' }}>
-                  {monthlyDebtTrend.length > 0 ? `${monthlyDebtTrend.length} Kỳ` : '12T'}
-                </span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ${
+                activeTabOverview === 'cbtd'
+                  ? 'btn-primary text-white fw-bold shadow-xs'
+                  : 'btn-light text-muted'
+              }`}
+              onClick={() => setActiveTabOverview('cbtd')}
+            >
+              <User size={14} />
+              <span>Cán Bộ Tín Dụng ({cbtdStats.length} CBTD)</span>
+            </button>
           </div>
 
-          {/* Công cụ Lọc & Chế độ xem */}
-          <div className="col-12 col-md-4">
-            <div className="d-flex align-items-center gap-2 justify-content-md-end">
-              {/* Ô tìm kiếm nhanh Thôn/Cán bộ */}
-              <div className="input-group input-group-sm flex-grow-1" style={{ maxWidth: 220 }}>
-                <span className="input-group-text bg-white border-end-0 text-muted">
-                  <Search size={13} />
-                </span>
-                <input
-                  type="text"
-                  className="form-control border-start-0 ps-0"
-                  placeholder="Tìm thôn, cán bộ..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <button
-                    className="btn btn-outline-secondary border-start-0 border-end"
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-              {/* Nút chuyển đổi View Mode (Chỉ dùng khi ở tab Địa bàn hoặc CBTD) */}
-              {activeSubView !== 'products' && (
-                <div className="btn-group btn-group-sm bg-light p-0.5 rounded-2 border" role="group">
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${viewMode === 'cards' ? 'btn-white shadow-sm fw-semibold text-dark' : 'btn-light text-muted'}`}
-                    onClick={() => setViewMode('cards')}
-                    title="Chế độ xem Thẻ Bento trực quan"
-                  >
-                    <LayoutGrid size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${viewMode === 'table' ? 'btn-white shadow-sm fw-semibold text-dark' : 'btn-light text-muted'}`}
-                    onClick={() => setViewMode('table')}
-                    title="Chế độ xem Bảng đối soát chi tiết"
-                  >
-                    <Table size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <button
+            type="button"
+            className="btn btn-xs btn-outline-primary d-flex align-items-center gap-1 py-1 px-2.5 rounded-2"
+            onClick={() => onNavigate && onNavigate('credit_statement')}
+          >
+            <span>Xem toàn bộ sao kê</span>
+            <ArrowUpRight size={13} />
+          </button>
         </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* 📍 PHÂN HỆ 1: THỐNG KÊ ĐỊA BÀN 3 XÃ & CHI TIẾT TỪNG THÔN                   */}
-      {/* ========================================================================= */}
-      {activeSubView === 'communes' && (
-        <div className="d-flex flex-column gap-4">
-          {/* 📊 KHỐI BIỂU ĐỒ SO SÁNH DƯ NỢ 3 XÃ/THÔN & TỶ TRỌNG SẢN PHẨM VAY */}
-          <div className="row g-3">
-            <div className="col-12 col-xl-7">
-              <CommuneComparisonChart
-                areaStats={areaStats}
-                totalDuNo={totalDuNo}
-                selectedCommune={selectedCommuneFilter}
-                onSelectCommune={(val) => setSelectedCommuneFilter(val)}
-              />
-            </div>
-            <div className="col-12 col-xl-5">
-              <LoanProductDonutChart
-                areaStats={areaStats}
-                totalDuNo={totalDuNo}
-                selectedCommune={selectedCommuneFilter}
-                onSelectCommune={(val) => setSelectedCommuneFilter(val)}
-              />
+        {/* Nội dung Tab Địa Bàn */}
+        {activeTabOverview === 'communes' && (
+          <div className="d-flex flex-column gap-3">
+            <CommuneComparisonChart
+              areaStats={areaStats}
+              totalDuNo={totalDuNo}
+            />
+
+            {/* Bảng tóm tắt theo xã */}
+            <div className="table-responsive">
+              <table className="table table-hover table-custom align-middle mb-0" style={{ fontSize: '0.84rem' }}>
+                <thead className="table-light text-secondary text-uppercase" style={{ fontSize: '0.72rem' }}>
+                  <tr>
+                    <th>Địa Bàn Xã</th>
+                    <th className="text-end">Dư Nợ Thực Tế</th>
+                    <th className="text-center">Số Hợp Đồng</th>
+                    <th className="text-center">Số Khách Vay</th>
+                    <th className="text-end">Dư Nợ BQ / HĐ</th>
+                    <th className="text-center">Tỷ Trọng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {areaStats.map((area, idx) => {
+                    const duNo = Number(area.duNo) || Number(area.duno) || 0;
+                    const countHD = Number(area.countHD) || 0;
+                    const countKH = Number(area.countKH) || 0;
+                    const pct = totalDuNo > 0 ? ((duNo / totalDuNo) * 100).toFixed(1) : 0;
+                    const avgHD = countHD > 0 ? Math.round(duNo / countHD) : 0;
+
+                    return (
+                      <tr key={idx}>
+                        <td className="fw-bold text-dark">
+                          <div className="d-flex align-items-center gap-1.5">
+                            <Building2 size={14} className="text-primary" />
+                            <span>{area.name}</span>
+                          </div>
+                        </td>
+                        <td className="text-end fw-bold num-tabular font-numeric text-primary">
+                          {formatCurrencyVN(duNo)}
+                        </td>
+                        <td className="text-center font-numeric">{countHD}</td>
+                        <td className="text-center font-numeric">{countKH}</td>
+                        <td className="text-end font-numeric text-muted">{formatCompactVN(avgHD)}</td>
+                        <td className="text-center">
+                          <span className="badge bg-primary-subtle text-primary font-monospace fw-bold">{pct}%</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
+        )}
 
-          {/* Thanh Tóm Tắt Tỷ Trọng 3 Xã */}
-          <div className="row g-3">
-            {areaStats.map((area, idx) => {
-              const colors = [
-                { bg: 'bg-success-subtle', text: 'text-success', border: 'border-success' },
-                { bg: 'bg-primary-subtle', text: 'text-primary', border: 'border-primary' },
-                { bg: 'bg-info-subtle', text: 'text-info', border: 'border-info' }
-              ];
-              const theme = colors[idx % colors.length];
-              const percentNum = calcPercentNum(area.duNo, totalDuNo);
-              const isSelected = selectedCommuneFilter === area.name;
+        {/* Nội dung Tab Cán Bộ Tín Dụng */}
+        {activeTabOverview === 'cbtd' && (
+          <div className="table-responsive">
+            <table className="table table-hover table-custom align-middle mb-0" style={{ fontSize: '0.84rem' }}>
+              <thead className="table-light text-secondary text-uppercase" style={{ fontSize: '0.72rem' }}>
+                <tr>
+                  <th>Cán Bộ Tín Dụng</th>
+                  <th>Mã CBTD</th>
+                  <th className="text-end">Dư Nợ Quản Lý</th>
+                  <th className="text-center">Số Hợp Đồng</th>
+                  <th className="text-center">Số Khách Vay</th>
+                  <th className="text-center">Tỷ Trọng Toàn Quỹ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cbtdStats.map((cbtd, idx) => {
+                  const duNo = Number(cbtd.duNo) || 0;
+                  const countHD = Number(cbtd.countHD) || 0;
+                  const countKH = Number(cbtd.countKH) || 0;
+                  const pct = totalDuNo > 0 ? ((duNo / totalDuNo) * 100).toFixed(1) : 0;
 
-              return (
-                <div key={area.key || area.name} className="col-12 col-md-4">
-                  <div
-                    className={`card-modern p-3 cursor-pointer h-100 border-2 transition-all ${
-                      isSelected ? `${theme.border} shadow-sm` : 'border-light-subtle'
-                    }`}
-                    onClick={() => setSelectedCommuneFilter(isSelected ? 'ALL' : area.name)}
-                    title={`Bấm để ${isSelected ? 'xem tất cả các xã' : `lọc riêng ${area.name}`}`}
-                  >
-                    <div className="d-flex justify-content-between align-items-center mb-1.5">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="fw-bold text-dark">{area.name}</span>
-                        {isSelected && <span className="badge bg-success text-white small">Đang lọc</span>}
-                      </div>
-                      <span className={`badge ${theme.bg} ${theme.text} fw-bold`}>
-                        {area.rate || `${percentNum}%`}
-                      </span>
-                    </div>
-
-                    <div className="d-flex align-items-baseline justify-content-between mb-2">
-                      <h4 className="fw-bold text-dark mb-0 fs-5 num-tabular">
-                        {formatCompactVN(area.duNo)}
-                      </h4>
-                      <span className="text-muted small num-tabular">
-                        {area.countHD || 0} HĐ • {area.countKH || 0} TV
-                      </span>
-                    </div>
-
-                    {/* Mini progress cơ cấu cho vay tại xã */}
-                    <div className="progress mb-2" style={{ height: '6px' }}>
-                      <div
-                        className="progress-bar bg-success"
-                        style={{ width: `${calcPercentNum(area.loanGroups?.['Nông nghiệp'], area.duNo)}%` }}
-                        title="Nông nghiệp"
-                      ></div>
-                      <div
-                        className="progress-bar bg-primary"
-                        style={{ width: `${calcPercentNum(area.loanGroups?.['Tiêu dùng - Đời sống'], area.duNo)}%` }}
-                        title="Tiêu dùng"
-                      ></div>
-                      <div
-                        className="progress-bar bg-warning"
-                        style={{ width: `${calcPercentNum(area.loanGroups?.['Thương mại - Dịch vụ'], area.duNo)}%` }}
-                        title="Thương mại"
-                      ></div>
-                    </div>
-
-                    <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.73rem' }}>
-                      <span className="d-flex align-items-center gap-1 text-primary fw-medium">
-                        <User size={12} /> {area.cbqlName}
-                      </span>
-                      <span>{(area.thons || []).length} thôn</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* CHẾ ĐỘ 1: XEM DẠNG THẺ (CARDS VIEW) */}
-          {viewMode === 'cards' && (
-            <div className="d-flex flex-column gap-4">
-              {filteredAreas.map((commune, cIdx) => {
-                const isExpanded = expandedCommunes[commune.name] !== false;
-                const cPercent = calcPercentNum(commune.duNo, totalDuNo);
-                const nnVal = commune.loanGroups?.['Nông nghiệp'] || 0;
-                const tdVal = commune.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                const tmVal = commune.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-
-                return (
-                  <div key={commune.key || commune.name} className="card-modern p-3 p-md-4">
-                    {/* Header Xã */}
-                    <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 pb-3 border-bottom">
-                      <div>
-                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                          <h4 className="fw-bold text-dark m-0 font-heading fs-5 d-flex align-items-center gap-2">
-                            <MapPin size={20} className="text-success" />
-                            {commune.name}
-                          </h4>
-                          <span className="badge bg-success-subtle text-success fw-bold">
-                            Tỷ trọng: {commune.rate || `${cPercent}%`}
-                          </span>
-                          <span className="badge bg-light text-muted border small">
-                            {commune.subText || 'Địa bàn phục vụ'}
-                          </span>
+                  return (
+                    <tr key={idx}>
+                      <td className="fw-bold text-dark">
+                        <div className="d-flex align-items-center gap-1.5">
+                          <User size={14} className="text-secondary" />
+                          <span>{cbtd.tenCBTD || cbtd.name || 'Cán bộ'}</span>
                         </div>
-                        <div className="text-muted small d-flex align-items-center gap-3 flex-wrap">
-                          <span>
-                            Cán bộ quản lý: <strong className="text-dark">{commune.cbqlName}</strong>{' '}
-                            <span className="font-monospace text-primary">({commune.cbqlUser})</span>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Quy mô: <strong className="text-dark num-tabular">{commune.countHD}</strong> hợp đồng •{' '}
-                            <strong className="text-dark num-tabular">{commune.countKH}</strong> thành viên
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="d-flex align-items-center gap-3 w-100 w-md-auto justify-content-between justify-content-md-end">
-                        <div className="text-end">
-                          <div className="text-muted small">Dư nợ địa bàn xã</div>
-                          <div className="fw-bold text-dark fs-5 num-tabular">
-                            {formatCurrencyVN(commune.duNo)}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-secondary p-1.5 rounded-2"
-                          onClick={() => toggleCommuneExpand(commune.name)}
-                          title={isExpanded ? 'Thu gọn danh sách thôn' : 'Mở rộng chi tiết từng thôn'}
-                        >
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Thống kê Cơ cấu 3 nhóm cho vay tại Xã */}
-                    <div className="mt-3 p-3 bg-light rounded-3 border">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="fw-semibold text-dark small">Cơ cấu cho vay theo 3 nhóm tại {commune.name}:</span>
-                        <span className="text-muted small num-tabular">Tổng 100%</span>
-                      </div>
-
-                      {/* Thanh phân bổ 3 màu */}
-                      <div className="progress mb-2.5" style={{ height: '8px' }}>
-                        <div
-                          className="progress-bar bg-success"
-                          style={{ width: `${calcPercentNum(nnVal, commune.duNo)}%` }}
-                          title={`Nông nghiệp: ${formatCompactVN(nnVal)} (${calcPercentNum(nnVal, commune.duNo)}%)`}
-                        ></div>
-                        <div
-                          className="progress-bar bg-primary"
-                          style={{ width: `${calcPercentNum(tdVal, commune.duNo)}%` }}
-                          title={`Tiêu dùng: ${formatCompactVN(tdVal)} (${calcPercentNum(tdVal, commune.duNo)}%)`}
-                        ></div>
-                        <div
-                          className="progress-bar bg-warning"
-                          style={{ width: `${calcPercentNum(tmVal, commune.duNo)}%` }}
-                          title={`Thương mại: ${formatCompactVN(tmVal)} (${calcPercentNum(tmVal, commune.duNo)}%)`}
-                        ></div>
-                      </div>
-
-                      {/* 3 Cột số liệu cơ cấu */}
-                      <div className="row g-2 text-center text-sm-start">
-                        <div className="col-12 col-sm-4">
-                          <div className="p-2 rounded bg-white border">
-                            <div className="d-flex align-items-center gap-1.5 mb-0.5">
-                              <span className="p-1 rounded-circle bg-success d-inline-block"></span>
-                              <span className="text-muted small">Nông Nghiệp</span>
-                            </div>
-                            <div className="fw-bold text-dark num-tabular small">
-                              {formatCompactVN(nnVal)}{' '}
-                              <span className="text-success fw-bold">({calcPercentNum(nnVal, commune.duNo)}%)</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="col-12 col-sm-4">
-                          <div className="p-2 rounded bg-white border">
-                            <div className="d-flex align-items-center gap-1.5 mb-0.5">
-                              <span className="p-1 rounded-circle bg-primary d-inline-block"></span>
-                              <span className="text-muted small">Tiêu Dùng - Đời Sống</span>
-                            </div>
-                            <div className="fw-bold text-dark num-tabular small">
-                              {formatCompactVN(tdVal)}{' '}
-                              <span className="text-primary fw-bold">({calcPercentNum(tdVal, commune.duNo)}%)</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="col-12 col-sm-4">
-                          <div className="p-2 rounded bg-white border">
-                            <div className="d-flex align-items-center gap-1.5 mb-0.5">
-                              <span className="p-1 rounded-circle bg-warning d-inline-block"></span>
-                              <span className="text-muted small">Thương Mại - Dịch Vụ</span>
-                            </div>
-                            <div className="fw-bold text-dark num-tabular small">
-                              {formatCompactVN(tmVal)}{' '}
-                              <span className="text-warning-emphasis fw-bold">({calcPercentNum(tmVal, commune.duNo)}%)</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Danh sách các Thôn trong Xã (Accordion Content) */}
-                    {isExpanded && (
-                      <div className="mt-3">
-                        <div className="d-flex justify-content-between align-items-center mb-2.5">
-                          <span className="fw-bold text-dark small text-uppercase" style={{ letterSpacing: '0.3px' }}>
-                            Danh Sách Chi Tiết Các Thôn ({commune.thons?.length || 0} thôn):
-                          </span>
-                          <span className="text-muted small">Dư nợ BQ/HĐ: {formatCompactVN(commune.duNoBinhQuanHD)}</span>
-                        </div>
-
-                        <div className="row g-3">
-                          {(commune.thons || []).map((thon) => {
-                            const thNN = thon.loanGroups?.['Nông nghiệp'] || 0;
-                            const thTD = thon.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                            const thTM = thon.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-                            const thTotal = thon.duno || 1;
-
-                            return (
-                              <div key={thon.name} className="col-12 col-md-6 col-xl-4">
-                                <div className="p-3 bg-white rounded-3 border h-100 hover-lift d-flex flex-column justify-content-between">
-                                  <div>
-                                    {/* Tiêu đề Thôn & Tỷ trọng */}
-                                    <div className="d-flex justify-content-between align-items-start mb-2">
-                                      <div>
-                                        <h6 className="fw-bold text-dark m-0">{thon.name}</h6>
-                                        <span className="text-muted small" style={{ fontSize: '0.72rem' }}>
-                                          {commune.name}
-                                        </span>
-                                      </div>
-                                      <div className="text-end">
-                                        <span className="badge bg-success-subtle text-success fw-bold small">
-                                          {thon.rateCommune || `${calcPercentNum(thon.duno, commune.duNo)}%`} xã
-                                        </span>
-                                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>
-                                          {thon.rateTotal || `${calcPercentNum(thon.duno, totalDuNo)}%`} quỹ
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Dư nợ & Số lượng HĐ/TV */}
-                                    <div className="mb-2.5">
-                                      <div className="fw-bold text-dark fs-5 num-tabular">
-                                        {formatCurrencyVN(thon.duno)}
-                                      </div>
-                                      <div className="d-flex align-items-center gap-2 text-muted small mt-1">
-                                        <span className="badge bg-light text-dark border">
-                                          {thon.countHD} HĐ
-                                        </span>
-                                        <span>•</span>
-                                        <span className="badge bg-light text-dark border">
-                                          {thon.countKH} TV
-                                        </span>
-                                        <span>•</span>
-                                        <span className="num-tabular" style={{ fontSize: '0.72rem' }}>
-                                          BQ: {formatCompactVN(thon.duNoBinhQuanHD)}
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    {/* Cơ cấu 3 nhóm cho vay của Thôn */}
-                                    <div className="pt-2 border-top">
-                                      <div className="d-flex justify-content-between align-items-center mb-1 text-muted" style={{ fontSize: '0.72rem' }}>
-                                        <span>Cơ cấu cho vay:</span>
-                                        <span>NN / TD / TM</span>
-                                      </div>
-
-                                      {/* Mini bar */}
-                                      <div className="progress mb-2" style={{ height: '5px' }}>
-                                        <div
-                                          className="progress-bar bg-success"
-                                          style={{ width: `${calcPercentNum(thNN, thTotal)}%` }}
-                                          title={`Nông nghiệp: ${formatCompactVN(thNN)}`}
-                                        ></div>
-                                        <div
-                                          className="progress-bar bg-primary"
-                                          style={{ width: `${calcPercentNum(thTD, thTotal)}%` }}
-                                          title={`Tiêu dùng: ${formatCompactVN(thTD)}`}
-                                        ></div>
-                                        <div
-                                          className="progress-bar bg-warning"
-                                          style={{ width: `${calcPercentNum(thTM, thTotal)}%` }}
-                                          title={`Thương mại: ${formatCompactVN(thTM)}`}
-                                        ></div>
-                                      </div>
-
-                                      {/* Chi tiết từng nhóm */}
-                                      <div className="d-flex flex-column gap-1" style={{ fontSize: '0.73rem' }}>
-                                        <div className="d-flex justify-content-between align-items-center">
-                                          <span className="d-flex align-items-center gap-1 text-muted">
-                                            <span className="p-0.5 rounded-circle bg-success d-inline-block"></span>
-                                            Nông nghiệp:
-                                          </span>
-                                          <span className="fw-semibold text-dark num-tabular">
-                                            {formatCompactVN(thNN)} ({calcPercentNum(thNN, thTotal)}%)
-                                          </span>
-                                        </div>
-
-                                        <div className="d-flex justify-content-between align-items-center">
-                                          <span className="d-flex align-items-center gap-1 text-muted">
-                                            <span className="p-0.5 rounded-circle bg-primary d-inline-block"></span>
-                                            Tiêu dùng - Đời sống:
-                                          </span>
-                                          <span className="fw-semibold text-dark num-tabular">
-                                            {formatCompactVN(thTD)} ({calcPercentNum(thTD, thTotal)}%)
-                                          </span>
-                                        </div>
-
-                                        <div className="d-flex justify-content-between align-items-center">
-                                          <span className="d-flex align-items-center gap-1 text-muted">
-                                            <span className="p-0.5 rounded-circle bg-warning d-inline-block"></span>
-                                            Thương mại - Dịch vụ:
-                                          </span>
-                                          <span className="fw-semibold text-dark num-tabular">
-                                            {formatCompactVN(thTM)} ({calcPercentNum(thTM, thTotal)}%)
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      </td>
+                      <td className="font-monospace text-muted">{cbtd.username || cbtd.code || ''}</td>
+                      <td className="text-end fw-bold num-tabular font-numeric text-primary">
+                        {formatCurrencyVN(duNo)}
+                      </td>
+                      <td className="text-center font-numeric">{countHD}</td>
+                      <td className="text-center font-numeric">{countKH}</td>
+                      <td className="text-center">
+                        <span className="badge bg-success-subtle text-success font-monospace fw-bold">{pct}%</span>
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-            {/* CHẾ ĐỘ 2: XEM DẠNG BẢNG ĐỐI SOÁT CHI TIẾT (TABLE VIEW) */}
-            {viewMode === 'table' && (
-              <div className="card-modern p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h5 className="fw-bold m-0 text-slate-900 font-heading">
-                      Bảng Đối Soát Dư Nợ Theo Địa Bàn Xã & Thôn
-                    </h5>
-                    <span className="text-muted small">Chi tiết số liệu đối soát toàn bộ 12 thôn thuộc 3 xã</span>
-                  </div>
-                  <span className="badge bg-light text-dark border fw-semibold">
-                    Chuẩn mực QTDND
-                  </span>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="table table-custom align-middle">
-                    <thead>
-                      <tr>
-                        <th>Địa Bàn (Xã / Thôn)</th>
-                        <th>Cán Bộ Quản Lý</th>
-                        <th className="text-end">Dư Nợ (VNĐ)</th>
-                        <th className="text-center">% Quỹ</th>
-                        <th className="text-center">% Xã</th>
-                        <th className="text-center">Số HĐ</th>
-                        <th className="text-center">Số TV</th>
-                        <th className="text-end">Dư Nợ BQ/HĐ</th>
-                        <th className="text-end">Nông Nghiệp</th>
-                        <th className="text-end">Tiêu Dùng</th>
-                        <th className="text-end">Thương Mại</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAreas.map((commune) => {
-                        const cNN = commune.loanGroups?.['Nông nghiệp'] || 0;
-                        const cTD = commune.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                        const cTM = commune.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-
-                        return (
-                          <React.Fragment key={commune.key || commune.name}>
-                            {/* Dòng Tổng Xã */}
-                            <tr className="table-light fw-bold">
-                              <td>
-                                <div className="d-flex align-items-center gap-1.5 text-dark">
-                                  <MapPin size={15} className="text-success" />
-                                  <span>{commune.name}</span>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="text-primary">{commune.cbqlName}</span>
-                              </td>
-                              <td className="text-end text-dark num-tabular">
-                                {formatCurrencyVN(commune.duNo)}
-                              </td>
-                              <td className="text-center text-success">
-                                {commune.rate || `${calcPercentNum(commune.duNo, totalDuNo)}%`}
-                              </td>
-                              <td className="text-center text-muted">100%</td>
-                              <td className="text-center num-tabular">{commune.countHD}</td>
-                              <td className="text-center num-tabular">{commune.countKH}</td>
-                              <td className="text-end num-tabular">
-                                {formatCompactVN(commune.duNoBinhQuanHD)}
-                              </td>
-                              <td className="text-end num-tabular text-success">{formatCompactVN(cNN)}</td>
-                              <td className="text-end num-tabular text-primary">{formatCompactVN(cTD)}</td>
-                              <td className="text-end num-tabular text-warning-emphasis">{formatCompactVN(cTM)}</td>
-                            </tr>
-
-                            {/* Các dòng Thôn trực thuộc */}
-                            {(commune.thons || []).map((thon) => {
-                              const thNN = thon.loanGroups?.['Nông nghiệp'] || 0;
-                              const thTD = thon.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                              const thTM = thon.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-
-                              return (
-                                <tr key={thon.name} className="hover-highlight">
-                                  <td className="ps-4">
-                                    <span className="text-muted me-1">↳</span>
-                                    <span className="fw-medium text-dark">{thon.name}</span>
-                                  </td>
-                                  <td className="text-muted small">{commune.cbqlUser}</td>
-                                  <td className="text-end fw-semibold num-tabular">
-                                    {formatCurrency(thon.duno)}
-                                  </td>
-                                  <td className="text-center text-muted small">
-                                    {thon.rateTotal || `${calcPercentNum(thon.duno, totalDuNo)}%`}
-                                  </td>
-                                  <td className="text-center text-success small fw-semibold">
-                                    {thon.rateCommune || `${calcPercentNum(thon.duno, commune.duNo)}%`}
-                                  </td>
-                                  <td className="text-center num-tabular">{thon.countHD}</td>
-                                  <td className="text-center num-tabular">{thon.countKH}</td>
-                                  <td className="text-end num-tabular text-muted small">
-                                    {formatCompactVN(thon.duNoBinhQuanHD)}
-                                  </td>
-                                  <td className="text-end num-tabular small">{formatCompactVN(thNN)}</td>
-                                  <td className="text-end num-tabular small">{formatCompactVN(thTD)}</td>
-                                  <td className="text-end num-tabular small">{formatCompactVN(thTM)}</td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr className="table-dark fw-bold">
-                        <td colSpan="2">TỔNG CỘNG TOÀN QUỸ (3 XÃ)</td>
-                        <td className="text-end num-tabular text-white">{formatCurrencyVN(summaryTotals.duNo)}</td>
-                        <td className="text-center text-white">100%</td>
-                        <td className="text-center text-white">-</td>
-                        <td className="text-center num-tabular text-white">{summaryTotals.countHD}</td>
-                        <td className="text-center num-tabular text-white">{summaryTotals.countKH}</td>
-                        <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.duNoBinhQuanHD)}</td>
-                        <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.nn)}</td>
-                        <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.td)}</td>
-                        <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.tm)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 👤 PHÂN HỆ 2: THỐNG KÊ CHI TIẾT THEO CÁN BỘ QUẢN LÝ (CBTD PORTFOLIO)      */}
-      {/* ========================================================================= */}
-      {activeSubView === 'cbtd' && (
-        <div className="d-flex flex-column gap-4">
-          {/* Header Giới Thiệu Cán Bộ Quản Lý */}
-          <div className="card-modern p-3 p-md-4 bg-light-subtle">
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+      {/* 4. Phím Tắt Tác Vụ Nhanh */}
+      <div className="card-modern p-3">
+        <h6 className="fw-bold text-dark small mb-2.5">Lối Tắt Thao Tác Nghiệp Vụ</h6>
+        <div className="row g-2">
+          <div className="col-6 col-md-3">
+            <button
+              type="button"
+              className="btn btn-light w-100 text-start p-2.5 rounded-2.5 border d-flex align-items-center gap-2 hover-lift"
+              onClick={() => onNavigate && onNavigate('credit_statement')}
+            >
+              <FileSpreadsheet size={16} className="text-primary" />
               <div>
-                <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-                  <Briefcase size={20} className="text-primary" />
-                  Danh Mục Quản Trị Tín Dụng Của Cán Bộ Quản Lý
-                </h5>
-                <span className="text-muted small">
-                  Phân công phụ trách trực tiếp theo từng địa bàn xã & thôn nhằm giám sát nợ và đôn đốc thu nợ
-                </span>
+                <strong className="d-block text-dark small">Sao Kê Tín Dụng</strong>
+                <span className="text-muted" style={{ fontSize: '0.7rem' }}>Đến ngày, theo tháng, năm</span>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                <span className="badge bg-primary text-white">3 Cán Bộ Phụ Trách</span>
-              </div>
-            </div>
+            </button>
           </div>
 
-          {/* CHẾ ĐỘ XEM THẺ PORTFOLIO CỦA CÁN BỘ */}
-          {viewMode === 'cards' && (
-            <div className="row g-4">
-              {filteredCbtds.map((cb, idx) => {
-                const isExpanded = expandedCbtds[cb.user] !== false;
-                const cRate = calcPercentNum(cb.duNo, totalDuNo);
-                const cbNN = cb.loanGroups?.['Nông nghiệp'] || 0;
-                const cbTD = cb.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                const cbTM = cb.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-                const initials = cb.name ? cb.name.split(' ').map(n => n[0]).join('').slice(-3) : 'CBTD';
-
-                return (
-                  <div key={cb.user} className="col-12">
-                    <div className="card-modern p-4">
-                      {/* Top Row: Avatar, Họ tên, Địa bàn, Dư nợ */}
-                      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 pb-3 border-bottom">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className="p-3 rounded-circle bg-primary-subtle text-primary fw-bold fs-5 d-flex align-items-center justify-content-center"
-                            style={{ width: 54, height: 54 }}
-                          >
-                            {initials}
-                          </div>
-                          <div>
-                            <div className="d-flex align-items-center gap-2 flex-wrap">
-                              <h4 className="fw-bold text-dark m-0 fs-5">{cb.name}</h4>
-                              <span className="badge bg-primary-subtle text-primary font-monospace small">
-                                {cb.user}
-                              </span>
-                              <span className="badge bg-success-subtle text-success fw-bold">
-                                Phụ trách: {cb.assignedArea}
-                              </span>
-                            </div>
-                            <div className="text-muted small mt-1">
-                              <span>{cb.role || 'Cán Bộ Tín Dụng Quản Lý'}</span>
-                              <span className="mx-2">•</span>
-                              <span>Quy mô: <strong className="text-dark num-tabular">{cb.countHD}</strong> HĐ • <strong className="text-dark num-tabular">{cb.countKH}</strong> TV vay</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="d-flex align-items-center gap-3 w-100 w-md-auto justify-content-between justify-content-md-end">
-                          <div className="text-end">
-                            <div className="text-muted small">Tổng Dư Nợ Phụ Trách</div>
-                            <div className="fw-bold text-dark fs-5 num-tabular">
-                              {formatCurrencyVN(cb.duNo)}{' '}
-                              <span className="text-success fw-bold">({cb.rate || `${cRate}%`})</span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-secondary p-1.5 rounded-2"
-                            onClick={() => toggleCbtdExpand(cb.user)}
-                            title={isExpanded ? 'Thu gọn' : 'Mở rộng'}
-                          >
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Hàng 4 Chỉ Số Năng Suất Danh Mục Cán Bộ */}
-                      <div className="row g-2.5 my-3">
-                        <div className="col-6 col-md-3">
-                          <div className="p-2.5 rounded-3 bg-light border text-center text-sm-start">
-                            <div className="text-muted small" style={{ fontSize: '0.73rem' }}>Dư nợ BQ/Hợp đồng</div>
-                            <div className="fw-bold text-dark num-tabular fs-6">
-                              {formatCompactVN(cb.duNoBinhQuanHD)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="p-2.5 rounded-3 bg-light border text-center text-sm-start">
-                            <div className="text-muted small" style={{ fontSize: '0.73rem' }}>Dư nợ BQ/Thành viên</div>
-                            <div className="fw-bold text-dark num-tabular fs-6">
-                              {formatCompactVN(cb.duNoBinhQuanTV)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="p-2.5 rounded-3 bg-light border text-center text-sm-start">
-                            <div className="text-muted small" style={{ fontSize: '0.73rem' }}>Tỷ trọng trong Quỹ</div>
-                            <div className="fw-bold text-success num-tabular fs-6">
-                              {cb.rate || `${cRate}%`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="p-2.5 rounded-3 bg-light border text-center text-sm-start">
-                            <div className="text-muted small" style={{ fontSize: '0.73rem' }}>Thao tác nhanh</div>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-link text-primary fw-bold p-0 text-decoration-none"
-                              onClick={() => onNavigate('customer360')}
-                            >
-                              Tra cứu khách hàng →
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Cơ cấu 3 nhóm cho vay của Cán bộ */}
-                      <div className="p-3 bg-light rounded-3 border mb-3">
-                        <div className="d-flex justify-content-between align-items-center mb-1.5">
-                          <span className="fw-semibold text-dark small">
-                            Cơ cấu cho vay của CBTD {cb.name}:
-                          </span>
-                          <span className="text-muted small num-tabular">100%</span>
-                        </div>
-
-                        <div className="progress mb-2" style={{ height: '7px' }}>
-                          <div
-                            className="progress-bar bg-success"
-                            style={{ width: `${calcPercentNum(cbNN, cb.duNo)}%` }}
-                            title={`Nông nghiệp: ${formatCompactVN(cbNN)}`}
-                          ></div>
-                          <div
-                            className="progress-bar bg-primary"
-                            style={{ width: `${calcPercentNum(cbTD, cb.duNo)}%` }}
-                            title={`Tiêu dùng: ${formatCompactVN(cbTD)}`}
-                          ></div>
-                          <div
-                            className="progress-bar bg-warning"
-                            style={{ width: `${calcPercentNum(cbTM, cb.duNo)}%` }}
-                            title={`Thương mại: ${formatCompactVN(cbTM)}`}
-                          ></div>
-                        </div>
-
-                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small" style={{ fontSize: '0.74rem' }}>
-                          <span className="d-flex align-items-center gap-1">
-                            <span className="p-1 rounded-circle bg-success d-inline-block"></span>
-                            Nông nghiệp: <strong className="text-dark num-tabular">{formatCompactVN(cbNN)}</strong> ({calcPercentNum(cbNN, cb.duNo)}%)
-                          </span>
-                          <span className="d-flex align-items-center gap-1">
-                            <span className="p-1 rounded-circle bg-primary d-inline-block"></span>
-                            Tiêu dùng: <strong className="text-dark num-tabular">{formatCompactVN(cbTD)}</strong> ({calcPercentNum(cbTD, cb.duNo)}%)
-                          </span>
-                          <span className="d-flex align-items-center gap-1">
-                            <span className="p-1 rounded-circle bg-warning d-inline-block"></span>
-                            Thương mại: <strong className="text-dark num-tabular">{formatCompactVN(cbTM)}</strong> ({calcPercentNum(cbTM, cb.duNo)}%)
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Chi tiết từng Thôn cán bộ trực tiếp phụ trách */}
-                      {isExpanded && (
-                        <div className="pt-2">
-                          <div className="fw-bold text-dark small mb-2.5 text-uppercase" style={{ letterSpacing: '0.3px' }}>
-                            Chi Tiết Các Thôn Thuộc {cb.assignedArea} Do Cán Bộ Quản Lý:
-                          </div>
-
-                          <div className="row g-2.5">
-                            {((cb.communes && cb.communes[0]?.thons) || []).map((thon) => {
-                              const tNN = thon.loanGroups?.['Nông nghiệp'] || 0;
-                              const tTD = thon.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                              const tTM = thon.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-
-                              return (
-                                <div key={thon.name} className="col-12 col-md-6 col-xl-4">
-                                  <div className="p-3 bg-white rounded-3 border h-100">
-                                    <div className="d-flex justify-content-between align-items-start mb-1.5">
-                                      <span className="fw-bold text-dark">{thon.name}</span>
-                                      <span className="badge bg-success-subtle text-success small fw-bold">
-                                        {thon.rateCommune || `${calcPercentNum(thon.duno, cb.duNo)}%`}
-                                      </span>
-                                    </div>
-                                    <div className="fw-bold text-dark fs-6 num-tabular mb-1">
-                                      {formatCurrencyVN(thon.duno)}
-                                    </div>
-                                    <div className="text-muted small d-flex align-items-center gap-2 mb-2" style={{ fontSize: '0.72rem' }}>
-                                      <span>{thon.countHD} HĐ</span>
-                                      <span>•</span>
-                                      <span>{thon.countKH} TV</span>
-                                      <span>•</span>
-                                      <span>BQ: {formatCompactVN(thon.duNoBinhQuanHD)}</span>
-                                    </div>
-
-                                    {/* Cơ cấu 3 nhóm của thôn */}
-                                    <div className="pt-1.5 border-top d-flex flex-column gap-1 text-muted" style={{ fontSize: '0.71rem' }}>
-                                      <div className="d-flex justify-content-between">
-                                        <span>NN:</span>
-                                        <span className="fw-semibold text-dark num-tabular">{formatCompactVN(tNN)}</span>
-                                      </div>
-                                      <div className="d-flex justify-content-between">
-                                        <span>Tiêu dùng:</span>
-                                        <span className="fw-semibold text-dark num-tabular">{formatCompactVN(tTD)}</span>
-                                      </div>
-                                      <div className="d-flex justify-content-between">
-                                        <span>Thương mại:</span>
-                                        <span className="fw-semibold text-dark num-tabular">{formatCompactVN(tTM)}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* CHẾ ĐỘ XEM BẢNG SO SÁNH DANH MỤC CÁN BỘ */}
-          {viewMode === 'table' && (
-            <div className="card-modern p-4">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <h5 className="fw-bold m-0 text-slate-900 font-heading">
-                    Bảng Tổng Hợp Danh Mục Quản Lý Theo Cán Bộ Tín Dụng
-                  </h5>
-                  <span className="text-muted small">So sánh quy mô dư nợ, khách hàng và cơ cấu cho vay giữa các cán bộ</span>
-                </div>
+          <div className="col-6 col-md-3">
+            <button
+              type="button"
+              className="btn btn-light w-100 text-start p-2.5 rounded-2.5 border d-flex align-items-center gap-2 hover-lift"
+              onClick={() => onNavigate && onNavigate('customer360')}
+            >
+              <Users size={16} className="text-success" />
+              <div>
+                <strong className="d-block text-dark small">Tra Cứu Khách Hàng</strong>
+                <span className="text-muted" style={{ fontSize: '0.7rem' }}>Hồ sơ 360°, khế ước vay</span>
               </div>
-
-              <div className="table-responsive">
-                <table className="table table-custom align-middle">
-                  <thead>
-                    <tr>
-                      <th>Cán Bộ Tín Dụng</th>
-                      <th>Tài Khoản</th>
-                      <th>Địa Bàn Phụ Trách</th>
-                      <th className="text-end">Dư Nợ Quản Lý</th>
-                      <th className="text-center">Tỷ Trọng Quỹ</th>
-                      <th className="text-center">Số HĐ</th>
-                      <th className="text-center">Số TV</th>
-                      <th className="text-end">Dư Nợ BQ/HĐ</th>
-                      <th className="text-end">Cho Vay NN</th>
-                      <th className="text-end">Cho Vay TD</th>
-                      <th className="text-end">Cho Vay TM</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCbtds.map((cb) => {
-                      const cbNN = cb.loanGroups?.['Nông nghiệp'] || 0;
-                      const cbTD = cb.loanGroups?.['Tiêu dùng - Đời sống'] || 0;
-                      const cbTM = cb.loanGroups?.['Thương mại - Dịch vụ'] || 0;
-
-                      return (
-                        <tr key={cb.user} className="hover-highlight">
-                          <td className="fw-bold text-dark">{cb.name}</td>
-                          <td className="font-monospace text-primary small">{cb.user}</td>
-                          <td>
-                            <span className="badge bg-success-subtle text-success fw-medium">
-                              {cb.assignedArea}
-                            </span>
-                          </td>
-                          <td className="text-end fw-bold text-dark num-tabular">
-                            {formatCurrencyVN(cb.duNo)}
-                          </td>
-                          <td className="text-center fw-bold text-success">
-                            {cb.rate || `${calcPercentNum(cb.duNo, totalDuNo)}%`}
-                          </td>
-                          <td className="text-center num-tabular">{cb.countHD}</td>
-                          <td className="text-center num-tabular">{cb.countKH}</td>
-                          <td className="text-end num-tabular text-muted small">
-                            {formatCompactVN(cb.duNoBinhQuanHD)}
-                          </td>
-                          <td className="text-end num-tabular text-success small">{formatCompactVN(cbNN)}</td>
-                          <td className="text-end num-tabular text-primary small">{formatCompactVN(cbTD)}</td>
-                          <td className="text-end num-tabular text-warning-emphasis small">{formatCompactVN(cbTM)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="table-dark fw-bold">
-                      <td colSpan="3">TỔNG CỘNG DANH MỤC</td>
-                      <td className="text-end num-tabular text-white">{formatCurrencyVN(summaryTotals.duNo)}</td>
-                      <td className="text-center text-white">100%</td>
-                      <td className="text-center num-tabular text-white">{summaryTotals.countHD}</td>
-                      <td className="text-center num-tabular text-white">{summaryTotals.countKH}</td>
-                      <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.duNoBinhQuanHD)}</td>
-                      <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.nn)}</td>
-                      <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.td)}</td>
-                      <td className="text-end num-tabular text-white">{formatCompactVN(summaryTotals.tm)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 📊 PHÂN HỆ 3: CƠ CẤU CHO VAY THEO SẢN PHẨM & TÁC VỤ VẬN HÀNH                */}
-      {/* ========================================================================= */}
-      {activeSubView === 'products' && (
-        <div className="d-flex flex-column gap-4">
-          {/* Hàng Cơ cấu Sản phẩm cho vay (3 Nhóm chính) */}
-          <div className="row g-4">
-            <div className="col-12 col-lg-7">
-              <div className="card-modern p-4 h-100">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <div className="p-2 rounded bg-primary-subtle text-primary">
-                      <PieChart size={18} />
-                    </div>
-                    <div>
-                      <h5 className="fw-bold m-0 text-slate-900 font-heading">
-                        Cơ Cấu Sản Phẩm Tín Dụng Toàn Quỹ
-                      </h5>
-                      <span className="text-muted small">Phân bổ theo 3 nhóm mục đích vay vốn chủ lực</span>
-                    </div>
-                  </div>
-                  <span className="badge bg-light text-dark border small fw-semibold">
-                    3 Nhóm chính
-                  </span>
-                </div>
-
-                <div className="d-flex flex-column gap-3 pt-2">
-                  {loanGroups && loanGroups.length > 0 ? (
-                    loanGroups.map((lg, idx) => {
-                      const colors = ['bg-success', 'bg-primary', 'bg-warning'];
-                      const colorClass = colors[idx % colors.length];
-                      const percentVal = calcPercentNum(lg.duNo, totalDuNo);
-                      const totalHds = totalHopDong || 1;
-                      const countPercent = Math.round(((lg.count || 0) / totalHds) * 100);
-
-                      return (
-                        <div key={lg.key || lg.name || idx} className="p-3 rounded-3 bg-light border border-light-subtle">
-                          <div className="d-flex justify-content-between align-items-center mb-1.5">
-                            <span className="fw-bold text-dark">{lg.name}</span>
-                            <span className="fw-bold text-dark num-tabular">
-                              {formatCurrencyVN(lg.duNo || 0)}{' '}
-                              <span className="text-primary fw-bold">({lg.rate || `${percentVal}%`})</span>
-                            </span>
-                          </div>
-                          <div className="progress mb-2" style={{ height: '7px' }}>
-                            <div className={`progress-bar ${colorClass}`} role="progressbar" style={{ width: `${percentVal}%` }}></div>
-                          </div>
-                          <div className="d-flex justify-content-between align-items-center text-muted" style={{ fontSize: '0.73rem' }}>
-                            <span>{lg.description || 'Mục đích vay vốn theo quy chế tín dụng'}</span>
-                            <span>Quy mô: <strong className="text-dark">{lg.count || 0} HĐ</strong> ({countPercent}%)</span>
-                          </div>
-
-                          {/* Chi tiết các gói vay con nếu có */}
-                          {lg.subtypes && lg.subtypes.length > 0 && (
-                            <div className="mt-2.5 pt-2 border-top">
-                              <div className="d-flex flex-wrap gap-2">
-                                {lg.subtypes.map((st, sIdx) => (
-                                  <span key={sIdx} className="badge bg-white text-dark border small fw-normal py-1 px-2">
-                                    {st.name}: <strong className="text-dark">{formatCompactVN(st.duNo)}</strong> ({st.count} HĐ)
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-4 text-muted small">Đang nạp cơ cấu sản phẩm vay từ CSDL...</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Cột phải: Cảnh báo sớm & Tác vụ cần xử lý */}
-            <div className="col-12 col-lg-5">
-              <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
-                <div>
-                  <div className="d-flex align-items-center gap-2 mb-3">
-                    <div className="p-1.5 rounded bg-warning-subtle text-warning">
-                      <Bell size={16} />
-                    </div>
-                    <h5 className="fw-bold m-0 text-slate-900 font-heading">
-                      Cảnh Báo & Tác Vụ Cần Xử Lý
-                    </h5>
-                  </div>
-
-                  <div className="d-flex flex-column gap-2.5">
-                    {/* Cảnh báo 1: Đợt trích nợ kế tiếp */}
-                    <div
-                      className="p-3 bg-white rounded-3 border cursor-pointer hover-lift"
-                      onClick={() => onNavigate('debit_batch')}
-                    >
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <span className="badge bg-primary-subtle text-primary fw-medium small">Kỳ Trích Kế Tiếp</span>
-                        <Clock size={14} className="text-primary" />
-                      </div>
-                      <div className="fw-semibold text-dark small mb-1">Kỳ 2 (Ngày 15 hàng tháng)</div>
-                      <div className="d-flex align-items-center justify-content-between text-primary small fw-medium mt-2 pt-1 border-top">
-                        <span>Khởi tạo đợt trích</span>
-                        <ChevronRight size={13} />
-                      </div>
-                    </div>
-
-                    {/* Cảnh báo 2: Thẩm định hồ sơ */}
-                    <div
-                      className="p-3 bg-white rounded-3 border cursor-pointer hover-lift"
-                      onClick={() => onNavigate('appraisal')}
-                    >
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <span className="badge bg-info-subtle text-info fw-medium small">Thẩm Định & LTV</span>
-                        <FileCheck2 size={14} className="text-info" />
-                      </div>
-                      <div className="fw-semibold text-dark small mb-1">{pendingAppraisals || 0} Hồ Sơ Chờ Duyệt</div>
-                      <div className="d-flex align-items-center justify-content-between text-info small fw-medium mt-2 pt-1 border-top">
-                        <span>Xem hồ sơ thẩm định</span>
-                        <ChevronRight size={13} />
-                      </div>
-                    </div>
-
-                    {/* Cảnh báo 3: Kiểm tra vốn sau vay */}
-                    <div
-                      className="p-3 bg-white rounded-3 border cursor-pointer hover-lift"
-                      onClick={() => onNavigate('inspection')}
-                    >
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <span className="badge bg-warning-subtle text-warning fw-medium small">Kiểm Tra Sau Vay</span>
-                        <AlertTriangle size={14} className="text-warning" />
-                      </div>
-                      <div className="fw-semibold text-dark small mb-1">{pendingInspections || 0} Món Cần Thực Địa</div>
-                      <div className="d-flex align-items-center justify-content-between text-warning small fw-medium mt-2 pt-1 border-top">
-                        <span>Lập biên bản kiểm tra</span>
-                        <ChevronRight size={13} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-top mt-3 d-flex align-items-center gap-2 text-muted" style={{ fontSize: '0.74rem' }}>
-                  <ShieldCheck size={16} className="text-success flex-shrink-0" />
-                  <span>Dữ liệu được bảo mật và tự động đối soát theo chuẩn QTDND.</span>
-                </div>
-              </div>
-            </div>
+            </button>
           </div>
 
-          {/* Hàng Tiến Độ Đợt Trích Nợ Gần Nhất & Lối Tắt Nghiệp Vụ */}
-          <div className="row g-4">
-            {/* Bảng đợt trích nợ gần nhất */}
-            <div className="col-12 col-lg-8">
-              <div className="card-modern p-4 h-100">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h5 className="fw-bold m-0 text-slate-900 font-heading">Các Đợt Trích Nợ Gần Nhất</h5>
-                    <span className="text-muted small">Theo dõi tiến độ thu nợ tự động theo từng kỳ</span>
-                  </div>
-                  <button
-                    className="btn btn-sm btn-link text-primary fw-bold text-decoration-none d-flex align-items-center gap-1 p-0"
-                    onClick={() => onNavigate('debit_batch')}
-                  >
-                    Xem tất cả <ArrowUpRight size={14} />
-                  </button>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="table table-custom align-middle">
-                    <thead>
-                      <tr>
-                        <th>Mã Đợt</th>
-                        <th>Kỳ Trích</th>
-                        <th className="text-end">Phải Thu</th>
-                        <th className="text-end">Đã Trích</th>
-                        <th className="text-end">Còn Nợ</th>
-                        <th className="text-center">Tiến Độ</th>
-                        <th className="text-center">Trạng Thái</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats?.recentBatches && stats.recentBatches.length > 0 ? (
-                        stats.recentBatches.map((batch) => {
-                          const rate =
-                            batch.completionRate !== undefined
-                              ? batch.completionRate
-                              : batch.tongPhaiThu > 0
-                              ? Math.round((batch.tongDaTrich / batch.tongPhaiThu) * 100)
-                              : 0;
-                          return (
-                            <tr key={batch.maDot} className="hover-highlight">
-                              <td className="fw-bold text-primary font-monospace">{batch.maDot}</td>
-                              <td>
-                                <span className="badge bg-light text-dark border fw-bold">
-                                  Kỳ {batch.kyTrich}
-                                </span>{' '}
-                                <span className="text-muted small">({batch.thangNam})</span>
-                              </td>
-                              <td className="text-end fw-semibold num-tabular">
-                                {formatCurrency(batch.tongPhaiThu)}
-                              </td>
-                              <td className="text-end fw-bold text-success num-tabular">
-                                {formatCurrency(batch.tongDaTrich)}
-                              </td>
-                              <td className="text-end fw-bold text-danger num-tabular">
-                                {formatCurrency(batch.tongConNo)}
-                              </td>
-                              <td className="text-center" style={{ minWidth: 100 }}>
-                                <div className="d-flex align-items-center gap-1.5 justify-content-center">
-                                  <div className="progress flex-grow-1" style={{ height: '6px' }}>
-                                    <div
-                                      className={`progress-bar ${rate >= 90 ? 'bg-success' : rate >= 50 ? 'bg-warning' : 'bg-danger'}`}
-                                      style={{ width: `${rate}%` }}
-                                    ></div>
-                                  </div>
-                                  <span className="small fw-bold font-monospace" style={{ fontSize: '0.72rem' }}>
-                                    {rate}%
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="text-center">
-                                <span
-                                  className={`badge-status ${
-                                    batch.trangThai === 'HOAN_TAT'
-                                      ? 'badge-success-soft'
-                                      : 'badge-warning-soft'
-                                  }`}
-                                >
-                                  {batch.trangThai === 'HOAN_TAT' ? (
-                                    <>
-                                      <CheckCircle2 size={12} /> Hoàn tất
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Clock size={12} /> Khởi tạo
-                                    </>
-                                  )}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center py-4 text-muted">
-                            Chưa có đợt trích nợ nào được lập trong kỳ.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+          <div className="col-6 col-md-3">
+            <button
+              type="button"
+              className="btn btn-light w-100 text-start p-2.5 rounded-2.5 border d-flex align-items-center gap-2 hover-lift"
+              onClick={() => onNavigate && onNavigate('debit_batch')}
+            >
+              <Zap size={16} className="text-warning" />
+              <div>
+                <strong className="d-block text-dark small">Đợt Trích Nợ</strong>
+                <span className="text-muted" style={{ fontSize: '0.7rem' }}>Tự động kỳ 05, 15, 25</span>
               </div>
-            </div>
+            </button>
+          </div>
 
-            {/* Lối tắt 5 phân hệ nghiệp vụ nhanh */}
-            <div className="col-12 col-lg-4">
-              <div className="card-modern p-4 h-100 d-flex flex-column justify-content-between">
-                <div>
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <h5 className="fw-bold m-0 text-slate-900 font-heading">Thao Tác Nhanh</h5>
-                    <span className="badge bg-light text-muted border small">Lối tắt</span>
-                  </div>
-                  <p className="text-muted small mb-3">Truy cập tức thì các quy trình nghiệp vụ cốt lõi</p>
-
-                  <div className="d-flex flex-column gap-2">
-                    <button
-                      className="btn btn-outline-primary text-start p-2.5 rounded-3 d-flex align-items-center justify-content-between border-subtle hover-lift"
-                      onClick={() => onNavigate('customer360')}
-                    >
-                      <div className="d-flex align-items-center gap-2.5">
-                        <div className="p-2 rounded-2 bg-primary-subtle text-primary">
-                          <Users size={16} />
-                        </div>
-                        <div>
-                          <div className="fw-bold text-dark small">Tra Cứu Khách Hàng 360°</div>
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                            Hồ sơ khách hàng, khế ước HĐTD & tài khoản CASA
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={15} className="text-muted" />
-                    </button>
-
-                    <button
-                      className="btn btn-outline-success text-start p-2.5 rounded-3 d-flex align-items-center justify-content-between border-subtle hover-lift"
-                      onClick={() => onNavigate('appraisal')}
-                    >
-                      <div className="d-flex align-items-center gap-2.5">
-                        <div className="p-2 rounded-2 bg-success-subtle text-success">
-                          <FileCheck2 size={16} />
-                        </div>
-                        <div>
-                          <div className="fw-bold text-dark small">Thẩm Định & Định Giá TSĐB</div>
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                            Tính LTV, chấm điểm CIC & hạn mức phê duyệt
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={15} className="text-muted" />
-                    </button>
-
-                    <button
-                      className="btn btn-outline-warning text-dark text-start p-2.5 rounded-3 d-flex align-items-center justify-content-between border-subtle hover-lift"
-                      onClick={() => onNavigate('debit_batch')}
-                    >
-                      <div className="d-flex align-items-center gap-2.5">
-                        <div className="p-2 rounded-2 bg-warning-subtle text-warning-emphasis">
-                          <Zap size={16} />
-                        </div>
-                        <div>
-                          <div className="fw-bold text-dark small">Khởi Tạo Đợt Trích Nợ</div>
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                            Tính lãi ngày TT14 + Gốc đến hạn + Nợ tồn
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={15} className="text-muted" />
-                    </button>
-
-                    <button
-                      className="btn btn-outline-info text-dark text-start p-2.5 rounded-3 d-flex align-items-center justify-content-between border-subtle hover-lift"
-                      onClick={() => onNavigate('reconciliation')}
-                    >
-                      <div className="d-flex align-items-center gap-2.5">
-                        <div className="p-2 rounded-2 bg-info-subtle text-info-emphasis">
-                          <ArrowLeftRight size={16} />
-                        </div>
-                        <div>
-                          <div className="fw-bold text-dark small">Đối Soát Kết Quả Core</div>
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                            Phân loại trích đủ / một phần & chốt đợt
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={15} className="text-muted" />
-                    </button>
-
-                    <button
-                      className="btn btn-outline-secondary text-start p-2.5 rounded-3 d-flex align-items-center justify-content-between border-subtle hover-lift"
-                      onClick={() => onNavigate('templates')}
-                    >
-                      <div className="d-flex align-items-center gap-2.5">
-                        <div className="p-2 rounded-2 bg-secondary-subtle text-secondary">
-                          <ClipboardList size={16} />
-                        </div>
-                        <div>
-                          <div className="fw-bold text-dark small">Kho Biểu Mẫu Mail Merge</div>
-                          <div className="text-muted" style={{ fontSize: '0.72rem' }}>
-                            Trộn Google Docs / Word báo cáo tự động
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowUpRight size={15} className="text-muted" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-top mt-3 d-flex align-items-center gap-2 text-muted" style={{ fontSize: '0.74rem' }}>
-                  <ShieldCheck size={16} className="text-success flex-shrink-0" />
-                  <span>Bảo toàn phân công cán bộ & số liệu khế ước theo chuẩn hệ thống.</span>
-                </div>
+          <div className="col-6 col-md-3">
+            <button
+              type="button"
+              className="btn btn-light w-100 text-start p-2.5 rounded-2.5 border d-flex align-items-center gap-2 hover-lift"
+              onClick={() => onNavigate && onNavigate('appraisal')}
+            >
+              <FileCheck2 size={16} className="text-indigo" style={{ color: '#4338ca' }} />
+              <div>
+                <strong className="d-block text-dark small">Thẩm Định Tín Dụng</strong>
+                <span className="text-muted" style={{ fontSize: '0.7rem' }}>Lập hồ sơ & chấm điểm CIC</span>
               </div>
-            </div>
+            </button>
           </div>
         </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 👑 PHÂN HỆ 4: TOP 50 DƯ NỢ ĐẾN NGÀY & DƯ NỢ BÌNH QUÂN CUỐI THÁNG          */}
-      {/* ========================================================================= */}
-      {activeSubView === 'top_debt' && (
-        <div className="content-fade-in">
-          <Top50DebtSection
-            top50DuNoDenNgay={top50DuNoDenNgay}
-            top50DuNoBinhQuanCuoiThang={top50DuNoBinhQuanCuoiThang}
-            totalDuNo={totalDuNo}
-            onOpenCustomerQuickView={onOpenCustomerQuickView}
-          />
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 📈 PHÂN HỆ 5: BIỂU ĐỒ DIỄN BIẾN DƯ NỢ THEO TỪNG THÁNG SAO KÊ             */}
-      {/* ========================================================================= */}
-      {activeSubView === 'trend' && (
-        <div className="content-fade-in">
-          <MonthlyDebtTrendChart monthlyDebtTrend={monthlyDebtTrend} />
-        </div>
-      )}
-
-      {/* Modal Trích Xuất Dữ Liệu Sao Kê HDTD_CORE_DN & HDTD_CORE_ALL Từ SQL Core qua Python Daemon */}
-      <ExtractAsOfModal
-        isOpen={isExtractModalOpen}
-        onClose={() => setIsExtractModalOpen(false)}
-        onSuccess={(targetSheet) => {
-          if (targetSheet) {
-            setSelectedSnapshotSheet(targetSheet);
-          }
-          fetchModeData('as_of_date');
-        }}
-      />
+      </div>
     </div>
   );
 }

@@ -143,7 +143,7 @@ export default function CommuneComparisonChart({
                     So Sánh Dư Nợ Các Thôn Thuộc <span className="text-primary">{selectedAreaData.name}</span>
                   </>
                 ) : (
-                  'Biểu Đồ So Sánh Dư Nợ Tín Dụng Giữa 3 Xã'
+                  'Biểu Đồ So Sánh Dư Nợ Tín Dụng Theo Địa Bàn'
                 )}
               </h6>
             </div>
@@ -199,7 +199,7 @@ export default function CommuneComparisonChart({
               if (onSelectCommune) onSelectCommune('ALL');
             }}
           >
-            Toàn Bộ 3 Xã
+            Tất Cả Địa Bàn
           </button>
 
           {areaStats.map((a) => {
@@ -335,7 +335,7 @@ export default function CommuneComparisonChart({
         <div>
           {selectedAreaData ? (
             <span className="text-primary fw-semibold cursor-pointer" onClick={() => onSelectCommune && onSelectCommune('ALL')}>
-              Xem tổng thể 3 Xã →
+              Xem toàn bộ địa bàn →
             </span>
           ) : (
             <span className="text-muted">Nhấp vào từng Xã để đào sâu cấp Thôn</span>

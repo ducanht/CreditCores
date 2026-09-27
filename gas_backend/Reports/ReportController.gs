@@ -112,6 +112,10 @@ var ReportController = {
         var hdMoTa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MoTaVay", "")).trim();
         var hdCBTD_Code = String(HeaderUtils.getCell(hdVals[j], colMapHD, "CBTD_PhuTrach", "")).trim();
         var hdTenCBTD   = String(HeaderUtils.getCell(hdVals[j], colMapHD, "Ten_CBTD", "")).trim();
+        var hdTrangThai = String(HeaderUtils.getCell(hdVals[j], colMapHD, "TrangThaiHD", "")).trim();
+        if (!hdTrangThai) {
+          hdTrangThai = hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN";
+        }
         var hdMaLoaiHD  = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaLoaiHD", "")).trim();
         if (!hdMaLoaiHD) {
           hdMaLoaiHD = hdSoThang > 12 ? "THCDBTNMT" : "NHCDBTNMT";
@@ -305,34 +309,53 @@ var ReportController = {
     var sBCDS = ss.getSheetByName("BC_DOANH_SO_TD");
     if (sBCDS && sBCDS.getLastRow() > 1) {
       try {
-        var bcdsVals = sBCDS.getRange(2, 1, sBCDS.getLastRow() - 1, 12).getValues();
+        var colMapBCDS = HeaderUtils.getHeaderMap(sBCDS);
+        var bcdsVals = sBCDS.getRange(2, 1, sBCDS.getLastRow() - 1, sBCDS.getLastColumn()).getValues();
         if (bcdsVals.length > 0) {
           var sheetStatement = [];
+          var bcdsTotalDuNo = 0;
+          var bcdsTotalTienVay = 0;
+          var bcdsKHSet = new Set();
           for (var b = 0; b < bcdsVals.length; b++) {
             var row = bcdsVals[b];
-            if (!row[0] && !row[1]) continue;
-            var rMaKH = String(row[1]).trim();
-            var rKhInfo = khMap[rMaKH] || {};
+            var rSoHD = String(HeaderUtils.getCell(row, colMapBCDS, "SoHDTD", "")).trim();
+            var rMaKH = String(HeaderUtils.getCell(row, colMapBCDS, "MaKH", "")).replace(/^'/, "").trim();
+            if (!rSoHD && !rMaKH) continue;
+
+            var rTienVay = Number(HeaderUtils.getCell(row, colMapBCDS, "TienVay", 0)) || 0;
+            var rDuNo    = Number(HeaderUtils.getCell(row, colMapBCDS, "DuNo", 0)) || 0;
+            var rKhInfo  = khMap[rMaKH] || {};
+            var rTrangThai = String(HeaderUtils.getCell(row, colMapBCDS, "TrangThaiHD", "")).trim() || (rDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN");
+
             sheetStatement.push({
-              soHDTD: String(row[0]).trim(),
+              soHDTD: rSoHD,
               maKH: rMaKH,
-              soTV: String(row[2] || rKhInfo.soTV || "").trim(),
-              hoTen: rKhInfo.hoTen || ("KH " + rMaKH),
-              tienVay: Number(row[3]) || 0,
-              duNo: Number(row[4]) || 0,
-              laiSuat: Number(row[5]) || 0,
-              ngayVay: formatGasDateVN(row[6]),
-              denHan: formatGasDateVN(row[7]),
-              maLoaiVay: String(row[8]).trim(),
-              soThangVay: Number(row[9]) || 0,
-              moTaVay: String(row[10]).trim(),
-              khuVuc: String(row[11] || rKhInfo.area || "Xã Yên Thọ").trim(),
-              diaChi: rKhInfo.diaChi || "",
-              trangThaiHD: (Number(row[4]) || 0) > 0 ? "DANG_VAY" : "DA_TAT_TOAN"
+              soTV: String(HeaderUtils.getCell(row, colMapBCDS, "SoTV", rKhInfo.soTV || "")).replace(/^'/, "").trim(),
+              hoTen: String(HeaderUtils.getCell(row, colMapBCDS, "HoTen", rKhInfo.hoTen || ("KH " + rMaKH))).trim(),
+              tienVay: rTienVay,
+              duNo: rDuNo,
+              laiSuat: Number(HeaderUtils.getCell(row, colMapBCDS, "LaiSuat", 0)) || 0,
+              ngayVay: formatGasDateVN(HeaderUtils.getCell(row, colMapBCDS, "NgayVay", "")),
+              denHan: formatGasDateVN(HeaderUtils.getCell(row, colMapBCDS, "DenHan", "")),
+              maLoaiVay: String(HeaderUtils.getCell(row, colMapBCDS, "MaLoaiVay", "")).trim(),
+              soThangVay: Number(HeaderUtils.getCell(row, colMapBCDS, "SoThangVay", 0)) || 0,
+              moTaVay: String(HeaderUtils.getCell(row, colMapBCDS, "MoTaVay", "")).trim(),
+              khuVuc: String(HeaderUtils.getCell(row, colMapBCDS, "KhuVuc", rKhInfo.area || "Xã Yên Thọ")).trim(),
+              diaChi: String(HeaderUtils.getCell(row, colMapBCDS, "DiaChi", rKhInfo.diaChi || "")).trim(),
+              trangThaiHD: rTrangThai
             });
+
+            bcdsTotalTienVay += rTienVay;
+            if (rTrangThai !== "DA_TAT_TOAN" && rDuNo > 0) {
+              bcdsTotalDuNo += rDuNo;
+              bcdsKHSet.add(rMaKH);
+            }
           }
           if (sheetStatement.length > 0) {
             statementResult = sheetStatement;
+            totalDuNo = bcdsTotalDuNo;
+            totalTienVay = bcdsTotalTienVay;
+            if (bcdsKHSet.size > 0) totalKH = bcdsKHSet;
           }
         }
       } catch (eBC) {
@@ -344,23 +367,30 @@ var ReportController = {
     var sTop = ss.getSheetByName("TOP_DU_NO_BINH_QUAN");
     if (sTop && sTop.getLastRow() > 1) {
       try {
-        var topVals = sTop.getRange(2, 1, sTop.getLastRow() - 1, 21).getValues();
+        var colMapTop = HeaderUtils.getHeaderMap(sTop);
+        var topVals = sTop.getRange(2, 1, sTop.getLastRow() - 1, sTop.getLastColumn()).getValues();
         if (topVals.length > 0) {
           var sheetTop = [];
           for (var t = 0; t < topVals.length; t++) {
             var tRow = topVals[t];
-            if (!tRow[2]) continue;
+            var tMaKH = String(HeaderUtils.getCell(tRow, colMapTop, "MaKH", "")).replace(/^'/, "").trim();
+            if (!tMaKH) continue;
+
+            var tTongDuNo = Number(HeaderUtils.getCell(tRow, colMapTop, "TongDuNo", 0)) || Number(HeaderUtils.getCell(tRow, colMapTop, "DuNoBinhQuan", 0)) || 0;
+            var tTongTienVay = Number(HeaderUtils.getCell(tRow, colMapTop, "TongTienVay", 0)) || 0;
+            var tTyTrong = HeaderUtils.getCell(tRow, colMapTop, "TyTrongDuNo", 0);
+
             sheetTop.push({
-              namBaoCao: Number(tRow[0]) || 2026,
-              xepHang: Number(tRow[1]) || (t + 1),
-              maKH: String(tRow[2]).trim(),
-              hoTen: String(tRow[3]).trim(),
-              soTV: String(tRow[4]).trim(),
-              khuVuc: String(tRow[5]).trim(),
-              duNoBinhQuan: Number(tRow[18]) || 0,
-              tongTienVay: Number(tRow[19]) || 0,
-              tongDuNo: Number(tRow[18]) || 0,
-              tyTrongDuNo: typeof tRow[20] === 'number' ? Number((tRow[20] * 100).toFixed(2)) : parseFloat(String(tRow[20]).replace('%', '')) || 0
+              namBaoCao: Number(HeaderUtils.getCell(tRow, colMapTop, "NamBaoCao", 2026)) || 2026,
+              xepHang: Number(HeaderUtils.getCell(tRow, colMapTop, "XepHang", t + 1)) || (t + 1),
+              maKH: tMaKH,
+              hoTen: String(HeaderUtils.getCell(tRow, colMapTop, "HoTen", "")).trim(),
+              soTV: String(HeaderUtils.getCell(tRow, colMapTop, "SoTV", "")).replace(/^'/, "").trim(),
+              khuVuc: String(HeaderUtils.getCell(tRow, colMapTop, "KhuVuc", "")).trim(),
+              duNoBinhQuan: Number(HeaderUtils.getCell(tRow, colMapTop, "DuNoBinhQuan", tTongDuNo)) || 0,
+              tongTienVay: tTongTienVay,
+              tongDuNo: tTongDuNo,
+              tyTrongDuNo: typeof tTyTrong === 'number' ? Number((tTyTrong * 100).toFixed(2)) : parseFloat(String(tTyTrong).replace('%', '')) || 0
             });
           }
           if (sheetTop.length > 0) {

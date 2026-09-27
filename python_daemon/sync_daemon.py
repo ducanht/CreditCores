@@ -452,26 +452,82 @@ def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} khách hàng từ NG-eFUND.")
     return records
 
-def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
+def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=None):
     """
-    Truy vấn bảng Khế ước & Hợp đồng Tín dụng từ CSDL NG-eFUND theo chuẩn xác thực:
-    - SoHDTD: Mã khế ước A.MA_KHE_UOC (Ví dụ: 2026-1-00294).
-    - MaKH: Mã khách hàng D.MA_KHACH_HANG (Ví dụ: '0100010 kèm nháy đơn).
-    - TienVay, DuNo: Làm tròn loại bỏ .00 thành số nguyên.
-    - LaiSuat: Số thực 2 chữ số thập phân (Ví dụ: 10.46).
-    - NgayVay, DenHan, TraLaiDenNgay: Định dạng dd/MM/yyyy GMT+7.
-    - MaLoaiVay: SP.TEN_SAN_PHAM.
-    - SoThangVay: D.SO_THANG_VAY.
-    - MoTaVay: D.MO_TA_MUC_DICH_VAY.
+    Truy vấn bảng Khế ước & Hợp đồng Tín dụng từ CSDL NG-eFUND theo chuẩn CoreBanking chuẩn xác:
+    - @denngay: Mốc ngày chốt dữ liệu (định dạng YYYYMMDD, ví dụ 20260921).
+    - TienVay: convert(int, c.so_tien_gn) -> Số tiền cho vay ban đầu (giải ngân lũy kế).
+    - DuNo: convert(int, e.so_du) -> Số tiền DƯ NỢ THỰC TẾ lưu hành (chỉ tính e.so_du > 0).
+    - Phân định rõ ràng: DuNo là dư nợ thực tế, TienVay là hạn mức giải ngân ban đầu.
     """
-    query = """
+    # 1. Chuẩn hóa tham số @denngay dạng YYYYMMDD
+    denngay_param = datetime.now().strftime("%Y%m%d")
+    if as_of_date_str:
+        clean_d = str(as_of_date_str).strip()
+        if "/" in clean_d:
+            parts = clean_d.split("/")
+            if len(parts) == 3:
+                denngay_param = f"{parts[2]}{parts[1].zfill(2)}{parts[0].zfill(2)}"
+        elif len(clean_d) == 8 and clean_d.isdigit():
+            denngay_param = clean_d
+
+    query_primary = f"""
+    DECLARE @denngay VARCHAR(50);
+    SET @denngay = '{denngay_param}';
+    SELECT 
+        a.so_hdtd AS SoHDTD,
+        b.ma_khach_hang AS MaKH,
+        b.ten_khach_hang AS HoTen,
+        b.so_cmnd AS CCCD,
+        b.so_di_dong AS DienThoai,
+        f.ten_khu_vuc AS DiaChi,
+        ISNULL(G.TEN_DIA_LY, '') AS KvXa,
+        CONVERT(INT, c.so_tien_gn) AS TienVay,
+        CONVERT(INT, e.so_du) AS DuNo,
+        CONVERT(VARCHAR, c.lai_suat) AS LaiSuat,
+        CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(a.ngay_vay, 8), 103), 103) AS NgayVay,
+        CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(a.ngay_dao_han, 8), 103), 103) AS DenHan,
+        a.SO_THANG_VAY AS SoThangVay,
+        sp.TEN_SAN_PHAM AS MaLoaiVay,
+        a.MO_TA_MUC_DICH_VAY AS MoTaVay,
+        a.MA_LOAI_HD AS MaLoaiHD
+    FROM td_hop_dong_td a 
+        INNER JOIN (
+            SELECT DISTINCT kh.*, ISNULL(tv.SO_THANH_VIEN, '') AS so_thanh_vien 
+            FROM dc_khach_hang kh 
+            LEFT JOIN (
+                SELECT ma_khach_hang, MIN(so_thanh_vien) AS so_thanh_vien 
+                FROM fn_dc_thanh_vien_ls(@denngay, '%') 
+                GROUP BY ma_khach_hang
+            ) tv ON kh.ma_khach_hang = tv.ma_khach_hang
+        ) b ON a.ma_khach_hang = b.ma_khach_hang
+        INNER JOIN fn_TD_KHE_UOC_LS('01', @denngay) c ON a.ma_hdtd = c.ma_hdtd 
+            AND c.nhom_no_hien_tai IN ('NHOM1','NHOM2','NHOM3','NHOM4','NHOM5','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','')
+        INNER JOIN td_san_pham d ON c.ma_san_pham = d.ma_san_pham
+        INNER JOIN vwTD_SAN_PHAM sp ON a.MA_SAN_PHAM = sp.MA_SAN_PHAM
+        INNER JOIN fn_KT_TAI_KHOAN_LS_CHI_NHANH(@denngay, 'TKTD', '01') e ON e.so_tai_khoan = c.so_tai_khoan
+        INNER JOIN dc_khu_vuc f ON b.ma_khu_vuc = f.ma_khu_vuc
+        LEFT JOIN (
+            SELECT DISTINCT A.MA_KHU_VUC, B.MA_DIA_LY, B.TEN_DIA_LY 
+            FROM DC_DON_VI_KHU_VUC A 
+            JOIN DC_DIA_LY B ON A.MA_DIA_LY = B.MA_DIA_LY
+        ) G ON B.MA_KHU_VUC = G.MA_KHU_VUC
+    WHERE e.so_du > 0 
+        AND e.ma_chi_nhanh LIKE '01'                       
+        AND E.loai_tk = 'TKTD'
+    ORDER BY a.so_hdtd;
+    """
+
+    # Query dự phòng nếu CSDL không có sẵn các hàm fn lịch sử
+    query_fallback = """
     SELECT 
         A.MA_KHE_UOC AS SoHDTD,
-        D.MA_KHACH_HANG AS MAKH,
-        B.TEN_KHACH_HANG AS TenKH,
+        D.MA_KHACH_HANG AS MaKH,
+        B.TEN_KHACH_HANG AS HoTen,
         B.SO_CMND AS CCCD,
         B.SO_DI_DONG AS DienThoai,
         B.DIA_CHI AS DiaChi,
+        ISNULL(KV.TEN_KHU_VUC, '') AS KvXa,
         D.SO_TIEN_VAY AS TienVay,
         C.SO_DU AS DuNo,
         FORMAT(A.LAI_SUAT, 'N2') AS LaiSuat,
@@ -480,7 +536,7 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
         CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TraLaiDenNgay,
         SP.TEN_SAN_PHAM AS MaLoaiVay,
         D.SO_THANG_VAY AS SoThangVay,
-        D.MO_TA_MUC_DICH_VAY AS MucDichVay,
+        D.MO_TA_MUC_DICH_VAY AS MoTaVay,
         D.MA_LOAI_HD AS MaLoaiHD
     FROM dbo.TD_KHE_UOC A 
     INNER JOIN dbo.TD_HOP_DONG_TD D ON A.MA_HDTD = D.MA_HDTD
@@ -493,17 +549,28 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
     WHERE C.SO_DU > 0
     ORDER BY D.MA_KHACH_HANG, D.NGAY_VAY DESC;
     """
-    logger.info("🔍 Đang thực thi SQL truy vấn dữ liệu Hợp đồng Tín dụng & Dư nợ từ NG-eFUND...")
-    cursor = sql_conn.cursor()
-    cursor.execute(query)
-    columns = [column[0] for column in cursor.description]
-    records = []
 
-    for row in cursor.fetchall():
+    logger.info(f"🔍 Đang truy vấn dữ liệu HĐTD & Dư nợ từ NG-eFUND (Mốc @denngay: {denngay_param})...")
+    cursor = sql_conn.cursor()
+    columns = []
+    rows = []
+
+    try:
+        cursor.execute(query_primary)
+        columns = [column[0] for column in cursor.description]
+        rows = cursor.fetchall()
+        logger.info(f"⚡ Thực thi thành công qua fn_TD_KHE_UOC_LS & fn_KT_TAI_KHOAN_LS_CHI_NHANH ({len(rows)} bản ghi).")
+    except Exception as e_prim:
+        logger.warning(f"⚠️ Hàm lịch sử NG-eFUND tạm thời không khả dụng ({e_prim}), chuyển sang truy vấn trực tiếp bảng...")
+        cursor.execute(query_fallback)
+        columns = [column[0] for column in cursor.description]
+        rows = cursor.fetchall()
+
+    records = []
+    for row in rows:
         row_map = {col: (val if val is not None else "") for col, val in zip(columns, row)}
 
-        # Chuẩn hóa Mã khách hàng: luôn có nháy đơn ' ở đầu nếu có ký tự số để chống nuốt số 0
-        raw_makh = str(row_map.get("MAKH") or row_map.get("MaKH", "")).strip()
+        raw_makh = str(row_map.get("MaKH") or row_map.get("MAKH", "")).strip()
         clean_makh = clean_number_code(raw_makh)
         if clean_makh and not clean_makh.startswith("'"):
             clean_makh = "'" + clean_makh
@@ -513,32 +580,47 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str):
         if not raw_ma_loai_hd:
             raw_ma_loai_hd = "THCDBTNMT" if so_thang > 12 else "NHCDBTNMT"
 
+        raw_dia_chi = clean_address(row_map.get("DiaChi"))
+        raw_kv_xa = str(row_map.get("KvXa", "")).strip()
+        kv_thon = ""
+        m_thon = re.search(r"Thôn\s+[^,]+", raw_dia_chi, re.IGNORECASE)
+        if m_thon:
+            kv_thon = m_thon.group(0).strip()
+
+        # Phân biệt rõ ràng:
+        # TienVay = Vốn cho vay ban đầu (giải ngân)
+        # DuNo = Dư nợ thực tế lưu hành
+        val_tien_vay = clean_currency(row_map.get("TienVay"))
+        val_du_no = clean_currency(row_map.get("DuNo"))
+
         record = {
             "SoHDTD": str(row_map.get("SoHDTD", "")).strip(),
             "MaKH": clean_makh,
-            "HoTen": str(row_map.get("TenKH", "")).strip(),
+            "HoTen": str(row_map.get("HoTen") or row_map.get("TenKH", "")).strip(),
             "CCCD": clean_number_code(row_map.get("CCCD")),
             "DienThoai": clean_number_code(row_map.get("DienThoai")),
-            "DiaChi": clean_address(row_map.get("DiaChi")),
-            "TienVay": clean_currency(row_map.get("TienVay")),
-            "DuNo": clean_currency(row_map.get("DuNo")),
+            "DiaChi": raw_dia_chi,
+            "KvXa": raw_kv_xa,
+            "KvThon": kv_thon,
+            "TienVay": val_tien_vay,
+            "DuNo": val_du_no,
             "LaiSuat": clean_interest_rate(row_map.get("LaiSuat")),
             "NgayVay": format_efund_date(row_map.get("NgayVay")),
             "DenHan": format_efund_date(row_map.get("DenHan")),
             "TraLaiDenNgay": format_efund_date(row_map.get("TraLaiDenNgay")),
             "MaLoaiVay": str(row_map.get("MaLoaiVay", "")).strip(),
             "SoThangVay": so_thang,
-            "MoTaVay": clean_address(row_map.get("MucDichVay") or row_map.get("MoTaVay")),
+            "MoTaVay": clean_address(row_map.get("MoTaVay") or row_map.get("MucDichVay")),
             "CBTD_PhuTrach": "qtdyentho.huyennhu",
             "Ten_CBTD": "Trần Như Huyền",
-            "TrangThaiHD": "DANG_VAY",
+            "TrangThaiHD": "DANG_VAY" if val_du_no > 0 else "DA_TAT_TOAN",
             "MaLoaiHD": raw_ma_loai_hd,
             "NgayCapNhat": sync_timestamp_str
         }
         records.append(record)
 
     cursor.close()
-    logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} hợp đồng tín dụng từ NG-eFUND.")
+    logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} hợp đồng tín dụng từ NG-eFUND (DuNo != TienVay).")
     return records
 
 # --- 8. KHỞI TẠO & CHỮA LÀNH CSDL 13+ BẢNG (ĐÃ TÁCH SANG schema_healer.py) ---
@@ -851,61 +933,62 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
     try:
         with get_sql_connection(sql_cfg) as sql_conn:
             records_kh = fetch_customer_core_data(sql_conn, now_str)
-            records_hdtd = fetch_loan_contract_core_data(sql_conn, now_str)
 
-        # Lập Map tra cứu khách hàng O(1) theo MaKH
-        kh_lookup = {}
-        for k in records_kh:
-            m = str(k.get("MaKH", "")).strip().lstrip("'")
-            kh_lookup[m] = k
+            # Lập Map tra cứu khách hàng O(1) theo MaKH
+            kh_lookup = {}
+            for k in records_kh:
+                m = str(k.get("MaKH", "")).strip().lstrip("'")
+                kh_lookup[m] = k
 
-        # Chuẩn bị danh sách mốc ngày
-        target_dates = [as_of_date]
-        if target_sheet_name == "HDTD_CORE_ALL" or mode == "month_ends":
-            target_dates = []
-            curr_year = datetime.now().year
-            import calendar
-            month_list = months if months else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-            for m in month_list:
-                try:
-                    m_int = int(m)
-                    last_day = calendar.monthrange(curr_year, m_int)[1]
-                    target_dates.append(f"{last_day:02d}/{m_int:02d}/{curr_year}")
-                except Exception:
-                    pass
-            if not target_dates:
-                target_dates = [as_of_date]
+            # Chuẩn bị danh sách mốc ngày
+            target_dates = [as_of_date]
+            if target_sheet_name == "HDTD_CORE_ALL" or mode == "month_ends":
+                target_dates = []
+                curr_year = datetime.now().year
+                import calendar
+                month_list = months if months else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                for m in month_list:
+                    try:
+                        m_int = int(m)
+                        last_day = calendar.monthrange(curr_year, m_int)[1]
+                        target_dates.append(f"{last_day:02d}/{m_int:02d}/{curr_year}")
+                    except Exception:
+                        pass
+                if not target_dates:
+                    target_dates = [as_of_date]
 
-        dn_records = []
-        for t_date in target_dates:
-            for r in records_hdtd:
-                makh = str(r.get("MaKH", "")).strip().lstrip("'")
-                cust = kh_lookup.get(makh, {})
-                ho_ten = cust.get("HoTen", "") or r.get("HoTen", "")
-                dia_chi = cust.get("DiaChi", "") or r.get("DiaChi", "")
-                kv_xa = cust.get("KvXa", "") or r.get("KvXa", "")
-                kv_thon = cust.get("KvThon", "") or r.get("KvThon", "")
+            dn_records = []
+            for t_date in target_dates:
+                # Truy vấn chính xác dữ liệu HĐTD và Dư nợ thực tế (DuNo) tại mốc t_date
+                records_hdtd_t = fetch_loan_contract_core_data(sql_conn, now_str, t_date)
+                for r in records_hdtd_t:
+                    makh = str(r.get("MaKH", "")).strip().lstrip("'")
+                    cust = kh_lookup.get(makh, {})
+                    ho_ten = cust.get("HoTen", "") or r.get("HoTen", "")
+                    dia_chi = cust.get("DiaChi", "") or r.get("DiaChi", "")
+                    kv_xa = r.get("KvXa", "") or cust.get("KvXa", "")
+                    kv_thon = r.get("KvThon", "") or cust.get("KvThon", "")
 
-                dn_record = {
-                    "SoHDTD": r.get("SoHDTD", ""),
-                    "MaKH": r.get("MaKH", ""),
-                    "HoTen": ho_ten,
-                    "DiaChi": dia_chi,
-                    "KvXa": kv_xa,
-                    "KvThon": kv_thon,
-                    "TienVay": r.get("TienVay", 0),
-                    "DuNo": r.get("DuNo", 0),
-                    "LaiSuat": r.get("LaiSuat", 0),
-                    "NgayVay": r.get("NgayVay", ""),
-                    "DenHan": r.get("DenHan", ""),
-                    "SoThangVay": r.get("SoThangVay", 12),
-                    "MaLoaiVay": r.get("MaLoaiVay", ""),
-                    "MoTaVay": r.get("MoTaVay", ""),
-                    "MaLoaiHD": r.get("MaLoaiHD", ""),
-                    "NgayDuLieu": t_date,
-                    "NgayCapNhat": now_str
-                }
-                dn_records.append(dn_record)
+                    dn_record = {
+                        "SoHDTD": r.get("SoHDTD", ""),
+                        "MaKH": r.get("MaKH", ""),
+                        "HoTen": ho_ten,
+                        "DiaChi": dia_chi,
+                        "KvXa": kv_xa,
+                        "KvThon": kv_thon,
+                        "TienVay": r.get("TienVay", 0),  # Vốn vay ban đầu (giải ngân)
+                        "DuNo": r.get("DuNo", 0),        # Dư nợ thực tế lưu hành
+                        "LaiSuat": r.get("LaiSuat", 0),
+                        "NgayVay": r.get("NgayVay", ""),
+                        "DenHan": r.get("DenHan", ""),
+                        "SoThangVay": r.get("SoThangVay", 12),
+                        "MaLoaiVay": r.get("MaLoaiVay", ""),
+                        "MoTaVay": r.get("MoTaVay", ""),
+                        "MaLoaiHD": r.get("MaLoaiHD", ""),
+                        "NgayDuLieu": t_date,
+                        "NgayCapNhat": now_str
+                    }
+                    dn_records.append(dn_record)
 
         dn_headers = ALL_SCHEMAS.get(target_sheet_name, {}).get("headers", [
             "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",

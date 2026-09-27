@@ -16,7 +16,9 @@ import {
   Square,
   ChevronDown,
   ChevronUp,
-  UserCheck
+  UserCheck,
+  MapPin,
+  ShieldCheck
 } from 'lucide-react';
 import ThousandInput from '../ThousandInput';
 import { formatCurrencyVN, formatDateVN, getTodayVN } from '../../utils/dateUtils';
@@ -25,6 +27,7 @@ import {
   getDebitCyclePeriodFlexible,
   isContractInDebitCycle
 } from '../../utils/interestUtils';
+import { extractCommuneFromAddress } from '../debit';
 
 export default function DebitBatchCreateModal({
   show,
@@ -47,6 +50,7 @@ export default function DebitBatchCreateModal({
   const [adjustedAmounts, setAdjustedAmounts] = useState({});
   const [selectAll, setSelectAll] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterCommune, setFilterCommune] = useState('ALL');
   const [expandedKH, setExpandedKH] = useState(null);
   const [cycleInfo, setCycleInfo] = useState(null);
   const [selectedConfig, setSelectedConfig] = useState(null);
@@ -255,18 +259,36 @@ export default function DebitBatchCreateModal({
     }));
   };
 
-  // Tìm kiếm trong bảng duyệt
+  // Trích xuất ĐỘNG danh sách các Xã/Thị trấn xuất hiện thực tế từ CSDL địa chỉ khách hàng
+  const availableCommunes = useMemo(() => {
+    const set = new Set();
+    eligibleList.forEach((item) => {
+      const commune = extractCommuneFromAddress(item.diaChi);
+      if (commune && commune !== 'Chưa phân loại') {
+        set.add(commune);
+      }
+    });
+    return Array.from(set).sort();
+  }, [eligibleList]);
+
+  // Tìm kiếm và lọc trong bảng duyệt
   const filteredList = useMemo(() => {
-    if (!searchTerm) return eligibleList;
-    const term = searchTerm.toLowerCase();
-    return eligibleList.filter((item) =>
-      item.hoTen?.toLowerCase().includes(term) ||
-      item.maKH?.toLowerCase().includes(term) ||
-      item.cccd?.includes(term) ||
-      item.soTK?.includes(term) ||
-      item.soHDTD?.toLowerCase().includes(term)
-    );
-  }, [eligibleList, searchTerm]);
+    return eligibleList.filter((item) => {
+      const term = searchTerm.toLowerCase();
+      const matchSearch =
+        !searchTerm ||
+        item.hoTen?.toLowerCase().includes(term) ||
+        item.maKH?.toLowerCase().includes(term) ||
+        item.cccd?.includes(term) ||
+        item.soTK?.includes(term) ||
+        item.soHDTD?.toLowerCase().includes(term);
+
+      const commune = extractCommuneFromAddress(item.diaChi);
+      const matchCommune = filterCommune === 'ALL' || commune === filterCommune;
+
+      return matchSearch && matchCommune;
+    });
+  }, [eligibleList, searchTerm, filterCommune]);
 
   const selectedCount = eligibleList.filter((item) => selectedKHMaps[item.maKH]).length;
   const totalSelectedAmount = eligibleList.reduce((sum, item) => {
@@ -275,6 +297,22 @@ export default function DebitBatchCreateModal({
     }
     return sum;
   }, 0);
+
+  // Tổng hợp phân bổ theo Địa bàn thực tế từ CSDL
+  const communeSummary = useMemo(() => {
+    const map = new Map();
+    eligibleList.forEach((item) => {
+      if (selectedKHMaps[item.maKH]) {
+        const commune = extractCommuneFromAddress(item.diaChi);
+        const amt = adjustedAmounts[item.maKH] !== undefined ? adjustedAmounts[item.maKH] : item.tongDuKien;
+        const prev = map.get(commune) || { count: 0, amount: 0 };
+        map.set(commune, { count: prev.count + 1, amount: prev.amount + amt });
+      }
+    });
+    return Array.from(map.entries())
+      .map(([commune, data]) => ({ commune, ...data }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [eligibleList, selectedKHMaps, adjustedAmounts]);
 
   // 1. XUẤT EXCEL / CSV LỆNH GỬI NGÂN HÀNG
   const handleExportBankExcel = () => {
@@ -473,14 +511,33 @@ export default function DebitBatchCreateModal({
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
-      <div className={`modal-dialog ${step === 2 ? 'modal-xl' : 'modal-lg'} modal-dialog-centered modal-dialog-scrollable`}>
+      <div className={`modal-dialog ${step >= 2 ? 'modal-xl' : 'modal-lg'} modal-dialog-centered modal-dialog-scrollable`}>
         <div className="modal-content card-modern p-4">
-          <div className="modal-header border-0 pb-0">
-            <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2">
-              <Zap size={22} className="text-warning" />
-              {step === 1 ? 'Bước 1: Chọn Đợt & Tháng Trích Nợ Định Kỳ' : 'Bước 2: Lọc Khách Hàng, Tính Lãi Ngày Thực Tế & Chốt Đợt Trích Nợ'}
-            </h5>
-            <button type="button" className="btn-close" onClick={onClose} />
+          <div className="modal-header border-0 pb-2 flex-column align-items-start">
+            <div className="d-flex justify-content-between align-items-center w-100">
+              <h5 className="modal-title fw-bold text-dark font-heading d-flex align-items-center gap-2 m-0">
+                <Zap size={22} className="text-warning" />
+                {step === 1 && 'Bước 1: Chọn Đợt & Tháng Trích Nợ Định Kỳ'}
+                {step === 2 && 'Bước 2: Lọc Khách Hàng, Tính Lãi Ngày Thực Tế TT14'}
+                {step === 3 && 'Bước 3: Xem Trước Tổng Kết & Xác Nhận Chốt Đợt'}
+              </h5>
+              <button type="button" className="btn-close" onClick={onClose} />
+            </div>
+
+            {/* Stepper Tiến Trình 3 Bước */}
+            <div className="d-flex align-items-center gap-2 mt-2 w-100 pt-1 pb-2 border-bottom flex-wrap">
+              <span className={`badge ${step === 1 ? 'bg-primary' : 'bg-success'} d-flex align-items-center gap-1 py-1.5 px-2`}>
+                1. Chọn Chu Kỳ
+              </span>
+              <ChevronRight size={13} className="text-muted" />
+              <span className={`badge ${step === 2 ? 'bg-primary' : (step > 2 ? 'bg-success' : 'bg-light text-muted border')} d-flex align-items-center gap-1 py-1.5 px-2`}>
+                2. Lọc HĐ & Tính Lãi TT14
+              </span>
+              <ChevronRight size={13} className="text-muted" />
+              <span className={`badge ${step === 3 ? 'bg-primary' : 'bg-light text-muted border'} d-flex align-items-center gap-1 py-1.5 px-2`}>
+                3. Xem Trước & Chốt Đợt
+              </span>
+            </div>
           </div>
 
           {step === 1 ? (
@@ -602,7 +659,7 @@ export default function DebitBatchCreateModal({
                 </button>
               </div>
             </form>
-          ) : (
+          ) : step === 2 ? (
             <div className="modal-body py-2">
               {/* Header summary & Search bar */}
               <div className="d-flex justify-content-between align-items-center mb-2 p-3 bg-light rounded-3 border flex-wrap gap-2">
@@ -624,17 +681,35 @@ export default function DebitBatchCreateModal({
                 </div>
               </div>
 
-              {/* Toolbar Tìm kiếm & Xuất file nhanh */}
+              {/* Toolbar Tìm kiếm, Bộ lọc Địa bàn CSDL & Xuất file */}
               <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                <div className="position-relative flex-grow-1" style={{ maxWidth: 450 }}>
-                  <Search size={16} className="position-absolute text-muted" style={{ top: 9, left: 12 }} />
-                  <input
-                    type="text"
-                    className="form-control form-control-sm ps-5"
-                    placeholder="Tìm theo Tên KH, CCCD, Mã KH hoặc Số TK CASA..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                <div className="d-flex align-items-center gap-2 flex-grow-1 flex-wrap" style={{ maxWidth: 620 }}>
+                  <div className="position-relative flex-grow-1" style={{ minWidth: 240 }}>
+                    <Search size={16} className="position-absolute text-muted" style={{ top: 9, left: 12 }} />
+                    <input
+                      type="text"
+                      className="form-control form-control-sm ps-5"
+                      placeholder="Tìm Tên KH, CCCD, Mã KH, HĐTD, Số TK..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Bộ lọc địa bàn động từ CSDL */}
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 190 }}
+                    value={filterCommune}
+                    onChange={(e) => setFilterCommune(e.target.value)}
+                    title="Lọc danh sách theo địa bàn thực tế từ CSDL"
+                  >
+                    <option value="ALL">Tất cả Địa bàn CSDL ({eligibleList.length})</option>
+                    {availableCommunes.map((commune) => (
+                      <option key={commune} value={commune}>
+                        {commune} ({eligibleList.filter(i => extractCommuneFromAddress(i.diaChi) === commune).length})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="d-flex gap-2">
@@ -814,7 +889,7 @@ export default function DebitBatchCreateModal({
                 </table>
               </div>
 
-              {/* Chân modal */}
+              {/* Chân modal Step 2 */}
               <div className="d-flex justify-content-between align-items-center">
                 <button
                   type="button"
@@ -831,10 +906,115 @@ export default function DebitBatchCreateModal({
                   <button
                     type="button"
                     className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1 shadow-sm"
+                    onClick={() => setStep(3)}
+                    disabled={selectedCount === 0}
+                  >
+                    Xem Trước & Chốt Đợt (Bước 3) <ChevronRight size={15} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* BƯỚC 3: XEM TRƯỚC TỔNG KẾT & XÁC NHẬN CHỐT ĐỢT */
+            <div className="modal-body py-2">
+              <div className="p-3 bg-light rounded-3 border mb-3">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-primary fs-6">
+                      {selectedConfig?.tenDot || 'Đợt Trích Nợ'}
+                    </span>
+                    <span className="badge bg-secondary font-monospace">Tháng {formData.thangNam}</span>
+                  </div>
+                  <div className="fs-6 fw-bold text-dark">
+                    Tổng Tiền Trích Nợ: <span className="text-danger num-tabular fs-5">{formatCurrencyVN(totalSelectedAmount)}</span>
+                  </div>
+                </div>
+
+                <div className="row g-2 small text-dark">
+                  <div className="col-12 col-md-4">
+                    <span className="text-muted">Ngày trích nợ CASA:</span>{' '}
+                    <strong className="text-primary font-monospace">Ngày {selectedConfig?.ngayTrichHangThang} hàng tháng</strong>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <span className="text-muted">Chu kỳ tính lãi thực tế TT14:</span>{' '}
+                    <strong className="text-success font-monospace">{cycleInfo?.fromDateStr} → {cycleInfo?.toDateStr} ({cycleInfo?.standardDays} ngày)</strong>
+                  </div>
+                  <div className="col-12 col-md-4">
+                    <span className="text-muted">Số khách hàng đưa vào đợt:</span>{' '}
+                    <strong className="text-danger font-monospace">{selectedCount} khách hàng</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bảng phân bổ theo Địa Bàn thực tế từ CSDL */}
+              <div className="card border p-3 rounded-3 mb-3 bg-white">
+                <div className="fw-bold text-slate-800 small mb-2 d-flex align-items-center gap-1.5 font-heading">
+                  <MapPin size={15} className="text-danger" />
+                  Phân Bổ Số Tiền & Khách Hàng Theo Địa Bàn Thực Tế Từ CSDL ({communeSummary.length} Địa bàn)
+                </div>
+                <div className="row g-2">
+                  {communeSummary.map((cs) => (
+                    <div key={cs.commune} className="col-12 col-sm-6 col-md-4">
+                      <div className="p-2.5 rounded-2 border bg-light h-100">
+                        <div className="fw-bold text-slate-800 small text-truncate" title={cs.commune}>
+                          {cs.commune}
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mt-1">
+                          <span className="text-xs text-muted">{cs.count} KH</span>
+                          <span className="num-tabular fw-bold text-primary small">
+                            {formatCurrencyVN(cs.amount)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Công cụ xuất file */}
+              <div className="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 border mb-3 flex-wrap gap-2">
+                <div className="small text-muted">
+                  Xuất tệp tài liệu trước khi chốt đợt trích nợ:
+                </div>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-success btn-sm d-flex align-items-center gap-1"
+                    onClick={handleExportBankExcel}
+                  >
+                    <FileSpreadsheet size={14} /> Xuất File Ngân Hàng (.csv)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                    onClick={handleExportWord}
+                  >
+                    <Printer size={14} /> Xuất Bảng Kê A4 (.doc)
+                  </button>
+                </div>
+              </div>
+
+              {/* Chân modal Step 3 */}
+              <div className="d-flex justify-content-between align-items-center pt-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+                  onClick={() => setStep(2)}
+                >
+                  <ArrowLeft size={14} /> Quay lại danh sách khách hàng
+                </button>
+
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light btn-sm" onClick={onClose}>
+                    Đóng
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-brand btn-sm fw-bold d-flex align-items-center gap-1.5 shadow-sm"
                     onClick={handleFinalSubmit}
                     disabled={selectedCount === 0}
                   >
-                    <CheckCircle2 size={16} /> Xác Nhận Khởi Tạo Đợt Trích Nợ ({selectedCount} KH)
+                    <ShieldCheck size={16} /> Xác Nhận Khởi Tạo Đợt Trích Nợ ({selectedCount} KH)
                   </button>
                 </div>
               </div>

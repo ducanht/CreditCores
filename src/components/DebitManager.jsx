@@ -1,15 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   UserCheck,
   Zap,
   Plus,
   Play,
   RefreshCw,
-  Settings
+  Settings,
+  ArrowLeftRight,
+  AlertTriangle,
+  Landmark,
+  ShieldCheck,
+  CheckCircle2,
+  PhoneCall
 } from 'lucide-react';
 import { api } from '../services/api';
 import { SegControl } from './shared';
-import { DebitRegisterTable, DebitBatchTable, DebitConfigTable } from './debit';
+import {
+  DebitRegisterTable,
+  DebitBatchTable,
+  DebitConfigTable,
+  DebitReconciliationView,
+  DebitWarningView
+} from './debit';
+import { formatCurrencyVN } from '../utils/dateUtils';
 import DebitBatchCreateModal from './modals/DebitBatchCreateModal';
 import DebitRegisterModal from './modals/DebitRegisterModal';
 import DebitBatchDetailModal from './modals/DebitBatchDetailModal';
@@ -196,7 +209,6 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
     }
   };
 
-  // Xem chi tiết đợt trích nợ (tự động nạp chi tiết các món từ CSDL)
   const handleSelectBatchDetail = async (batch) => {
     setSelectedBatchDetail(batch);
     if (!batch.items || batch.items.length === 0) {
@@ -215,7 +227,6 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
     }
   };
 
-  // Cập nhật trạng thái từng món trong đợt
   const handleUpdateBatchItem = async (updatedItem) => {
     try {
       const res = await api.updateDebitBatchItemStatus(updatedItem);
@@ -240,7 +251,6 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
     }
   };
 
-  // Xóa đợt trích nợ
   const handleDeleteBatch = async (batch) => {
     if (!window.confirm(`XÁC NHẬN: Bạn có chắc chắn muốn XÓA đợt trích nợ "${batch.maDot}" cùng toàn bộ chi tiết giao dịch liên quan khỏi hệ thống? Thao tác này không thể hoàn tác.`)) {
       return;
@@ -264,7 +274,6 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
     }
   };
 
-  // Lưu cấu hình đợt trích nợ theo ngày vay
   const handleSaveConfig = async (configPayload) => {
     try {
       const res = await api.saveDebitConfig(configPayload);
@@ -298,15 +307,86 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
   const paginatedRegs = filteredRegs.slice((regPage - 1) * regPageSize, regPage * regPageSize);
   const paginatedBatches = batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize);
 
+  // Thống kê tổng hợp dòng tiền Module Trích nợ
+  const cashflowKPI = useMemo(() => {
+    const activeCount = registrations.filter(
+      (r) => r.trangThai === 'Hiệu lực' || r.trangThai === 'Hieu luc' || r.trangThai === 'ACTIVE' || !r.trangThai
+    ).length;
+
+    const totalPhaiThu = batches.reduce((sum, b) => sum + (Number(b.tongTienPhaiThu) || 0), 0);
+    const totalDaTrich = batches.reduce((sum, b) => sum + (Number(b.daTrich) || 0), 0);
+    const rate = totalPhaiThu > 0 ? ((totalDaTrich / totalPhaiThu) * 100).toFixed(1) : 0;
+    const totalNoTon = debtWarnings.reduce((sum, w) => sum + (Number(w.tongNoTon) || 0), 0);
+
+    return {
+      activeCount,
+      totalPhaiThu,
+      totalDaTrich,
+      rate,
+      totalNoTon
+    };
+  }, [registrations, batches, debtWarnings]);
+
   const subTabOptions = [
-    { id: 'register', label: '1. Khách Hàng Đăng Ký Trích Nợ', icon: UserCheck, count: registrations.length },
+    { id: 'register', label: '1. Thỏa Thuận CASA', icon: UserCheck, count: registrations.length },
     { id: 'batch', label: '2. Đợt Trích Nợ Định Kỳ', icon: Zap, count: batches.length },
-    { id: 'config', label: '3. Cấu Hình Chu Kỳ Đợt', icon: Settings, count: debitConfigs.length }
+    { id: 'reconciliation', label: '3. Đối Soát Kết Quả Core', icon: ArrowLeftRight, count: batches.length },
+    { id: 'warning', label: '4. Sổ Nợ Tồn Đọng', icon: AlertTriangle, count: debtWarnings.length },
+    { id: 'config', label: '5. Cấu Hình Chu Kỳ', icon: Settings, count: debitConfigs.length }
   ];
 
   return (
     <div className="d-flex flex-column gap-3">
-      {/* Sub-tab Switcher & Actions Header */}
+      {/* 1. KHỐI METRIC KPI DÒNG TIỀN TRÍCH NỢ TOÀN HỆ THỐNG */}
+      <div className="row g-2.5">
+        <div className="col-6 col-md-3">
+          <div className="p-3 bg-light rounded-3 border h-100 shadow-xs">
+            <div className="text-muted small fw-medium">Ủy Quyền CASA</div>
+            <div className="fs-5 fw-bold text-slate-800 num-tabular">
+              {registrations.length} <span className="fs-6 font-normal">KH</span>
+            </div>
+            <div className="text-xs text-success mt-1">
+              <strong>{cashflowKPI.activeCount}</strong> thỏa thuận đang hiệu lực
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <div className="p-3 bg-primary-subtle rounded-3 border border-primary-subtle h-100 shadow-xs">
+            <div className="text-primary small fw-medium">Tổng Đã Lập Đợt</div>
+            <div className="fs-5 fw-bold text-primary num-tabular">
+              {formatCurrencyVN(cashflowKPI.totalPhaiThu)}
+            </div>
+            <div className="text-xs text-muted mt-1">{batches.length} đợt trích nợ ghi nhận</div>
+          </div>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <div className="p-3 bg-success-subtle rounded-3 border border-success-subtle h-100 shadow-xs">
+            <div className="text-success small fw-medium">Đã Thu Hồi CoreBanking</div>
+            <div className="fs-5 fw-bold text-success num-tabular">
+              {formatCurrencyVN(cashflowKPI.totalDaTrich)}
+            </div>
+            <div className="text-xs text-success mt-1">
+              Tỷ lệ đạt: <strong className="font-monospace">{cashflowKPI.rate}%</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <div className="p-3 bg-danger-subtle rounded-3 border border-danger-subtle h-100 shadow-xs">
+            <div className="text-danger small fw-medium">Nợ Tồn Cần Đôn Đốc</div>
+            <div className="fs-5 fw-bold text-danger num-tabular">
+              {formatCurrencyVN(cashflowKPI.totalNoTon)}
+            </div>
+            <div className="text-xs text-danger mt-1">
+              {debtWarnings.length} món trích thu chưa đủ
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. THANH PIPELINE STEPPER & ĐIỀU KHIỂN HỢP NHẤT */}
       <div className="card-modern p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <SegControl
           options={subTabOptions}
@@ -349,7 +429,9 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         </div>
       </div>
 
-      {/* SUB-TAB 1: DANH SÁCH ĐĂNG KÝ TRÍCH NỢ */}
+      {/* 3. NỘI DUNG 5 PHÂN HỆ THÀNH PHẦN */}
+
+      {/* SUB-TAB 1: KHÁCH HÀNG ĐĂNG KÝ TRÍCH NỢ */}
       {activeSubTab === 'register' && (
         <DebitRegisterTable
           registrations={registrations}
@@ -394,7 +476,27 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         />
       )}
 
-      {/* SUB-TAB 3: CẤU HÌNH ĐỢT TRÍCH NỢ THEO NGÀY VAY */}
+      {/* SUB-TAB 3: ĐỐI SOÁT KẾT QUẢ COREBANKING */}
+      {activeSubTab === 'reconciliation' && (
+        <DebitReconciliationView
+          batches={batches}
+          onBatchUpdated={fetchData}
+          onOpenCustomerQuickView={onOpenCustomerQuickView}
+        />
+      )}
+
+      {/* SUB-TAB 4: SỔ NỢ TỒN ĐỌNG & ĐÔN ĐỐC */}
+      {activeSubTab === 'warning' && (
+        <DebitWarningView
+          warnings={debtWarnings}
+          allCustomers={allCustomers}
+          loading={loading}
+          onRefresh={fetchData}
+          onOpenCustomerQuickView={onOpenCustomerQuickView}
+        />
+      )}
+
+      {/* SUB-TAB 5: CẤU HÌNH ĐỢT TRÍCH NỢ THEO NGÀY VAY */}
       {activeSubTab === 'config' && (
         <DebitConfigTable
           configs={debitConfigs}
@@ -403,7 +505,7 @@ export default function DebitManager({ initialSubTab = 'register', prefilledCust
         />
       )}
 
-      {/* EXTRACTED MODALS */}
+      {/* 4. CÁC MODAL THAO TÁC */}
       <DebitRegisterModal
         show={showRegModal}
         onClose={() => {

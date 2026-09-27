@@ -8,10 +8,11 @@
  *              - Tối ưu tra cứu O(1) Hash Map cho 5.175+ khách hàng & 549+ hợp đồng
  *              - Thẩm định, Trích nợ Auto-Debit, Kiểm tra vốn, In hợp đồng Mail Merge
  *              - Độc lập hoàn toàn, không nghẽn Timeout, Zero Mock Data
- * @updated     23/9/2026
- * @version     3.1 Header-Based Resilient Engine
+ * @updated     25/09/2026 16:45:01
+ * @version     3.3 Resilient Debt Statistics Engine (DuNo vs TienVay Strictly Separated)
  * ========================================================================================
  */
+
 
 
 // ==========================================
@@ -122,8 +123,6 @@ function calculateGasInterest(duNo, laiSuat, actualDays) {
   return Math.round((d * r * days) / 36500);
 }
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Utils/HeaderUtils.gs
 // ==========================================
@@ -140,9 +139,47 @@ function calculateGasInterest(duNo, laiSuat, actualDays) {
 
 var HeaderUtils = {
   /**
-   * Lấy Map ánh xạ { TênCột: index (0-based) } từ dòng 1 của Sheet
+   * Bảng ánh xạ bí danh (Aliases) chuẩn hóa cho các trường dữ liệu tín dụng
+   */
+  _ALIASES: {
+    "duno": ["duno", "sodu", "dunothucte", "conno", "du_no", "so_du", "tongduno", "duno_hientai", "tongdunohientai"],
+    "tienvay": ["tienvay", "sotienvay", "sotiengiaingan", "sotiengn", "sotienchovay", "doanhsovay", "tien_vay", "so_tien_gn", "tongtienvay"],
+    "sohdtd": ["sohdtd", "sohd", "makheuoc", "sohopdong", "so_hdtd", "so_khe_uoc"],
+    "makh": ["makh", "makhachhang", "ma_kh", "ma_khach_hang"],
+    "hoten": ["hoten", "tenkh", "tenkhachhang", "ho_ten", "ten_khach_hang"],
+    "laisuat": ["laisuat", "lai_suat", "ls"],
+    "ngayvay": ["ngayvay", "ngay_vay", "ngaygiaingan", "ngay_giai_ngan"],
+    "denhan": ["denhan", "ngaydenhan", "ngaydaohan", "den_han", "ngay_dao_han"],
+    "trangthaihd": ["trangthaihd", "trangthai", "trang_thai_hd", "trang_thai"],
+    "maloaihd": ["maloaihd", "loaihd", "ma_loai_hd", "hinhthucbaodam"],
+    "kvxa": ["kvxa", "xa", "diabanxa", "tenxa", "kv_xa"],
+    "kvthon": ["kvthon", "thon", "diabanthon", "tenthon", "kv_thon"],
+    "diachi": ["diachi", "dia_chi", "khuvuc", "khu_vuc"]
+  },
+
+  /**
+   * Chuẩn hóa chuỗi: bỏ dấu tiếng Việt, loại bỏ ký tự đặc biệt, chuyển chữ thường
+   */
+  _norm: function(str) {
+    if (!str) return "";
+    var s = String(str).toLowerCase().trim();
+    s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, "a")
+         .replace(/[èéẹẻẽêềếệểễ]/g, "e")
+         .replace(/[ìíịỉĩ]/g, "i")
+         .replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, "o")
+         .replace(/[ùúụủũưừứựửữ]/g, "u")
+         .replace(/[ỳýỵỷỹ]/g, "y")
+         .replace(/đ/g, "d")
+         .replace(/[^a-z0-9]/g, "");
+    return s;
+  },
+
+  /**
+   * Lấy Map ánh xạ { TênCột: index (0-based) } từ dòng header của Sheet
+   * Đồng thời lưu trữ bảng chuẩn hóa để tìm kiếm không phân biệt dấu / khoảng trắng
    * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
-   * @return {Object} { [colName]: colIndex }
+   * @param {number} headerRowIdx Dòng chứa header (1-based, mặc định là 1)
+   * @return {Object} { [colName]: colIndex, _normMap: { [normKey]: colIndex } }
    */
   getHeaderMap: function(sheet, headerRowIdx) {
     if (!sheet) return {};
@@ -151,17 +188,25 @@ var HeaderUtils = {
     var row = headerRowIdx || 1;
     var headers = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
     var map = {};
+    var normMap = {};
+
     for (var i = 0; i < headers.length; i++) {
       var h = String(headers[i] || "").trim();
       if (h) {
         map[h] = i;
+        var nKey = HeaderUtils._norm(h);
+        if (nKey && normMap[nKey] === undefined) {
+          normMap[nKey] = i;
+        }
       }
     }
+    map["_normMap"] = normMap;
     return map;
   },
 
   /**
-   * Lấy giá trị ô an toàn từ mảng row dựa theo Tên Cột
+   * Lấy giá trị ô an toàn từ mảng row dựa theo Tên Cột (Hỗ trợ Exact Match + Normalized Match + Aliases)
+   * Đảm bảo Dư Nợ (DuNo) và Tiền Vay (TienVay) luôn được phân định độc lập tuyệt đối.
    * @param {Array} row Mảng dữ liệu của một hàng
    * @param {Object} headerMap Map { TênCột: index }
    * @param {string} colName Tên cột cần lấy
@@ -170,7 +215,28 @@ var HeaderUtils = {
    */
   getCell: function(row, headerMap, colName, defaultVal) {
     if (!row || !headerMap) return defaultVal !== undefined ? defaultVal : "";
+
+    // 1. So khớp trực tiếp (Exact match)
     var idx = headerMap[colName];
+
+    // 2. So khớp qua chuỗi chuẩn hóa (Bỏ dấu tiếng Việt, chữ thường, không khoảng trắng)
+    if (idx === undefined && headerMap["_normMap"]) {
+      var normTarget = HeaderUtils._norm(colName);
+      idx = headerMap["_normMap"][normTarget];
+
+      // 3. So khớp qua danh mục Aliases nếu vẫn chưa tìm thấy
+      if (idx === undefined && HeaderUtils._ALIASES[normTarget]) {
+        var aliasList = HeaderUtils._ALIASES[normTarget];
+        for (var a = 0; a < aliasList.length; a++) {
+          var aIdx = headerMap["_normMap"][aliasList[a]];
+          if (aIdx !== undefined) {
+            idx = aIdx;
+            break;
+          }
+        }
+      }
+    }
+
     if (idx !== undefined && idx < row.length) {
       var val = row[idx];
       if (val !== undefined && val !== null && val !== "") {
@@ -228,8 +294,6 @@ var HeaderUtils = {
     return row;
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Database/Cache.gs
@@ -383,8 +447,6 @@ var CacheHelper = {
     this.clearCacheKeys(keys);
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Database/SchemaSetup.gs
@@ -888,8 +950,6 @@ var SchemaSetup = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Dashboard/DashboardController.gs
 // ==========================================
@@ -1019,6 +1079,7 @@ var DashboardController = {
         asOfMetadata: asOfMetadataText,
         isTwoTier: isTwoTier,
         totalDuNo: 0,
+        totalTienVay: 0,
         totalHopDong: 0,
         totalThanhVienVay: 0,
         duNoBinhQuanHD: 0,
@@ -1043,6 +1104,7 @@ var DashboardController = {
     }
 
     var totalDuNo = 0;
+    var totalTienVay = 0;
     var totalHopDong = 0;
     var totalDuThuLai = 0;
 
@@ -1183,6 +1245,7 @@ var DashboardController = {
     for (var i = 0; i < hdValues.length; i++) {
       var makh = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaKH", "")).replace(/^'/, '').trim();
       var duNo = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "DuNo", 0)) || 0;
+      var tienVay = Number(HeaderUtils.getCell(hdValues[i], colMapHD, "TienVay", 0)) || 0;
       var laiSuat = Number(String(HeaderUtils.getCell(hdValues[i], colMapHD, "LaiSuat", 0)).replace(',', '.')) || 0;
       var maLoaiVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MaLoaiVay", "")).trim();
       var moTaVay = String(HeaderUtils.getCell(hdValues[i], colMapHD, "MoTaVay", "")).trim();
@@ -1198,6 +1261,7 @@ var DashboardController = {
 
       if (trangThaiHD !== "DA_TAT_TOAN" && duNo > 0) {
         totalDuNo += duNo;
+        totalTienVay += tienVay;
         totalHopDong++;
         totalDuThuLai += (duNo * (laiSuat / 100)) / 12;
         totalWeightedLai += (duNo * laiSuat);
@@ -1598,6 +1662,7 @@ var DashboardController = {
       asOfMetadata: asOfMetadataText,
       isTwoTier: isTwoTier,
       totalDuNo: totalDuNo,
+      totalTienVay: totalTienVay,
       totalHopDong: totalHopDong,
       totalThanhVienVay: totalThanhVienVay,
       duNoBinhQuanHD: totalHopDong > 0 ? Math.round(totalDuNo / totalHopDong) : 0,
@@ -1751,8 +1816,6 @@ var DashboardController = {
     return { status: "success", data: finalResult };
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Auth/AuthController.gs
@@ -1930,8 +1993,6 @@ var AuthController = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Auth/RoleController.gs
 // ==========================================
@@ -2098,8 +2159,6 @@ var RoleController = {
     }
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Customer/Customer360Controller.gs
@@ -2506,9 +2565,6 @@ var Customer360Controller = {
   }
 };
 
-
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Collateral/CollateralController.gs
 // ==========================================
@@ -2675,8 +2731,6 @@ var CollateralController = {
     };
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Appraisal/AppraisalController.gs
@@ -3190,8 +3244,6 @@ var AppraisalController = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Inspection/InspectionController.gs
 // ==========================================
@@ -3299,8 +3351,6 @@ var InspectionController = {
     };
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Debit/DebitController.gs
@@ -3943,8 +3993,6 @@ var DebitController = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Reconciliation/ReconciliationController.gs
 // ==========================================
@@ -4080,8 +4128,6 @@ var ReconciliationController = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Debt/DebtWarningController.gs
 // ==========================================
@@ -4135,8 +4181,6 @@ var DebtWarningController = {
     return { status: "success", data: results };
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Reports/ReportController.gs
@@ -4256,6 +4300,10 @@ var ReportController = {
         var hdMoTa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MoTaVay", "")).trim();
         var hdCBTD_Code = String(HeaderUtils.getCell(hdVals[j], colMapHD, "CBTD_PhuTrach", "")).trim();
         var hdTenCBTD   = String(HeaderUtils.getCell(hdVals[j], colMapHD, "Ten_CBTD", "")).trim();
+        var hdTrangThai = String(HeaderUtils.getCell(hdVals[j], colMapHD, "TrangThaiHD", "")).trim();
+        if (!hdTrangThai) {
+          hdTrangThai = hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN";
+        }
         var hdMaLoaiHD  = String(HeaderUtils.getCell(hdVals[j], colMapHD, "MaLoaiHD", "")).trim();
         if (!hdMaLoaiHD) {
           hdMaLoaiHD = hdSoThang > 12 ? "THCDBTNMT" : "NHCDBTNMT";
@@ -4449,34 +4497,53 @@ var ReportController = {
     var sBCDS = ss.getSheetByName("BC_DOANH_SO_TD");
     if (sBCDS && sBCDS.getLastRow() > 1) {
       try {
-        var bcdsVals = sBCDS.getRange(2, 1, sBCDS.getLastRow() - 1, 12).getValues();
+        var colMapBCDS = HeaderUtils.getHeaderMap(sBCDS);
+        var bcdsVals = sBCDS.getRange(2, 1, sBCDS.getLastRow() - 1, sBCDS.getLastColumn()).getValues();
         if (bcdsVals.length > 0) {
           var sheetStatement = [];
+          var bcdsTotalDuNo = 0;
+          var bcdsTotalTienVay = 0;
+          var bcdsKHSet = new Set();
           for (var b = 0; b < bcdsVals.length; b++) {
             var row = bcdsVals[b];
-            if (!row[0] && !row[1]) continue;
-            var rMaKH = String(row[1]).trim();
-            var rKhInfo = khMap[rMaKH] || {};
+            var rSoHD = String(HeaderUtils.getCell(row, colMapBCDS, "SoHDTD", "")).trim();
+            var rMaKH = String(HeaderUtils.getCell(row, colMapBCDS, "MaKH", "")).replace(/^'/, "").trim();
+            if (!rSoHD && !rMaKH) continue;
+
+            var rTienVay = Number(HeaderUtils.getCell(row, colMapBCDS, "TienVay", 0)) || 0;
+            var rDuNo    = Number(HeaderUtils.getCell(row, colMapBCDS, "DuNo", 0)) || 0;
+            var rKhInfo  = khMap[rMaKH] || {};
+            var rTrangThai = String(HeaderUtils.getCell(row, colMapBCDS, "TrangThaiHD", "")).trim() || (rDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN");
+
             sheetStatement.push({
-              soHDTD: String(row[0]).trim(),
+              soHDTD: rSoHD,
               maKH: rMaKH,
-              soTV: String(row[2] || rKhInfo.soTV || "").trim(),
-              hoTen: rKhInfo.hoTen || ("KH " + rMaKH),
-              tienVay: Number(row[3]) || 0,
-              duNo: Number(row[4]) || 0,
-              laiSuat: Number(row[5]) || 0,
-              ngayVay: formatGasDateVN(row[6]),
-              denHan: formatGasDateVN(row[7]),
-              maLoaiVay: String(row[8]).trim(),
-              soThangVay: Number(row[9]) || 0,
-              moTaVay: String(row[10]).trim(),
-              khuVuc: String(row[11] || rKhInfo.area || "Xã Yên Thọ").trim(),
-              diaChi: rKhInfo.diaChi || "",
-              trangThaiHD: (Number(row[4]) || 0) > 0 ? "DANG_VAY" : "DA_TAT_TOAN"
+              soTV: String(HeaderUtils.getCell(row, colMapBCDS, "SoTV", rKhInfo.soTV || "")).replace(/^'/, "").trim(),
+              hoTen: String(HeaderUtils.getCell(row, colMapBCDS, "HoTen", rKhInfo.hoTen || ("KH " + rMaKH))).trim(),
+              tienVay: rTienVay,
+              duNo: rDuNo,
+              laiSuat: Number(HeaderUtils.getCell(row, colMapBCDS, "LaiSuat", 0)) || 0,
+              ngayVay: formatGasDateVN(HeaderUtils.getCell(row, colMapBCDS, "NgayVay", "")),
+              denHan: formatGasDateVN(HeaderUtils.getCell(row, colMapBCDS, "DenHan", "")),
+              maLoaiVay: String(HeaderUtils.getCell(row, colMapBCDS, "MaLoaiVay", "")).trim(),
+              soThangVay: Number(HeaderUtils.getCell(row, colMapBCDS, "SoThangVay", 0)) || 0,
+              moTaVay: String(HeaderUtils.getCell(row, colMapBCDS, "MoTaVay", "")).trim(),
+              khuVuc: String(HeaderUtils.getCell(row, colMapBCDS, "KhuVuc", rKhInfo.area || "Xã Yên Thọ")).trim(),
+              diaChi: String(HeaderUtils.getCell(row, colMapBCDS, "DiaChi", rKhInfo.diaChi || "")).trim(),
+              trangThaiHD: rTrangThai
             });
+
+            bcdsTotalTienVay += rTienVay;
+            if (rTrangThai !== "DA_TAT_TOAN" && rDuNo > 0) {
+              bcdsTotalDuNo += rDuNo;
+              bcdsKHSet.add(rMaKH);
+            }
           }
           if (sheetStatement.length > 0) {
             statementResult = sheetStatement;
+            totalDuNo = bcdsTotalDuNo;
+            totalTienVay = bcdsTotalTienVay;
+            if (bcdsKHSet.size > 0) totalKH = bcdsKHSet;
           }
         }
       } catch (eBC) {
@@ -4488,23 +4555,30 @@ var ReportController = {
     var sTop = ss.getSheetByName("TOP_DU_NO_BINH_QUAN");
     if (sTop && sTop.getLastRow() > 1) {
       try {
-        var topVals = sTop.getRange(2, 1, sTop.getLastRow() - 1, 21).getValues();
+        var colMapTop = HeaderUtils.getHeaderMap(sTop);
+        var topVals = sTop.getRange(2, 1, sTop.getLastRow() - 1, sTop.getLastColumn()).getValues();
         if (topVals.length > 0) {
           var sheetTop = [];
           for (var t = 0; t < topVals.length; t++) {
             var tRow = topVals[t];
-            if (!tRow[2]) continue;
+            var tMaKH = String(HeaderUtils.getCell(tRow, colMapTop, "MaKH", "")).replace(/^'/, "").trim();
+            if (!tMaKH) continue;
+
+            var tTongDuNo = Number(HeaderUtils.getCell(tRow, colMapTop, "TongDuNo", 0)) || Number(HeaderUtils.getCell(tRow, colMapTop, "DuNoBinhQuan", 0)) || 0;
+            var tTongTienVay = Number(HeaderUtils.getCell(tRow, colMapTop, "TongTienVay", 0)) || 0;
+            var tTyTrong = HeaderUtils.getCell(tRow, colMapTop, "TyTrongDuNo", 0);
+
             sheetTop.push({
-              namBaoCao: Number(tRow[0]) || 2026,
-              xepHang: Number(tRow[1]) || (t + 1),
-              maKH: String(tRow[2]).trim(),
-              hoTen: String(tRow[3]).trim(),
-              soTV: String(tRow[4]).trim(),
-              khuVuc: String(tRow[5]).trim(),
-              duNoBinhQuan: Number(tRow[18]) || 0,
-              tongTienVay: Number(tRow[19]) || 0,
-              tongDuNo: Number(tRow[18]) || 0,
-              tyTrongDuNo: typeof tRow[20] === 'number' ? Number((tRow[20] * 100).toFixed(2)) : parseFloat(String(tRow[20]).replace('%', '')) || 0
+              namBaoCao: Number(HeaderUtils.getCell(tRow, colMapTop, "NamBaoCao", 2026)) || 2026,
+              xepHang: Number(HeaderUtils.getCell(tRow, colMapTop, "XepHang", t + 1)) || (t + 1),
+              maKH: tMaKH,
+              hoTen: String(HeaderUtils.getCell(tRow, colMapTop, "HoTen", "")).trim(),
+              soTV: String(HeaderUtils.getCell(tRow, colMapTop, "SoTV", "")).replace(/^'/, "").trim(),
+              khuVuc: String(HeaderUtils.getCell(tRow, colMapTop, "KhuVuc", "")).trim(),
+              duNoBinhQuan: Number(HeaderUtils.getCell(tRow, colMapTop, "DuNoBinhQuan", tTongDuNo)) || 0,
+              tongTienVay: tTongTienVay,
+              tongDuNo: tTongDuNo,
+              tyTrongDuNo: typeof tTyTrong === 'number' ? Number((tTyTrong * 100).toFixed(2)) : parseFloat(String(tTyTrong).replace('%', '')) || 0
             });
           }
           if (sheetTop.length > 0) {
@@ -4543,8 +4617,6 @@ var ReportController = {
     return { status: "success", data: finalResult };
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Sync/SyncController.gs
@@ -4635,8 +4707,6 @@ var SyncController = {
     };
   }
 };
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Modules/DocumentController.gs
@@ -4806,8 +4876,6 @@ var DocumentController = (function() {
     handleGetContracts: handleGetContracts
   };
 })();
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Modules/ConfigController.gs
@@ -5022,8 +5090,6 @@ var ConfigController = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/Modules/ModuleRegistryController.gs
 // ==========================================
@@ -5061,8 +5127,6 @@ var ModuleRegistryController = {
   }
 };
 
-
-
 // ==========================================
 // MODULE FILE: gas_backend/AutoGeneratGoogleSheets.gs
 // ==========================================
@@ -5079,7 +5143,7 @@ var ModuleRegistryController = {
  * ========================================================================================
  */
 
-// var DB_SPREADSHEET_ID = typeof DB_SPREADSHEET_ID !== 'undefined' ? DB_SPREADSHEET_ID : "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
+var DB_SPREADSHEET_ID = typeof DB_SPREADSHEET_ID !== 'undefined' ? DB_SPREADSHEET_ID : "1xZtr6fQJDHwKugIqebV9po00cNSpqh5IvcvbEEVb5Fw";
 
 function runSetupDirectly() {
   Logger.log(">>> Bắt đầu rà soát và chuẩn hóa tự động 20 bảng CSDL CreditCores...");
@@ -5139,8 +5203,6 @@ function onOpen() {
       .addToUi();
   }
 }
-
-
 
 // ==========================================
 // MODULE FILE: gas_backend/Code.gs
@@ -5431,5 +5493,3 @@ function runSetupDirectly() {
   var ss = getSpreadsheetInstance();
   return SchemaSetup.setupAllSheets(ss);
 }
-
-
