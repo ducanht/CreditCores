@@ -49,8 +49,8 @@ const CollateralManager = lazyWithRetry(() => import('./components/CollateralMan
 const Appraisal = lazyWithRetry(() => import('./components/Appraisal'));
 const LoanInspection = lazyWithRetry(() => import('./components/LoanInspection'));
 const DebitManager = lazyWithRetry(() => import('./components/DebitManager'));
-const Reconciliation = lazyWithRetry(() => import('./components/Reconciliation'));
-const DebtWarning = lazyWithRetry(() => import('./components/DebtWarning'));
+// NOTE: Reconciliation và DebtWarning được tích hợp vào DebitManager qua initialSubTab
+// Không lazy-import riêng để tránh dead code chunk trong bundle
 const Reports = lazyWithRetry(() => import('./components/Reports'));
 const TemplateManager = lazyWithRetry(() => import('./components/TemplateManager'));
 const UserManagement = lazyWithRetry(() => import('./components/UserManagement'));

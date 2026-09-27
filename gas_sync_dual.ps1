@@ -7,14 +7,14 @@ $DEPLOYMENT_ID = "AKfycbxLQHAgdH2cus1zX_z28b31qixMWqq5K0fgIsdy4QFD6xsjRlUyRrwmRy
 
 Write-Host "=== [1/3] Push code to Script 1 ($SCRIPT_1) ===" -ForegroundColor Cyan
 Set-Content -Path ".clasp.json" -Value "{`"scriptId`": `"$SCRIPT_1`", `"rootDir`": `"gas_backend`"}" -Encoding UTF8
-npx @google/clasp push -f
+npx -y @google/clasp push -f
 
 Write-Host "=== [2/3] Push code to Script 2 ($SCRIPT_2) ===" -ForegroundColor Cyan
 Set-Content -Path ".clasp.json" -Value "{`"scriptId`": `"$SCRIPT_2`", `"rootDir`": `"gas_backend`"}" -Encoding UTF8
-npx @google/clasp push -f
+npx -y @google/clasp push -f
 
 Write-Host "=== [3/3] Deploy live Web App on Script 2 ===" -ForegroundColor Cyan
-npx @google/clasp deploy -i $DEPLOYMENT_ID -d "CreditCores Auto-Deploy Dashboard v1.3.2"
+npx -y @google/clasp deploy -i $DEPLOYMENT_ID -d "CreditCores Auto-Deploy Dashboard v1.3.2"
 
 Write-Host "=== Set primary script back to Script 2 ===" -ForegroundColor Green
 Set-Content -Path ".clasp.json" -Value "{`"scriptId`": `"$SCRIPT_2`", `"rootDir`": `"gas_backend`"}" -Encoding UTF8

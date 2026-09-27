@@ -3,7 +3,7 @@ import {
   FileSpreadsheet,
   Calendar,
   TrendingUp,
-  Crown,
+  Award,
   PieChart,
   CalendarRange,
   Search,
@@ -319,7 +319,7 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
             }`}
             onClick={() => setActiveTab('top_50')}
           >
-            <Crown size={14} />
+            <Award size={14} />
             <span>Top 50</span>
           </button>
 

@@ -17,10 +17,15 @@ import {
   FileSpreadsheet,
   Clock,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Award
 } from 'lucide-react';
 import { formatCurrencyVN } from '../utils/dateUtils';
 import CommuneComparisonChart from './dashboard/CommuneComparisonChart';
+import LoanProductDonutChart from './dashboard/LoanProductDonutChart';
+import SecurityTypeBreakdown from './dashboard/SecurityTypeBreakdown';
+import Top50DebtSection from './dashboard/Top50DebtSection';
+import MonthlyDebtTrendChart from './dashboard/MonthlyDebtTrendChart';
 
 // Helper rút gọn tiền tệ sang Tỷ / Triệu
 const formatCompactVN = (amount) => {
@@ -69,7 +74,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
   }
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTabOverview, setActiveTabOverview] = useState('communes'); // 'communes' | 'cbtd'
+  const [activeTabOverview, setActiveTabOverview] = useState('areas'); // 'areas' | 'cbtd' | 'security' | 'top50' | 'trend'
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -155,7 +160,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           >
             <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
               <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
-                Tổng Dư Nợ Thực Tế (DuNo)
+                Tổng Dư Nợ Thực Tế
               </span>
               <Landmark size={16} className="text-success" />
             </div>
@@ -169,7 +174,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                 </span>
                 {totalTienVay > 0 ? (
                   <span className="text-muted font-numeric" style={{ fontSize: '0.72rem' }} title="Tổng vốn giải ngân ban đầu">
-                    Vốn vay: {formatCompactVN(totalTienVay)}
+                    Giải ngân: {formatCompactVN(totalTienVay)}
                   </span>
                 ) : (
                   <span className="text-primary font-monospace" style={{ fontSize: '0.72rem' }}>Sao kê →</span>
@@ -200,7 +205,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                 <span className="text-muted small">/ Hợp đồng</span>
               </div>
               <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
-                <span>BQ/Thành viên: <strong className="text-dark num-tabular font-numeric">{formatCompactVN(duNoBinhQuanTV)}</strong></span>
+                <span>BQ/Khách vay: <strong className="text-dark num-tabular font-numeric">{formatCompactVN(duNoBinhQuanTV)}</strong></span>
                 <span className="badge bg-primary-subtle text-primary fw-bold font-monospace">LS: {laiSuatBinhQuan}%</span>
               </div>
             </div>
@@ -216,7 +221,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           >
             <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
               <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
-                Dự Thu Lãi Kỳ Này
+                Dự Thu Lãi Kỳ Này (TT 14/2017)
               </span>
               <TrendingUp size={16} className="text-warning" />
             </div>
@@ -225,23 +230,23 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
                 {formatCurrencyVN(totalDuThuLai)}
               </h3>
               <div className="d-flex align-items-center justify-content-between text-muted small mt-2 pt-2 border-top">
-                <span>Tính ngày TT 14</span>
+                <span>Tính ngày thực tế</span>
                 <span className="text-warning-emphasis font-monospace" style={{ fontSize: '0.72rem' }}>3 Kỳ (05, 15, 25) →</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Thẻ 4: Ủy Quyền CASA & Nợ Tồn */}
+        {/* Thẻ 4: Ủy Quyền Trích Nợ Tự Động & Nợ Tồn */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div
             className="card-modern p-3 h-100 cursor-pointer hover-lift border-start border-4 border-danger"
             onClick={() => onNavigate && onNavigate('debit_register')}
-            title="Quản lý đăng ký trích nợ CASA"
+            title="Quản lý ủy quyền trích nợ tự động"
           >
             <div className="d-flex justify-content-between align-items-center mb-1 text-muted small">
               <span className="text-uppercase fw-semibold" style={{ letterSpacing: '0.3px', fontSize: '0.72rem' }}>
-                Ủy Quyền CASA & Nợ Tồn
+                Ủy Quyền Trích Nợ Tự Động
               </span>
               <Zap size={16} className="text-danger" />
             </div>
@@ -260,21 +265,21 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
         </div>
       </div>
 
-      {/* 3. Phân Hệ Thống Kê Địa Bàn & Cán Bộ Tín Dụng */}
+      {/* 3. Phân Hệ Thống Kê Chuyên Sâu (5 Phân Hệ) */}
       <div className="card-modern p-3">
         <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
-          <div className="d-flex align-items-center gap-1.5">
+          <div className="d-flex align-items-center gap-1.5 flex-wrap">
             <button
               type="button"
               className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ${
-                activeTabOverview === 'communes'
+                activeTabOverview === 'areas'
                   ? 'btn-primary text-white fw-bold shadow-xs'
                   : 'btn-light text-muted'
               }`}
-              onClick={() => setActiveTabOverview('communes')}
+              onClick={() => setActiveTabOverview('areas')}
             >
               <MapPin size={14} />
-              <span>Phân Bổ Địa Bàn ({areaStats.length} Xã)</span>
+              <span>Địa Bàn & Sản Phẩm ({areaStats.length} Xã)</span>
             </button>
 
             <button
@@ -287,7 +292,46 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
               onClick={() => setActiveTabOverview('cbtd')}
             >
               <User size={14} />
-              <span>Cán Bộ Tín Dụng ({cbtdStats.length} CBTD)</span>
+              <span>Cán Bộ Quản Lý ({cbtdStats.length} CBTD)</span>
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ${
+                activeTabOverview === 'security'
+                  ? 'btn-primary text-white fw-bold shadow-xs'
+                  : 'btn-light text-muted'
+              }`}
+              onClick={() => setActiveTabOverview('security')}
+            >
+              <ShieldCheck size={14} />
+              <span>Cơ Cấu TSĐB</span>
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ${
+                activeTabOverview === 'top50'
+                  ? 'btn-primary text-white fw-bold shadow-xs'
+                  : 'btn-light text-muted'
+              }`}
+              onClick={() => setActiveTabOverview('top50')}
+            >
+              <Award size={14} />
+              <span>Top 50 Dư Nợ</span>
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm px-3 py-1.5 rounded-2 d-flex align-items-center gap-1.5 ${
+                activeTabOverview === 'trend'
+                  ? 'btn-primary text-white fw-bold shadow-xs'
+                  : 'btn-light text-muted'
+              }`}
+              onClick={() => setActiveTabOverview('trend')}
+            >
+              <TrendingUp size={14} />
+              <span>Diễn Biến Tháng</span>
             </button>
           </div>
 
@@ -301,13 +345,24 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </button>
         </div>
 
-        {/* Nội dung Tab Địa Bàn */}
-        {activeTabOverview === 'communes' && (
+        {/* 1. Tab Địa Bàn & Sản Phẩm Cho Vay */}
+        {activeTabOverview === 'areas' && (
           <div className="d-flex flex-column gap-3">
-            <CommuneComparisonChart
-              areaStats={areaStats}
-              totalDuNo={totalDuNo}
-            />
+            <div className="row g-3">
+              <div className="col-12 col-xl-7">
+                <CommuneComparisonChart
+                  areaStats={areaStats}
+                  totalDuNo={totalDuNo}
+                />
+              </div>
+              <div className="col-12 col-xl-5">
+                <LoanProductDonutChart
+                  loanGroups={stats.loanGroups || []}
+                  loanTypes={stats.loanTypes || []}
+                  totalDuNo={totalDuNo}
+                />
+              </div>
+            </div>
 
             {/* Bảng tóm tắt theo xã */}
             <div className="table-responsive">
@@ -356,7 +411,7 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </div>
         )}
 
-        {/* Nội dung Tab Cán Bộ Tín Dụng */}
+        {/* 2. Tab Cán Bộ Tín Dụng */}
         {activeTabOverview === 'cbtd' && (
           <div className="table-responsive">
             <table className="table table-hover table-custom align-middle mb-0" style={{ fontSize: '0.84rem' }}>
@@ -400,6 +455,31 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* 3. Tab Cơ Cấu TSĐB */}
+        {activeTabOverview === 'security' && (
+          <SecurityTypeBreakdown
+            securityTypes={stats.securityTypes || []}
+            totalDuNo={totalDuNo}
+          />
+        )}
+
+        {/* 4. Tab Top 50 Dư Nợ */}
+        {activeTabOverview === 'top50' && (
+          <Top50DebtSection
+            top50DuNoDenNgay={stats.top50DuNoDenNgay || []}
+            top50DuNoBinhQuanCuoiThang={stats.top50DuNoBinhQuanCuoiThang || []}
+            totalDuNo={totalDuNo}
+            onOpenCustomerQuickView={onOpenCustomerQuickView}
+          />
+        )}
+
+        {/* 5. Tab Diễn Biến Theo Tháng */}
+        {activeTabOverview === 'trend' && (
+          <MonthlyDebtTrendChart
+            monthlyDebtTrend={stats.monthlyDebtTrend || []}
+          />
         )}
       </div>
 

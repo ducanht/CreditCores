@@ -11,8 +11,7 @@ import {
   Layers,
   HelpCircle,
   FileSpreadsheet,
-  TrendingUp,
-  Crown
+  TrendingUp
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { getTodayVN } from '../../utils/dateUtils';
@@ -176,7 +175,7 @@ export default function ExtractAsOfModal({ isOpen, onClose, onSuccess }) {
                     <span className="badge bg-indigo text-white" style={{ backgroundColor: '#4338ca', fontSize: '0.7rem' }}>
                       HDTD_CORE_DN
                     </span>
-                    <Crown size={14} className="text-warning" />
+                    <Calendar size={14} className="text-primary" />
                   </div>
                   <div className="form-check m-0">
                     <input

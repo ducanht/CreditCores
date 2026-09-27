@@ -8,12 +8,16 @@
     "check-syntax": "node tools/find_undefined_vars.js",
     "build": "node tools/find_undefined_vars.js && vite build",
     "preview": "vite preview",
+    "bundle": "python tools/bundle_gas.py",
     "clasp-login": "clasp login",
     "clasp-status": "clasp status",
     "clasp-push": "clasp push -f",
     "clasp-deploy": "clasp deploy -d \"CreditCores WebApp Auto-Deploy v1.2\"",
     "clasp-deployments": "clasp deployments",
-    "gas-deploy": "clasp push -f ; clasp deploy -d \"CreditCores Auto-Deploy\""
+    "gas-deploy": "clasp push -f && clasp deploy -d \"CreditCores Auto-Deploy\"",
+    "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1",
+    "deploy:gas": "powershell -ExecutionPolicy Bypass -File deploy.ps1 -gasOnly",
+    "deploy:git": "powershell -ExecutionPolicy Bypass -File deploy.ps1 -gitOnly"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",

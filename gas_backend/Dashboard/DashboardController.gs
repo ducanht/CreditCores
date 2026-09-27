@@ -65,33 +65,31 @@ var DashboardController = {
         var rawLower = rawKhuVuc.toLowerCase();
         if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) {
           xa = "Xã Yên Trường";
+        } else if (rawLower.indexOf("yên lâm") > -1 || rawLower.indexOf("yen lam") > -1) {
+          xa = "Xã Yên Lâm";
+        } else if (rawLower.indexOf("yên phú") > -1 || rawLower.indexOf("yen phu") > -1) {
+          xa = "Xã Yên Phú";
+        } else if (rawLower.indexOf("định tân") > -1 || rawLower.indexOf("dinh tan") > -1) {
+          xa = "Xã Định Tân";
+        } else if (rawLower.indexOf("yên thọ") > -1 || rawLower.indexOf("yen tho") > -1) {
+          xa = "Xã Yên Thọ";
+        } else if (rawLower.indexOf("quý lộc") > -1 || rawLower.indexOf("quy loc") > -1) {
+          xa = "Xã Quý Lộc";
         } else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) {
           xa = "Xã Vĩnh Lộc";
         } else {
-          xa = "Xã Quý Lộc";
+          var mXa = rawKhuVuc.match(/(Xã|Thị trấn|Phường)\s+([^,]+)/i);
+          xa = mXa && mXa[0] ? mXa[0].trim() : "Địa bàn khác";
         }
       }
 
       var thon = directThon;
       if (!thon) {
-        thon = "Khu trung tâm " + xa.replace("Xã ", "");
-        var m = rawKhuVuc.match(/thôn\s+[^,]+/i);
+        var m = rawKhuVuc.match(/(thôn|khu phố|phố|tiểu khu|bản|làng|đội|xóm)\s+([^,]+)/i);
         if (m && m[0]) {
-          var rawThon = m[0].trim();
-          var tl = rawThon.toLowerCase();
-          if (tl.indexOf("tu mục") > -1) thon = "Thôn Tu Mục";
-          else if (tl.indexOf("tân lộc") > -1) thon = "Thôn Tân Lộc";
-          else if (tl.indexOf("đan nê") > -1) thon = "Thôn Đan Nê";
-          else if (tl.indexOf("phố kiểu") > -1) thon = "Thôn Phố Kiểu";
-          else if (tl.indexOf("lựu khê") > -1) thon = "Thôn Lựu Khê";
-          else if (tl.indexOf("thạc quả") > -1) thon = "Thôn Thạc Quả";
-          else if (tl.indexOf("yên lạc") > -1) thon = "Thôn Yên Lạc";
-          else if (tl.indexOf("thọ vực") > -1) thon = "Thôn Thọ Vực";
-          else if (tl.indexOf("phi bình") > -1) thon = "Thôn Phi Bình";
-          else if (tl.indexOf("kỳ ngãi") > -1) thon = "Thôn Kỳ Ngãi";
-          else if (tl.indexOf("vĩnh khang 1") > -1) thon = "Thôn Vĩnh Khang 1";
-          else if (tl.indexOf("vĩnh khang 2") > -1) thon = "Thôn Vĩnh Khang 2";
-          else thon = rawThon;
+          thon = m[0].trim();
+        } else {
+          thon = "Thôn khác";
         }
       }
       custMap[makh] = { hoten: hoten, sotv: sotv, xa: xa, thon: thon };
@@ -152,88 +150,11 @@ var DashboardController = {
     var totalHopDong = 0;
     var totalDuThuLai = 0;
 
-    // 1. Phân bổ theo 3 địa bàn xã chính & phân rã theo Thôn
-    var byCommuneMap = {
-      "Xã Quý Lộc": {
-        key: "quyloc",
-        name: "Xã Quý Lộc",
-        subText: "Địa bàn trọng điểm (Thôn Đan Nê, Tân Lộc, Tu Mục)",
-        cbqlUser: "qtdyentho.huyennhu",
-        cbqlName: "Trần Như Huyền",
-        countHD: 0,
-        countKH: 0,
-        duNo: 0,
-        khSet: {},
-        loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
-        thonsMap: {}
-      },
-      "Xã Yên Trường": {
-        key: "yentruong",
-        name: "Xã Yên Trường",
-        subText: "Địa bàn mở rộng (Thôn Phố Kiểu, Lựu Khê, Thạc Quả)",
-        cbqlUser: "qtdyentho.luudinh",
-        cbqlName: "Lưu Thị Định",
-        countHD: 0,
-        countKH: 0,
-        duNo: 0,
-        khSet: {},
-        loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
-        thonsMap: {}
-      },
-      "Xã Vĩnh Lộc": {
-        key: "vinhloc",
-        name: "Xã Vĩnh Lộc",
-        subText: "Địa bàn liên kết (Thôn Kỳ Ngãi, Phi Bình, Yên Lạc, Thọ Vực)",
-        cbqlUser: "qtdyentho.huunhan",
-        cbqlName: "Nguyễn Hữu Nhân",
-        countHD: 0,
-        countKH: 0,
-        duNo: 0,
-        khSet: {},
-        loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
-        thonsMap: {}
-      }
-    };
+    // 1. Phân bổ theo địa bàn xã & thôn (Khởi tạo động 100% từ dữ liệu thực tế)
+    var byCommuneMap = {};
 
-    // 2. Cơ cấu theo Cán bộ quản lý tín dụng (CBTD Portfolio)
-    var byCbtdMap = {
-      "qtdyentho.huyennhu": {
-        user: "qtdyentho.huyennhu",
-        name: "Trần Như Huyền",
-        role: "Cán Bộ Tín Dụng Quản Lý",
-        assignedArea: "Xã Quý Lộc",
-        duNo: 0,
-        countHD: 0,
-        countKH: 0,
-        khSet: {},
-        loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
-        xasMap: {}
-      },
-      "qtdyentho.luudinh": {
-        user: "qtdyentho.luudinh",
-        name: "Lưu Thị Định",
-        role: "Cán Bộ Tín Dụng Quản Lý",
-        assignedArea: "Xã Yên Trường",
-        duNo: 0,
-        countHD: 0,
-        countKH: 0,
-        khSet: {},
-        loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
-        xasMap: {}
-      },
-      "qtdyentho.huunhan": {
-        user: "qtdyentho.huunhan",
-        name: "Nguyễn Hữu Nhân",
-        role: "Cán Bộ Tín Dụng Quản Lý",
-        assignedArea: "Xã Vĩnh Lộc",
-        duNo: 0,
-        countHD: 0,
-        countKH: 0,
-        khSet: {},
-        loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
-        xasMap: {}
-      }
-    };
+    // 2. Cơ cấu theo Cán bộ quản lý tín dụng (Khởi tạo động 100% từ dữ liệu thực tế)
+    var byCbtdMap = {};
 
     // 3. Cơ cấu sản phẩm tín dụng theo 3 nhóm chính
     var loanGroups = {
@@ -381,8 +302,21 @@ var DashboardController = {
           securityTypesMap[fallbackKey].duNo += duNo;
         }
 
-        // Tích lũy theo Xã & Thôn
-        if (!byCommuneMap[xa]) xa = "Xã Quý Lộc";
+        // Tích lũy theo Xã & Thôn (Linh hoạt theo địa bàn thực tế CSDL Core, không ép cố định)
+        if (!byCommuneMap[xa]) {
+          var cleanKey = HeaderUtils._norm(xa);
+          byCommuneMap[xa] = {
+            key: cleanKey || "khac",
+            name: xa,
+            subText: "Địa bàn " + xa,
+            countHD: 0,
+            countKH: 0,
+            duNo: 0,
+            khSet: {},
+            loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
+            thonsMap: {}
+          };
+        }
         var cObj = byCommuneMap[xa];
         cObj.countHD++;
         cObj.duNo += duNo;
@@ -396,6 +330,7 @@ var DashboardController = {
           cObj.thonsMap[thon] = {
             name: thon,
             duno: 0,
+            duNo: 0,
             countHD: 0,
             countKH: 0,
             khSet: {},
@@ -404,6 +339,7 @@ var DashboardController = {
         }
         var thonObj = cObj.thonsMap[thon];
         thonObj.duno += duNo;
+        thonObj.duNo = thonObj.duno; // Bảo toàn cả 2 trường để tương thích cả duno và duNo
         thonObj.countHD++;
         thonObj.loanGroups[grpShort] = (thonObj.loanGroups[grpShort] || 0) + duNo;
         if (!thonObj.khSet[makh]) {
@@ -411,12 +347,30 @@ var DashboardController = {
           thonObj.countKH++;
         }
 
-        // Tích lũy theo CBTD
+        // Tích lũy theo CBTD thực tế từ Google Sheets (không gán cứng)
         var cbKey = cbtdUser;
+        var cbDisplayName = cbtdName;
+        if (!cbKey && !cbDisplayName) {
+          cbKey = "CHUA_PHAN_CONG";
+          cbDisplayName = "Chưa phân công CBTD";
+        } else if (!cbKey) {
+          cbKey = HeaderUtils._norm(cbDisplayName);
+        } else if (!cbDisplayName) {
+          cbDisplayName = cbKey;
+        }
+
         if (!byCbtdMap[cbKey]) {
-          if (xa === "Xã Quý Lộc") cbKey = "qtdyentho.huyennhu";
-          else if (xa === "Xã Yên Trường") cbKey = "qtdyentho.luudinh";
-          else cbKey = "qtdyentho.huunhan";
+          byCbtdMap[cbKey] = {
+            user: cbKey,
+            name: cbDisplayName,
+            role: "Cán Bộ Tín Dụng Quản Lý",
+            duNo: 0,
+            countHD: 0,
+            countKH: 0,
+            khSet: {},
+            loanGroups: { "Nông nghiệp": 0, "Tiêu dùng - Đời sống": 0, "Thương mại - Dịch vụ": 0 },
+            xasMap: {}
+          };
         }
 
         var cbObj = byCbtdMap[cbKey];
@@ -480,6 +434,7 @@ var DashboardController = {
       for (var tKey in item.thonsMap) {
         var tItem = item.thonsMap[tKey];
         delete tItem.khSet;
+        tItem.duNo = Number(tItem.duno) || 0;
         tItem.rateCommune = item.duNo > 0 ? (Math.round((tItem.duno / item.duNo) * 1000) / 10) + "%" : "0%";
         tItem.rateTotal = totalDuNo > 0 ? (Math.round((tItem.duno / totalDuNo) * 1000) / 10) + "%" : "0%";
         tItem.duNoBinhQuanHD = tItem.countHD > 0 ? Math.round(tItem.duno / tItem.countHD) : 0;
@@ -491,6 +446,7 @@ var DashboardController = {
       item.thons = thonsList;
       finalAreaStats.push(item);
     }
+    finalAreaStats.sort(function(a, b) { return b.duNo - a.duNo; });
 
     // Hoàn tất định dạng byCBTD
     var finalCbtdStats = [];
@@ -524,6 +480,7 @@ var DashboardController = {
       cb.communes = xasList;
       finalCbtdStats.push(cb);
     }
+    finalCbtdStats.sort(function(a, b) { return b.duNo - a.duNo; });
 
     // Hoàn tất loanGroups
     for (var gKey in loanGroups) {
@@ -747,9 +704,12 @@ var DashboardController = {
     var targetSheet = params.sheetName || (mode === "as_of_date" ? "HDTD_CORE_DN" : "HDTD_CORE");
     var asOfDate = params.asOfDate || "";
 
+    var forceFresh = params.forceFresh === true || params.forceFresh === "true" || params.fresh === true || params.fresh === "true";
     var cacheKey = "dashboard_stats_" + mode + "_" + targetSheet + "_" + (asOfDate ? asOfDate.replace(/\//g, "") : "");
-    var cached = CacheHelper.getCachedData(cacheKey);
-    if (cached) return { status: "success", data: cached };
+    if (!forceFresh) {
+      var cached = CacheHelper.getCachedData(cacheKey);
+      if (cached) return { status: "success", data: cached };
+    }
 
     var sKH = ss.getSheetByName("KH_CORE");
     var sNoTon = ss.getSheetByName("NO_TON_DONG");

@@ -44,17 +44,17 @@ export default function CommuneComparisonChart({
     );
   }, [areaStats, selectedCommune]);
 
-  // Dataset hiển thị: hoặc 3 Xã, hoặc các Thôn của Xã đang chọn, hoặc Top 10 Thôn toàn Quỹ
+  // Dataset hiển thị: hoặc các Xã, hoặc các Thôn của Xã đang chọn, hoặc Top 10 Thôn toàn Quỹ
   const displayItems = useMemo(() => {
     // 1. Chế độ Top Thôn toàn Quỹ
     if (viewMode === 'top_thons') {
       const allThons = [];
       areaStats.forEach((a) => {
         (a.thons || []).forEach((th) => {
-          const duNo = Number(th.duNo) || 0;
+          const duNo = Number(th.duNo) || Number(th.duno) || 0;
           const countHD = Number(th.countHD) || 0;
           const countKH = Number(th.countKH) || 0;
-          const avgLoan = countHD > 0 ? duNo / countHD : 0;
+          const avgLoan = countHD > 0 ? Math.round(duNo / countHD) : 0;
           allThons.push({
             id: `${a.name}_${th.name}`,
             label: th.name,
@@ -76,10 +76,10 @@ export default function CommuneComparisonChart({
     // 2. Chế độ Xem Thôn của Xã đang chọn
     if (selectedAreaData && selectedAreaData.thons && selectedAreaData.thons.length > 0) {
       return selectedAreaData.thons.map((th) => {
-        const duNo = Number(th.duNo) || 0;
+        const duNo = Number(th.duNo) || Number(th.duno) || 0;
         const countHD = Number(th.countHD) || 0;
         const countKH = Number(th.countKH) || 0;
-        const avgLoan = countHD > 0 ? duNo / countHD : 0;
+        const avgLoan = countHD > 0 ? Math.round(duNo / countHD) : 0;
         return {
           id: th.name,
           label: th.name,
@@ -93,12 +93,12 @@ export default function CommuneComparisonChart({
       });
     }
 
-    // 3. Chế độ So sánh 3 Xã
+    // 3. Chế độ So sánh các Xã
     return areaStats.map((a, idx) => {
-      const duNo = Number(a.duNo) || 0;
+      const duNo = Number(a.duNo) || Number(a.duno) || 0;
       const countHD = Number(a.countHD) || 0;
       const countKH = Number(a.countKH) || 0;
-      const avgLoan = countHD > 0 ? duNo / countHD : 0;
+      const avgLoan = countHD > 0 ? Math.round(duNo / countHD) : 0;
       return {
         id: a.key || a.name,
         label: a.name,
@@ -149,14 +149,14 @@ export default function CommuneComparisonChart({
             </div>
             <span className="text-muted small">
               {viewMode === 'top_thons'
-                ? 'Xếp hạng các thôn trọng điểm trên toàn bộ địa bàn hoạt động của Quỹ'
+                ? 'Thống kê 10 thôn có quy mô dư nợ lớn nhất trên địa bàn hoạt động của Quỹ'
                 : selectedAreaData
-                ? `Chi tiết ${displayItems.length} thôn trên địa bàn ${selectedAreaData.name}`
-                : 'Bấm vào cột xã hoặc chọn tab để đào sâu phân tích chi tiết từng thôn'}
+                ? `Chi tiết ${displayItems.length} thôn thuộc ${selectedAreaData.name}`
+                : 'Bấm vào từng xã để xem cơ cấu và tỷ trọng chi tiết theo thôn'}
             </span>
           </div>
 
-          {/* Metric Selector Buttons */}
+          {/* Bộ chọn tiêu chí thống kê */}
           <div className="btn-group btn-group-sm bg-light p-0.5 rounded-2 border" role="group">
             <button
               type="button"
@@ -180,7 +180,7 @@ export default function CommuneComparisonChart({
               onClick={() => setMetric('avgLoan')}
             >
               <TrendingUp size={13} className="me-1 inline" />
-              Dư Nợ BQ
+              Dư Nợ BQ/HĐ
             </button>
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function CommuneComparisonChart({
               Xem toàn bộ địa bàn →
             </span>
           ) : (
-            <span className="text-muted">Nhấp vào từng Xã để đào sâu cấp Thôn</span>
+            <span className="text-muted">Bấm vào từng xã để xem cơ cấu theo thôn</span>
           )}
         </div>
       </div>

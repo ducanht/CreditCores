@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   Award,
-  Crown,
   TrendingUp,
   Search,
   FileSpreadsheet,
@@ -104,8 +103,8 @@ export default function Top50DebtSection({
               }`}
               onClick={() => setActiveTab('as_of')}
             >
-              <Crown size={15} />
-              <span>Đến ngày</span>
+              <Award size={15} />
+              <span>Dư Nợ Đến Ngày</span>
               <span className={`badge ms-1 ${activeTab === 'as_of' ? 'bg-white text-dark' : 'bg-primary-subtle text-primary'}`}>
                 {top50DuNoDenNgay.length}
               </span>
@@ -122,8 +121,12 @@ export default function Top50DebtSection({
               onClick={() => setActiveTab('average')}
             >
               <TrendingUp size={15} />
-              <span>Theo tháng (Bình quân)</span>
+              <span>Dư Nợ Bình Quân Cuối Tháng</span>
               <span className={`badge ms-1 ${activeTab === 'average' ? 'bg-white text-dark' : 'bg-secondary-subtle text-secondary'}`}>
+                {top50DuNoBinhQuanCuoiThang.length}
+              </span>
+            </button>
+          </div>' : 'bg-secondary-subtle text-secondary'}`}>
                 {top50DuNoBinhQuanCuoiThang.length}
               </span>
             </button>
@@ -165,7 +168,7 @@ export default function Top50DebtSection({
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="p-2.5 rounded-2 bg-light border">
               <span className="small text-muted text-uppercase" style={{ fontSize: '0.7rem' }}>
-                Tổng Dư Nợ Nhóm Top ({summary.count} KH)
+                Tổng Dư Nợ Top 50 ({summary.count} KH)
               </span>
               <div className="fw-bold fs-6 font-numeric text-primary mt-1">
                 {formatCurrencyVN(summary.totalDebt)}
@@ -176,7 +179,7 @@ export default function Top50DebtSection({
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="p-2.5 rounded-2 bg-light border">
               <span className="small text-muted text-uppercase" style={{ fontSize: '0.7rem' }}>
-                Tỷ Trọng / Toàn Bộ Dư Nợ Quỹ
+                Tỷ Trọng / Tổng Dư Nợ Toàn Quỹ
               </span>
               <div className="fw-bold fs-6 font-numeric text-danger mt-1">
                 {summary.concentrationRate}%
@@ -187,7 +190,7 @@ export default function Top50DebtSection({
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="p-2.5 rounded-2 bg-light border">
               <span className="small text-muted text-uppercase" style={{ fontSize: '0.7rem' }}>
-                Khách Hàng Top 1
+                Khách Hàng Dư Nợ Cao Nhất
               </span>
               <div className="fw-bold fs-6 text-truncate mt-1 text-dark" title={summary.top1?.hoTen}>
                 {summary.top1 ? summary.top1.hoTen : '—'}
@@ -198,7 +201,7 @@ export default function Top50DebtSection({
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="p-2.5 rounded-2 bg-light border">
               <span className="small text-muted text-uppercase" style={{ fontSize: '0.7rem' }}>
-                Dư Nợ Top 1
+                Dư Nợ Lớn Nhất
               </span>
               <div className="fw-bold fs-6 font-numeric text-success mt-1">
                 {summary.top1 ? formatCurrencyVN(summary.top1.tongDuNo || summary.top1.duNoBinhQuan) : '—'}

@@ -29,9 +29,9 @@ export default function DebitRegisterModal({
   registrations = [],
   onPrintAgreement
 }) {
-  if (!show) return null;
 
   const isEdit = Boolean(editingItem);
+
 
   // --- STATE FORM ĐĂNG KÝ ---
   const [formData, setFormData] = useState({
@@ -174,6 +174,9 @@ export default function DebitRegisterModal({
       setIsSubmitting(false);
     }
   };
+
+  // Guard: đặt sau tất cả hooks theo đúng Rules of Hooks (Bài học KN #14 - Anti-TDZ)
+  if (!show) return null;
 
   return (
     <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', zIndex: 1050 }}>

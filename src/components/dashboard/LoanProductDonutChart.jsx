@@ -24,12 +24,14 @@ const formatCompactVN = (amount) => {
 };
 
 export default function LoanProductDonutChart({
+  loanGroups = [],
+  loanTypes = [],
   areaStats = [],
   totalDuNo = 0,
   selectedCommune = null,
   onSelectCommune
 }) {
-  // Chế độ xem: 'duNo' (Doanh số Dư nợ VNĐ) | 'countHD' (Số món / Hợp đồng vay)
+  // Chế độ xem: 'duNo' (Dư nợ tín dụng thực tế) | 'countHD' (Số hợp đồng vay)
   const [metricMode, setMetricMode] = useState('duNo');
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
@@ -42,34 +44,61 @@ export default function LoanProductDonutChart({
   // Dữ liệu sản phẩm vay (tính theo xã đang chọn hoặc toàn Quỹ)
   const productData = useMemo(() => {
     let nn = 0, td = 0, tm = 0;
-    let totalCount = 0;
+    let countNN = 0, countTD = 0, countTM = 0;
 
     if (activeArea && activeArea.loanGroups) {
-      nn = activeArea.loanGroups['Nông nghiệp'] || 0;
-      td = activeArea.loanGroups['Tiêu dùng - Đời sống'] || 0;
-      tm = activeArea.loanGroups['Thương mại - Dịch vụ'] || 0;
-      totalCount = Number(activeArea.countHD) || 0;
+      nn = Number(activeArea.loanGroups['Nông nghiệp']) || 0;
+      td = Number(activeArea.loanGroups['Tiêu dùng - Đời sống']) || 0;
+      tm = Number(activeArea.loanGroups['Thương mại - Dịch vụ']) || 0;
+      const totalCount = Number(activeArea.countHD) || 0;
+      const sumDuNo = nn + td + tm || 1;
+      countNN = Math.round((nn / sumDuNo) * totalCount);
+      countTD = Math.round((td / sumDuNo) * totalCount);
+      countTM = Math.max(0, totalCount - countNN - countTD);
     } else {
-      areaStats.forEach((a) => {
-        if (a.loanGroups) {
-          nn += a.loanGroups['Nông nghiệp'] || 0;
-          td += a.loanGroups['Tiêu dùng - Đời sống'] || 0;
-          tm += a.loanGroups['Thương mại - Dịch vụ'] || 0;
-        }
-        totalCount += Number(a.countHD) || 0;
-      });
+      // Ưu tiên nạp từ loanGroups/loanTypes backend
+      const groups = (loanGroups && loanGroups.length > 0) ? loanGroups : (loanTypes || []);
+      if (groups.length > 0) {
+        groups.forEach(g => {
+          const k = (g.key || g.name || '').toLowerCase();
+          const dNo = Number(g.duNo || g.amount) || 0;
+          const cnt = Number(g.count) || 0;
+          if (k.includes('nong') || k.includes('nông')) {
+            nn += dNo;
+            countNN += cnt;
+          } else if (k.includes('sinh') || k.includes('tieu') || k.includes('tiêu')) {
+            td += dNo;
+            countTD += cnt;
+          } else {
+            tm += dNo;
+            countTM += cnt;
+          }
+        });
+      }
+
+      // Nếu groups rỗng, tổng hợp từ areaStats
+      if (nn === 0 && td === 0 && tm === 0 && areaStats.length > 0) {
+        areaStats.forEach((a) => {
+          if (a.loanGroups) {
+            nn += Number(a.loanGroups['Nông nghiệp']) || 0;
+            td += Number(a.loanGroups['Tiêu dùng - Đời sống']) || 0;
+            tm += Number(a.loanGroups['Thương mại - Dịch vụ']) || 0;
+          }
+          const c = Number(a.countHD) || 0;
+          const sumA = (Number(a.duNo) || Number(a.duno)) || 1;
+          const nnA = Number(a.loanGroups?.['Nông nghiệp']) || 0;
+          const tdA = Number(a.loanGroups?.['Tiêu dùng - Đời sống']) || 0;
+          countNN += Math.round((nnA / sumA) * c);
+          countTD += Math.round((tdA / sumA) * c);
+          countTM += Math.max(0, c - Math.round((nnA / sumA) * c) - Math.round((tdA / sumA) * c));
+        });
+      }
     }
 
-    const currentDuNoTotal = nn + td + tm || (activeArea ? activeArea.duNo : totalDuNo) || 1;
-    const effTotalCount = totalCount > 0 ? totalCount : 435;
-
-    // Ước lượng số món vay theo tỷ trọng
-    const countNN = Math.max(1, Math.round((nn / currentDuNoTotal) * effTotalCount));
-    const countTD = Math.max(1, Math.round((td / currentDuNoTotal) * effTotalCount));
-    const countTM = Math.max(1, effTotalCount - countNN - countTD);
-
+    const currentDuNoTotal = nn + td + tm || totalDuNo || 0;
+    const totalCount = countNN + countTD + countTM || 0;
     const isByCount = metricMode === 'countHD';
-    const activeTotal = isByCount ? effTotalCount : currentDuNoTotal;
+    const activeTotal = isByCount ? (totalCount || 1) : (currentDuNoTotal || 1);
 
     const items = [
       {
@@ -108,9 +137,9 @@ export default function LoanProductDonutChart({
     return {
       total: activeTotal,
       duNoTotal: currentDuNoTotal,
-      countTotal: effTotalCount,
+      countTotal: totalCount,
       items: items.map((item) => {
-        const rate = (item.metricValue / activeTotal) * 100;
+        const rate = activeTotal > 0 ? (item.metricValue / activeTotal) * 100 : 0;
         const segment = {
           ...item,
           rateNum: rate,
@@ -121,7 +150,7 @@ export default function LoanProductDonutChart({
         return segment;
       })
     };
-  }, [areaStats, activeArea, totalDuNo, metricMode]);
+  }, [areaStats, activeArea, totalDuNo, metricMode, loanGroups, loanTypes]);
 
   // Cấu hình SVG Donut Chart
   const radius = 54;
@@ -137,34 +166,34 @@ export default function LoanProductDonutChart({
           <div>
             <h6 className="fw-bold m-0 text-slate-800 font-heading d-flex align-items-center gap-1.5">
               <PieChart size={18} className="text-warning" />
-              Tỷ Trọng Cơ Cấu Sản Phẩm Vay
+              Cơ Cấu Sản Phẩm Cho Vay
             </h6>
             <span className="text-muted small">
               {activeArea ? (
                 <>
-                  Đang phân tích cơ cấu của <strong className="text-primary">{activeArea.name}</strong>
+                  Cơ cấu dư nợ địa bàn: <strong className="text-primary">{activeArea.name}</strong>
                 </>
               ) : (
-                'Tổng hợp cơ cấu cho vay toàn Quỹ Tín Dụng'
+                'Cơ cấu theo mục đích vay toàn Quỹ'
               )}
             </span>
           </div>
 
-          {/* Metric Toggle Buttons */}
+          {/* Bộ chọn tiêu chí */}
           <div className="btn-group btn-group-sm bg-light p-0.5 rounded-2 border" role="group">
             <button
               type="button"
               className={`btn btn-sm ${metricMode === 'duNo' ? 'btn-white shadow-sm fw-bold text-dark' : 'btn-light text-muted'}`}
               onClick={() => setMetricMode('duNo')}
             >
-              Doanh Số Dư Nợ
+              Dư Nợ Thực Tế
             </button>
             <button
               type="button"
               className={`btn btn-sm ${metricMode === 'countHD' ? 'btn-white shadow-sm fw-bold text-dark' : 'btn-light text-muted'}`}
               onClick={() => setMetricMode('countHD')}
             >
-              Số Món Vay
+              Số Hợp Đồng
             </button>
           </div>
         </div>
