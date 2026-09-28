@@ -521,8 +521,8 @@ Theo yêu cầu của người dùng, hệ thống quản trị và chuẩn hóa
 - **Mục đích**: Tách biệt minh bạch giữa sao kê dư nợ tức thời đến một ngày cụ thể (`HDTD_CORE_DN`) và kho lưu trữ sao kê tích lũy các ngày cuối tháng trong năm (`HDTD_CORE_ALL`).
 - **Cấu trúc 2 Tầng (Two-Tier Architecture)**:
   - **Dòng 1 (Banner Metadata)**: `Sao kê tín dụng đến ngày: dd/MM/yyyy | Dữ liệu cập nhật: dd/MM/yyyy HH:mm:ss | Nguồn: CoreBanking NG-eFUND`
-  - **Dòng 2 (Header Chuẩn 17 Cột)**:
-    `SoHDTD, MaKH, HoTen, DiaChi, KvXa, KvThon, TienVay, DuNo, LaiSuat, NgayVay, DenHan, SoThangVay, MaLoaiVay, MoTaVay, MaLoaiHD, NgayDuLieu, NgayCapNhat`
+  - **Dòng 2 (Header Chuẩn Hóa 23 Cột)** (Đồng bộ cấu trúc đầy đủ với `HDTD_CORE`):
+    `SoHDTD, MaKH, HoTen, DiaChi, KvXa, KvThon, CCCD, DienThoai, TienVay, DuNo, LaiSuat, NgayVay, DenHan, TraLaiDenNgay, SoThangVay, MaLoaiVay, MoTaVay, MaLoaiHD, CBTD_PhuTrach, Ten_CBTD, TrangThaiHD, NgayDuLieu, NgayCapNhat`
   - **Dòng 3 trở đi**: Dữ liệu sao kê các hợp đồng.
   - **Cố định dòng (Freeze Rows)**: Cố định 2 dòng đầu (`setFrozenRows(2)`).
 - **Cơ chế Chuẩn Hóa Tự Động (Self-Healing & Auto-Standardization)**:
@@ -531,6 +531,19 @@ Theo yêu cầu của người dùng, hệ thống quản trị và chuẩn hóa
   - Tự động tạo menu Google Sheets `⚙️ Quản Trị CSDL CreditCores` với 2 tùy chọn:
     1. *⚡ Tự Động Kiểm Tra & Nâng Cấp CSDL (Self-Healing)*: Chạy nhanh có in-memory cache 6 giờ.
     2. *🔄 Ép Buộc Chuẩn Hóa 20 Bảng CSDL (Force Standardize)*: Quét và chuẩn hóa toàn bộ 20 bảng bất chấp cache.
+
+### 5.4. Bài Học Kinh Nghiệm Rà Soát Dư Nợ & Thống Kê Địa Bàn Thực Tế (Tháng 09/2026)
+1. **Dư Nợ Thực Tế vs Doanh Số Giải Ngân (TienVay vs DuNo)**:
+   - Nghiêm cấm lấy cột `TienVay` (vốn giải ngân gốc) để tính tổng dư nợ hay dư nợ bình quân trên Dashboard / Sao kê.
+   - Luôn sử dụng cột `DuNo` cho các chỉ số Dư nợ thực tế, Dư nợ bình quân/HĐ, Dư nợ bình quân/Thành viên và Tỷ trọng cơ cấu. Cột `TienVay` chỉ dùng để hiển thị phụ chú "Vốn giải ngân ban đầu".
+2. **Khử Bỏ Hoàn Toàn Gán Cứng Địa Bàn 3 Xã**:
+   - Backend `sync_daemon.py` và `ReportController.gs` không được hardcode fallback về `"Xã Quý Lộc"`.
+   - Trích xuất địa bàn theo thứ tự ưu tiên: 1. `KvXa` từ Core Banking; 2. Regex nhận diện `(Xã|Thị trấn|Phường) ...`; 3. Danh sách từ điển mở rộng (Yên Thọ, Quý Lộc, Yên Trường, Yên Bái, Yên Lâm, Yên Phú, Định Tân, Vĩnh Lộc...); 4. Fallback về `"Địa bàn khác"`.
+   - Bảng tổng hợp địa bàn `areaStats` trên Frontend và Backend được tạo động 100% (`{}`) dựa trên dữ liệu thực tế, hỗ trợ không giới hạn số lượng xã/thị trấn.
+3. **Bộ Chọn Lịch DatePickerVN Trên Mọi Màn Hình**:
+   - Tất cả các ô nhập mốc ngày sao kê (kể cả ô lọc ngày trên `CreditStatement.jsx` và modal trích xuất `ExtractAsOfModal.jsx`) bắt buộc dùng `<DatePickerVN />` chuẩn định dạng `dd/mm/yyyy` theo giờ Việt Nam GMT+7, không dùng ô input text tự gõ.
+4. **Tự Động Nạp Dữ Liệu Diễn Biến Tháng & Top 50 Cho Dashboard**:
+   - Khi ở chế độ xem hiện tại (`HDTD_CORE`), `DashboardController.gs` tự động kiểm tra và nạp bổ sung chuỗi `monthlyDebtTrend` và `top50DuNoBinhQuanCuoiThang` từ `HDTD_CORE_ALL` nếu có dữ liệu, giúp màn hình Tổng quan luôn đầy đủ thông tin biểu đồ trực quan ngay khi truy cập.
 
 ---
 
