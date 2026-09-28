@@ -77,18 +77,20 @@ ALL_SCHEMAS = {
     },
     "HDTD_CORE_DN": {
         "headers": [
-            "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-            "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+            "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+            "SoThangVay", "MaLoaiVay", "MoTaVay",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
             "NgayDuLieu", "NgayCapNhat"
         ],
         "color": {"red": 0.19, "green": 0.18, "blue": 0.51}
     },
     "HDTD_CORE_ALL": {
         "headers": [
-            "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-            "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+            "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+            "SoThangVay", "MaLoaiVay", "MoTaVay",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
             "NgayDuLieu", "NgayCapNhat"
         ],
         "color": {"red": 0.12, "green": 0.23, "blue": 0.54}

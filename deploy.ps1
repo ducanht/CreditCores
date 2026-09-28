@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # deploy.ps1 — CreditCores Full Auto-Deploy Pipeline
 # QTDND Yên Thọ | Mỗi lần chạy sẽ:
 #   [1] Bundle tất cả module → CreditCores_GAS_ALL_IN_ONE.gs
@@ -31,8 +31,9 @@ function Write-Step($n, $total, $text) {
     Write-Host ("-" * 60) -ForegroundColor DarkGray
 }
 
-function Write-OK($text) { Write-Host "  ✅ $text" -ForegroundColor Green }
-function Write-Fail($text) { Write-Host "  ❌ $text" -ForegroundColor Red }
+function Write-OK($text) { Write-Host "  [OK] $text" -ForegroundColor Green }
+function Write-Fail($text) { Write-Host "  [FAIL] $text" -ForegroundColor Red }
+function Write-Info($text) { Write-Host "  [INFO] $text" -ForegroundColor Yellow }
 $totalSteps = 5
 if ($gasOnly -or $gitOnly) { $totalSteps = 3 }
 
@@ -105,14 +106,18 @@ $gitStep = 4
 if ($gitOnly) { $gitStep = 1 }
 Write-Step $gitStep $totalSteps "git add -A — Stage tất cả thay đổi"
 try {
-    $gitStatus = git status --porcelain 2>&1
+    $gitStatus = git status --porcelain
     if (-not $gitStatus) {
         Write-Info "Không có thay đổi nào để commit. Bỏ qua git push."
         Write-Host ""
         Write-Host "=== Pipeline hoàn tất (nothing to commit) ===" -ForegroundColor Green
         exit 0
     }
-    git add -A 2>&1 | Out-Null
+    git add -A
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "git add thất bại"
+        exit 1
+    }
     Write-OK "Stage thành công $(($gitStatus -split "`n").Count) file(s)"
     Write-Host ""
     Write-Host $gitStatus -ForegroundColor DarkGray
@@ -131,7 +136,7 @@ Write-Step $pushStep $totalSteps "git commit + push origin main"
 # Tự động sinh commit message nếu không truyền vào
 if (-not $msg) {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
-    $changedFiles = git diff --cached --name-only 2>&1
+    $changedFiles = git diff --cached --name-only
     
     # Phân loại loại thay đổi
     $gasFiles  = $changedFiles | Where-Object { $_ -match "gas_backend/" }
@@ -150,21 +155,19 @@ if (-not $msg) {
     $msg = "feat$scope`: auto-deploy $timestamp"
 }
 
-try {
-    git commit -m $msg 2>&1 | Write-Host
-    Write-OK "Commit thành công: $msg"
-} catch {
-    Write-Fail "git commit thất bại: $_"
+git commit -m $msg
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "git commit thất bại"
     exit 1
 }
+Write-OK "Commit thành công: $msg"
 
-try {
-    git push origin main 2>&1 | Write-Host
-    Write-OK "Push lên remote origin/main thành công"
-} catch {
-    Write-Fail "git push thất bại: $_"
+git push origin main
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "git push thất bại"
     exit 1
 }
+Write-OK "Push lên remote origin/main thành công"
 
 Write-Host ""
 Write-Host ("=" * 60) -ForegroundColor Green

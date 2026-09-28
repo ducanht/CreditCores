@@ -56,27 +56,36 @@ var ReportController = {
         var dChi = String(HeaderUtils.getCell(khVals[i], colMapKH, "DiaChi", "")).trim();
         var sTV = String(HeaderUtils.getCell(khVals[i], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
         var directXa = String(HeaderUtils.getCell(khVals[i], colMapKH, "KvXa", "")).trim();
+        var directThon = String(HeaderUtils.getCell(khVals[i], colMapKH, "KvThon", "")).trim();
         var diaChiKV = (dChi + " " + String(HeaderUtils.getCell(khVals[i], colMapKH, "KhuVuc", ""))).trim();
-        var areaKey = directXa || "Khác";
-        if (!directXa) {
-          if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
-          else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
-          else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        var areaKey = directXa;
+        if (!areaKey) {
+          var rawLower = diaChiKV.toLowerCase();
+          if (rawLower.indexOf("yên thọ") > -1 || rawLower.indexOf("yen tho") > -1) areaKey = "Xã Yên Thọ";
+          else if (rawLower.indexOf("quý lộc") > -1 || rawLower.indexOf("quy loc") > -1) areaKey = "Xã Quý Lộc";
+          else if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) areaKey = "Xã Yên Trường";
+          else if (rawLower.indexOf("yên bái") > -1 || rawLower.indexOf("yen bai") > -1) areaKey = "Xã Yên Bái";
+          else if (rawLower.indexOf("yên lâm") > -1 || rawLower.indexOf("yen lam") > -1) areaKey = "Xã Yên Lâm";
+          else if (rawLower.indexOf("yên phú") > -1 || rawLower.indexOf("yen phu") > -1) areaKey = "Xã Yên Phú";
+          else if (rawLower.indexOf("định tân") > -1 || rawLower.indexOf("dinh tan") > -1) areaKey = "Xã Định Tân";
+          else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) areaKey = "Xã Vĩnh Lộc";
+          else {
+            var mXa = diaChiKV.match(/(Xã|Thị trấn|Phường)\s+([^,]+)/i);
+            areaKey = mXa && mXa[0] ? mXa[0].trim() : "Địa bàn khác";
+          }
         }
         khMap[mKH] = {
           hoTen: hTen,
           diaChi: dChi,
           soTV: sTV,
-          area: areaKey
+          area: areaKey,
+          xa: areaKey,
+          thon: directThon
         };
       }
     }
 
-    var areaStats = {
-      "Xã Yên Thọ (Thôn 1, 2, 3, 4)": { countKH: new Set(), duNo: 0 },
-      "Xã Yên Trường / Vĩnh Lộc":      { countKH: new Set(), duNo: 0 },
-      "Xã Quý Lộc / Yên Bái":           { countKH: new Set(), duNo: 0 }
-    };
+    var areaStats = {};
 
     var loanTypeStats = {
       "Nông nghiệp & Chăn nuôi": { count: 0, amount: 0, color: "#16a34a" },
@@ -121,14 +130,23 @@ var ReportController = {
           hdMaLoaiHD = hdSoThang > 12 ? "THCDBTNMT" : "NHCDBTNMT";
         }
 
+        var hdKvXa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "KvXa", "")).trim();
+        var hdKvThon    = String(HeaderUtils.getCell(hdVals[j], colMapHD, "KvThon", "")).trim();
+        var hdDiaChi    = String(HeaderUtils.getCell(hdVals[j], colMapHD, "DiaChi", "")).trim();
+        var hdSoTK      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "SoTK", "")).trim();
+
         var khInfo = khMap[hdMaKH] || {
           hoTen: "Khách hàng " + hdMaKH,
-          diaChi: "Địa bàn QTDND",
+          diaChi: hdDiaChi || "Địa bàn QTDND",
           soTV: "",
-          area: "Xã Yên Thọ (Thôn 1, 2, 3, 4)"
+          area: hdKvXa || "Địa bàn khác",
+          xa: hdKvXa || "Địa bàn khác",
+          thon: hdKvThon || ""
         };
 
-        var aKey = khInfo.area || "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+        var aKey = hdKvXa || khInfo.xa || khInfo.area || "Địa bàn khác";
+        var thonVal = hdKvThon || khInfo.thon || "";
+        var diaChiVal = hdDiaChi || khInfo.diaChi;
 
         // Phân loại sản phẩm vay
         var prodKey = "Nông nghiệp & Chăn nuôi";
@@ -154,7 +172,9 @@ var ReportController = {
           soThangVay: hdSoThang,
           moTaVay: hdMoTa || prodKey,
           khuVuc: aKey,
-          diaChi: khInfo.diaChi,
+          xa: aKey,
+          thon: thonVal,
+          diaChi: diaChiVal,
           cbtdPhuTrach: hdCBTD_Code,
           tenCBTD: hdTenCBTD,
           trangThaiHD: hdTrangThai || (hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN"),
@@ -172,15 +192,16 @@ var ReportController = {
         totalKH.add(hdMaKH);
 
         // CASA coverage
-        if (hdVals[j][12] !== "" && hdVals[j][12] !== null) {
+        if (hdSoTK) {
           countCASA++;
         }
 
         // Nhóm nợ xấu N3-N5 (nếu có cột chỉ định hoặc quá hạn)
-        var hdNhomNo = Number(hdVals[j][8]) || 1;
+        var hdNhomNoStr = String(HeaderUtils.getCell(hdVals[j], colMapHD, "NhomNoCIC", "1"));
+        var hdNhomNo = parseInt(hdNhomNoStr.replace(/\D/g, "")) || 1;
         if (hdNhomNo >= 3) countNPL++;
 
-        // Thống kê theo địa bàn
+        // Thống kê theo địa bàn (Động 100%)
         if (!areaStats[aKey]) areaStats[aKey] = { countKH: new Set(), duNo: 0 };
         areaStats[aKey].countKH.add(hdMaKH);
         areaStats[aKey].duNo += hdDuNo;

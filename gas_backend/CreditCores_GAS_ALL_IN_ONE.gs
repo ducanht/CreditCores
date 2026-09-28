@@ -8,7 +8,7 @@
  *              - Tối ưu tra cứu O(1) Hash Map cho 5.175+ khách hàng & 549+ hợp đồng
  *              - Thẩm định, Trích nợ Auto-Debit, Kiểm tra vốn, In hợp đồng Mail Merge
  *              - Độc lập hoàn toàn, không nghẽn Timeout, Zero Mock Data
- * @updated     27/09/2026 17:30:33
+ * @updated     28/09/2026 10:42:53
  * @version     3.3 Resilient Debt Statistics Engine (DuNo vs TienVay Strictly Separated)
  * ========================================================================================
  */
@@ -550,28 +550,30 @@ var SchemaSetup = {
       bannerText: "Sao kê tín dụng đến ngày: 22/09/2026 | Dữ liệu cập nhật: 22/09/2026 12:00:00 | Nguồn: CoreBanking NG-eFUND",
       bannerColor: "#4338CA",
       headers: [
-        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+        "SoThangVay", "MaLoaiVay", "MoTaVay",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
         "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#312E81",
-      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy", "W:W": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
     },
     HDTD_CORE_ALL: {
       isTwoTier: true,
       bannerText: "Lưu trữ sao kê tín dụng các ngày cuối tháng | Dữ liệu cập nhật: 22/09/2026 12:00:00 | Nguồn: CoreBanking NG-eFUND",
       bannerColor: "#1E3A8A",
       headers: [
-        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+        "SoThangVay", "MaLoaiVay", "MoTaVay",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
         "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#101959",
-      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy", "W:W": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],
@@ -1188,8 +1190,8 @@ var DashboardController = {
         totalWeightedLai += (duNo * laiSuat);
         allBorrowersSet[makh] = true;
 
-        var cust = custMap[makh] || { hoten: rawHoTen, xa: "Xã Quý Lộc", thon: "Thôn khác" };
-        var xa = directXa || cust.xa || "Xã Quý Lộc";
+        var cust = custMap[makh] || { hoten: rawHoTen, xa: "Địa bàn khác", thon: "Thôn khác" };
+        var xa = directXa || cust.xa || "Địa bàn khác";
         var thon = directThon || cust.thon || "Thôn khác";
         var hoten = rawHoTen || cust.hoten || ("Khách hàng " + makh);
         var diachi = rawDiaChi || (thon + ", " + xa);
@@ -1686,6 +1688,17 @@ var DashboardController = {
 
     if (mode === "current") {
       finalResult = currentStats;
+      // Bổ sung chuỗi diễn biến tháng và Top 50 bình quân từ HDTD_CORE_ALL nếu có
+      var sAllMonths = ss.getSheetByName("HDTD_CORE_ALL");
+      if (sAllMonths && sAllMonths.getLastRow() > 2) {
+        var allStats = this._computeHdtdStats(sAllMonths, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Các kỳ cuối tháng");
+        if (allStats && allStats.monthlyDebtTrend && allStats.monthlyDebtTrend.length > 0) {
+          finalResult.monthlyDebtTrend = allStats.monthlyDebtTrend;
+        }
+        if (allStats && allStats.top50DuNoBinhQuanCuoiThang && allStats.top50DuNoBinhQuanCuoiThang.length > 0) {
+          finalResult.top50DuNoBinhQuanCuoiThang = allStats.top50DuNoBinhQuanCuoiThang;
+        }
+      }
       finalResult.availableSnapshots = snapshotSheets;
     } else if (mode === "as_of_date") {
       // 2. Chế độ Đến Ngày: Lấy từ sheet chỉ định (mặc định HDTD_CORE_DN)
@@ -4204,27 +4217,36 @@ var ReportController = {
         var dChi = String(HeaderUtils.getCell(khVals[i], colMapKH, "DiaChi", "")).trim();
         var sTV = String(HeaderUtils.getCell(khVals[i], colMapKH, "SoTV", "")).replace(/^'/, "").trim();
         var directXa = String(HeaderUtils.getCell(khVals[i], colMapKH, "KvXa", "")).trim();
+        var directThon = String(HeaderUtils.getCell(khVals[i], colMapKH, "KvThon", "")).trim();
         var diaChiKV = (dChi + " " + String(HeaderUtils.getCell(khVals[i], colMapKH, "KhuVuc", ""))).trim();
-        var areaKey = directXa || "Khác";
-        if (!directXa) {
-          if (diaChiKV.indexOf("Yên Thọ") > -1) areaKey = "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
-          else if (diaChiKV.indexOf("Yên Trường") > -1 || diaChiKV.indexOf("Vĩnh Lộc") > -1) areaKey = "Xã Yên Trường / Vĩnh Lộc";
-          else if (diaChiKV.indexOf("Yên Bái") > -1 || diaChiKV.indexOf("Quý Lộc") > -1) areaKey = "Xã Quý Lộc / Yên Bái";
+        var areaKey = directXa;
+        if (!areaKey) {
+          var rawLower = diaChiKV.toLowerCase();
+          if (rawLower.indexOf("yên thọ") > -1 || rawLower.indexOf("yen tho") > -1) areaKey = "Xã Yên Thọ";
+          else if (rawLower.indexOf("quý lộc") > -1 || rawLower.indexOf("quy loc") > -1) areaKey = "Xã Quý Lộc";
+          else if (rawLower.indexOf("yên trường") > -1 || rawLower.indexOf("yen truong") > -1) areaKey = "Xã Yên Trường";
+          else if (rawLower.indexOf("yên bái") > -1 || rawLower.indexOf("yen bai") > -1) areaKey = "Xã Yên Bái";
+          else if (rawLower.indexOf("yên lâm") > -1 || rawLower.indexOf("yen lam") > -1) areaKey = "Xã Yên Lâm";
+          else if (rawLower.indexOf("yên phú") > -1 || rawLower.indexOf("yen phu") > -1) areaKey = "Xã Yên Phú";
+          else if (rawLower.indexOf("định tân") > -1 || rawLower.indexOf("dinh tan") > -1) areaKey = "Xã Định Tân";
+          else if (rawLower.indexOf("vĩnh lộc") > -1 || rawLower.indexOf("vinh loc") > -1) areaKey = "Xã Vĩnh Lộc";
+          else {
+            var mXa = diaChiKV.match(/(Xã|Thị trấn|Phường)\s+([^,]+)/i);
+            areaKey = mXa && mXa[0] ? mXa[0].trim() : "Địa bàn khác";
+          }
         }
         khMap[mKH] = {
           hoTen: hTen,
           diaChi: dChi,
           soTV: sTV,
-          area: areaKey
+          area: areaKey,
+          xa: areaKey,
+          thon: directThon
         };
       }
     }
 
-    var areaStats = {
-      "Xã Yên Thọ (Thôn 1, 2, 3, 4)": { countKH: new Set(), duNo: 0 },
-      "Xã Yên Trường / Vĩnh Lộc":      { countKH: new Set(), duNo: 0 },
-      "Xã Quý Lộc / Yên Bái":           { countKH: new Set(), duNo: 0 }
-    };
+    var areaStats = {};
 
     var loanTypeStats = {
       "Nông nghiệp & Chăn nuôi": { count: 0, amount: 0, color: "#16a34a" },
@@ -4269,14 +4291,23 @@ var ReportController = {
           hdMaLoaiHD = hdSoThang > 12 ? "THCDBTNMT" : "NHCDBTNMT";
         }
 
+        var hdKvXa      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "KvXa", "")).trim();
+        var hdKvThon    = String(HeaderUtils.getCell(hdVals[j], colMapHD, "KvThon", "")).trim();
+        var hdDiaChi    = String(HeaderUtils.getCell(hdVals[j], colMapHD, "DiaChi", "")).trim();
+        var hdSoTK      = String(HeaderUtils.getCell(hdVals[j], colMapHD, "SoTK", "")).trim();
+
         var khInfo = khMap[hdMaKH] || {
           hoTen: "Khách hàng " + hdMaKH,
-          diaChi: "Địa bàn QTDND",
+          diaChi: hdDiaChi || "Địa bàn QTDND",
           soTV: "",
-          area: "Xã Yên Thọ (Thôn 1, 2, 3, 4)"
+          area: hdKvXa || "Địa bàn khác",
+          xa: hdKvXa || "Địa bàn khác",
+          thon: hdKvThon || ""
         };
 
-        var aKey = khInfo.area || "Xã Yên Thọ (Thôn 1, 2, 3, 4)";
+        var aKey = hdKvXa || khInfo.xa || khInfo.area || "Địa bàn khác";
+        var thonVal = hdKvThon || khInfo.thon || "";
+        var diaChiVal = hdDiaChi || khInfo.diaChi;
 
         // Phân loại sản phẩm vay
         var prodKey = "Nông nghiệp & Chăn nuôi";
@@ -4302,7 +4333,9 @@ var ReportController = {
           soThangVay: hdSoThang,
           moTaVay: hdMoTa || prodKey,
           khuVuc: aKey,
-          diaChi: khInfo.diaChi,
+          xa: aKey,
+          thon: thonVal,
+          diaChi: diaChiVal,
           cbtdPhuTrach: hdCBTD_Code,
           tenCBTD: hdTenCBTD,
           trangThaiHD: hdTrangThai || (hdDuNo > 0 ? "DANG_VAY" : "DA_TAT_TOAN"),
@@ -4320,15 +4353,16 @@ var ReportController = {
         totalKH.add(hdMaKH);
 
         // CASA coverage
-        if (hdVals[j][12] !== "" && hdVals[j][12] !== null) {
+        if (hdSoTK) {
           countCASA++;
         }
 
         // Nhóm nợ xấu N3-N5 (nếu có cột chỉ định hoặc quá hạn)
-        var hdNhomNo = Number(hdVals[j][8]) || 1;
+        var hdNhomNoStr = String(HeaderUtils.getCell(hdVals[j], colMapHD, "NhomNoCIC", "1"));
+        var hdNhomNo = parseInt(hdNhomNoStr.replace(/\D/g, "")) || 1;
         if (hdNhomNo >= 3) countNPL++;
 
-        // Thống kê theo địa bàn
+        // Thống kê theo địa bàn (Động 100%)
         if (!areaStats[aKey]) areaStats[aKey] = { countKH: new Set(), duNo: 0 };
         areaStats[aKey].countKH.add(hdMaKH);
         areaStats[aKey].duNo += hdDuNo;

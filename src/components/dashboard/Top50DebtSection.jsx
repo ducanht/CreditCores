@@ -126,10 +126,6 @@ export default function Top50DebtSection({
                 {top50DuNoBinhQuanCuoiThang.length}
               </span>
             </button>
-          </div>' : 'bg-secondary-subtle text-secondary'}`}>
-                {top50DuNoBinhQuanCuoiThang.length}
-              </span>
-            </button>
           </div>
 
           <div className="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">

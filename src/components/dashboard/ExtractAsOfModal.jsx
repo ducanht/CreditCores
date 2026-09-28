@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { getTodayVN } from '../../utils/dateUtils';
+import DatePickerVN from '../DatePickerVN';
 
 export default function ExtractAsOfModal({ isOpen, onClose, onSuccess }) {
   if (!isOpen) return null;
@@ -238,17 +239,11 @@ export default function ExtractAsOfModal({ isOpen, onClose, onSuccess }) {
               <label className="form-label small fw-bold text-dark mb-1">
                 2. Ngày Chốt Sao Kê Dữ Liệu (dd/MM/yyyy):
               </label>
-              <div className="input-group">
-                <span className="input-group-text bg-white text-muted">
-                  <Calendar size={15} />
-                </span>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="dd/MM/yyyy (Ví dụ: 30/09/2026)"
+              <div className="w-100">
+                <DatePickerVN
                   value={asOfDate}
-                  onChange={(e) => setAsOfDate(e.target.value)}
-                  required
+                  onChange={setAsOfDate}
+                  placeholder="dd/MM/yyyy (Ví dụ: 30/09/2026)"
                 />
               </div>
               <div className="form-text text-muted mt-1.5" style={{ fontSize: '0.72rem' }}>

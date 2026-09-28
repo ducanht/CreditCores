@@ -33,6 +33,7 @@ import {
   LoanProductDonutChart,
   ExtractAsOfModal
 } from './dashboard/index';
+import DatePickerVN from './DatePickerVN';
 
 // Helper rút gọn tiền tệ sang Tỷ / Triệu
 const formatCompactVN = (amount) => {
@@ -108,8 +109,8 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
   const availableCommunes = useMemo(() => {
     const set = new Set();
     statementContracts.forEach(c => {
-      const x = c.khuVuc || c.xa || '';
-      if (x && x !== 'Khác') set.add(x);
+      const x = String(c.kvXa || c.xa || c.khuVuc || '').trim();
+      if (x && x !== 'Khác' && x !== 'ALL') set.add(x);
     });
     return Array.from(set).sort();
   }, [statementContracts]);
@@ -127,7 +128,10 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
   // Lọc danh sách hợp đồng sao kê
   const filteredContracts = useMemo(() => {
     return statementContracts.filter(item => {
-      if (filterCommune !== 'ALL' && (item.khuVuc || item.xa) !== filterCommune) return false;
+      if (filterCommune !== 'ALL') {
+        const areaStr = String(item.kvXa || item.xa || item.khuVuc || '');
+        if (!areaStr.includes(filterCommune)) return false;
+      }
       if (filterCBTD !== 'ALL' && (item.tenCBTD !== filterCBTD && item.cbtdPhuTrach !== filterCBTD)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -207,8 +211,9 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
   const top50DenNgay = statsData?.top50DuNoDenNgay || [];
   const top50BinhQuan = statsData?.top50DuNoBinhQuanCuoiThang || [];
   const totalDuNoAll = statsData?.totalDuNo || filteredSummary.totalDuNo || 0;
-  const securityTypes = statsData?.securityTypeStats || statsData?.securityTypeDistribution || [];
-  const productStats = statsData?.productStats || [];
+  const securityTypes = statsData?.securityTypes || statsData?.securityTypeStats || statsData?.securityTypeDistribution || [];
+  const loanGroups = statsData?.loanGroups || statsData?.loanTypes || [];
+  const loanTypes = statsData?.loanTypes || [];
 
   return (
     <div className="credit-statement-container d-flex flex-column gap-3 pb-4 content-fade-in">
@@ -348,22 +353,20 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
             <div className="row g-2.5 align-items-center">
               <div className="col-12 col-md-3">
                 <label className="form-label small text-muted mb-1 fw-medium">Mốc sao kê đến ngày</label>
-                <div className="input-group input-group-sm">
-                  <span className="input-group-text bg-light text-muted">
-                    <Calendar size={14} />
-                  </span>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={asOfDate}
-                    onChange={(e) => setAsOfDate(e.target.value)}
-                    placeholder="dd/mm/yyyy"
-                  />
+                <div className="d-flex align-items-center gap-1.5">
+                  <div className="flex-grow-1">
+                    <DatePickerVN
+                      value={asOfDate}
+                      onChange={(val) => setAsOfDate(val)}
+                      placeholder="dd/mm/yyyy"
+                    />
+                  </div>
                   <button
                     type="button"
-                    className="btn btn-outline-primary"
+                    className="btn btn-outline-primary btn-sm flex-shrink-0"
                     onClick={() => loadStatementData(true)}
                     disabled={isLoading}
+                    title="Xem sao kê theo mốc ngày"
                   >
                     Xem
                   </button>
@@ -737,7 +740,8 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
 
           {/* Cơ cấu sản phẩm vay */}
           <LoanProductDonutChart
-            productStats={productStats}
+            loanGroups={loanGroups}
+            loanTypes={loanTypes}
             totalDuNo={totalDuNoAll}
           />
         </div>

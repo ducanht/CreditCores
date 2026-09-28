@@ -336,31 +336,46 @@ def clean_interest_rate(val):
 def extract_xa_thon(dia_chi, khu_vuc=""):
     """
     Tách Xã và Thôn từ Địa chỉ hoặc Khu vực cho địa bàn QTDND Yên Thọ (Thanh Hóa).
+    Không ép cố định một xã nào, tự động nhận diện đúng tên địa bàn thực tế.
     """
-    text = (str(dia_chi or "") + " " + str(khu_vuc or "")).lower()
+    kv_str = str(khu_vuc or "").strip()
+    dia_str = str(dia_chi or "").strip()
+    text = (dia_str + " " + kv_str).lower()
+
     xa = ""
-    if "quý lộc" in text or "quy loc" in text:
+    if "yên thọ" in text or "yen tho" in text:
+        xa = "Xã Yên Thọ"
+    elif "quý lộc" in text or "quy loc" in text:
         xa = "Xã Quý Lộc"
     elif "yên trường" in text or "yen truong" in text:
         xa = "Xã Yên Trường"
-    elif "vĩnh lộc" in text or "vinh loc" in text:
-        xa = "Xã Vĩnh Lộc"
-    elif "yên thọ" in text or "yen tho" in text:
-        xa = "Xã Yên Thọ"
+    elif "yên bái" in text or "yen bai" in text:
+        xa = "Xã Yên Bái"
+    elif "yên lâm" in text or "yen lam" in text:
+        xa = "Xã Yên Lâm"
     elif "yên phú" in text or "yen phu" in text:
         xa = "Xã Yên Phú"
     elif "định tân" in text or "dinh tan" in text:
         xa = "Xã Định Tân"
+    elif "vĩnh lộc" in text or "vinh loc" in text:
+        xa = "Xã Vĩnh Lộc"
     else:
-        xa = "Xã Quý Lộc"
+        import re
+        m_xa = re.search(r"(xã|thị trấn|phường|tt\.)\s+([^,]+)", text, re.IGNORECASE)
+        if m_xa:
+            xa = m_xa.group(0).strip().title()
+        elif kv_str and not kv_str.lower().startswith("thôn"):
+            xa = kv_str
+        else:
+            xa = "Địa bàn khác"
 
     import re
     thon = ""
-    thon_match = re.search(r"(thôn|bản|khu phố|phố|kp)\s+([^,]+)", str(dia_chi or ""), re.IGNORECASE)
+    thon_match = re.search(r"(thôn|bản|khu phố|phố|kp|tổ|tiểu khu)\s+([^,]+)", dia_str, re.IGNORECASE)
     if thon_match:
         thon = thon_match.group(0).strip()
-    elif khu_vuc and not xa:
-        thon = str(khu_vuc).strip()
+    elif kv_str and kv_str.lower().startswith("thôn"):
+        thon = kv_str
 
     return xa, thon
 
@@ -743,9 +758,9 @@ def process_sync_request(spreadsheet, sql_cfg):
             r["HoTen"] = cust.get("HoTen", "")
             r["CCCD"] = cust.get("CCCD", "")
             r["DienThoai"] = cust.get("DienThoai", "") or cust.get("DienThoaiDD", "")
-            r["DiaChi"] = cust.get("DiaChi", "")
-            r["KvXa"] = cust.get("KvXa", "")
-            r["KvThon"] = cust.get("KvThon", "")
+            r["DiaChi"] = r.get("DiaChi") or cust.get("DiaChi", "")
+            r["KvXa"] = r.get("KvXa") or cust.get("KvXa", "")
+            r["KvThon"] = r.get("KvThon") or cust.get("KvThon", "")
 
             du_no = float(r.get("DuNo", 0) or 0)
             if makh not in cust_loan_stats:
@@ -973,6 +988,8 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
                         "SoHDTD": r.get("SoHDTD", ""),
                         "MaKH": r.get("MaKH", ""),
                         "HoTen": ho_ten,
+                        "CCCD": cust.get("CCCD", "") or r.get("CCCD", ""),
+                        "DienThoai": cust.get("DienThoai", "") or r.get("DienThoai", ""),
                         "DiaChi": dia_chi,
                         "KvXa": kv_xa,
                         "KvThon": kv_thon,
@@ -981,9 +998,13 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
                         "LaiSuat": r.get("LaiSuat", 0),
                         "NgayVay": r.get("NgayVay", ""),
                         "DenHan": r.get("DenHan", ""),
+                        "TraLaiDenNgay": r.get("TraLaiDenNgay", ""),
                         "SoThangVay": r.get("SoThangVay", 12),
                         "MaLoaiVay": r.get("MaLoaiVay", ""),
                         "MoTaVay": r.get("MoTaVay", ""),
+                        "CBTD_PhuTrach": r.get("CBTD_PhuTrach", "qtdyentho.cbtd"),
+                        "Ten_CBTD": r.get("Ten_CBTD", "Lê Văn Tín (CBTD)"),
+                        "TrangThaiHD": r.get("TrangThaiHD", "DANG_VAY" if r.get("DuNo", 0) > 0 else "DA_TAT_TOAN"),
                         "MaLoaiHD": r.get("MaLoaiHD", ""),
                         "NgayDuLieu": t_date,
                         "NgayCapNhat": now_str
@@ -991,9 +1012,10 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
                     dn_records.append(dn_record)
 
         dn_headers = ALL_SCHEMAS.get(target_sheet_name, {}).get("headers", [
-            "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-            "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+            "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+            "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+            "SoThangVay", "MaLoaiVay", "MoTaVay",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
             "NgayDuLieu", "NgayCapNhat"
         ])
         dn_sheet = get_or_create_worksheet(spreadsheet, target_sheet_name, dn_headers)
@@ -1010,10 +1032,10 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
             value_input_option="USER_ENTERED"
         )
 
-        # 2. Cập nhật Dòng 2 Headers 17 cột (đảm bảo đúng thứ tự)
+        # 2. Cập nhật Dòng 2 Headers 23 cột (đảm bảo đúng thứ tự)
         dn_sheet.update(
             values=[dn_headers],
-            range_name="A2:Q2",
+            range_name="A2:W2",
             value_input_option="USER_ENTERED"
         )
 

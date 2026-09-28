@@ -28,6 +28,16 @@ export default function LoanStatementTable({ statementData = [], loading = false
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
+  // Danh sách địa bàn xã động từ dữ liệu thực tế
+  const availableCommunes = useMemo(() => {
+    const set = new Set();
+    statementData.forEach((item) => {
+      const commune = String(item.khuVuc || item.xa || item.kvXa || '').trim();
+      if (commune && commune !== 'Khác' && commune !== 'ALL') set.add(commune);
+    });
+    return Array.from(set).sort();
+  }, [statementData]);
+
   // Lọc dữ liệu
   const filteredData = useMemo(() => {
     return statementData.filter((item) => {
@@ -41,12 +51,10 @@ export default function LoanStatementTable({ statementData = [], loading = false
         if (!matchSoHD && !matchMaKH && !matchSoTV && !matchHoTen) return false;
       }
 
-      // Lọc địa bàn
+      // Lọc địa bàn động từ CSDL thực tế
       if (areaFilter !== 'ALL') {
-        const areaStr = String(item.khuVuc || '');
-        if (areaFilter === 'YEN_THO' && !areaStr.includes('Yên Thọ')) return false;
-        if (areaFilter === 'YEN_TRUONG' && !areaStr.includes('Yên Trường') && !areaStr.includes('Vĩnh Lộc')) return false;
-        if (areaFilter === 'QUY_LOC' && !areaStr.includes('Quý Lộc') && !areaStr.includes('Yên Bái')) return false;
+        const areaStr = String(item.khuVuc || item.xa || item.kvXa || '');
+        if (!areaStr.includes(areaFilter)) return false;
       }
 
       // Lọc trạng thái
@@ -197,10 +205,10 @@ export default function LoanStatementTable({ statementData = [], loading = false
               value={areaFilter}
               onChange={(e) => { setAreaFilter(e.target.value); setCurrentPage(1); }}
             >
-              <option value="ALL">Mọi Địa Bàn (3 Xã)</option>
-              <option value="YEN_THO">Xã Yên Thọ</option>
-              <option value="YEN_TRUONG">Xã Yên Trường / Vĩnh Lộc</option>
-              <option value="QUY_LOC">Xã Quý Lộc / Yên Bái</option>
+              <option value="ALL">Tất Cả Địa Bàn</option>
+              {availableCommunes.map((commune) => (
+                <option key={commune} value={commune}>{commune}</option>
+              ))}
             </select>
           </div>
 

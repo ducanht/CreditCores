@@ -96,28 +96,30 @@ var SchemaSetup = {
       bannerText: "Sao kê tín dụng đến ngày: 22/09/2026 | Dữ liệu cập nhật: 22/09/2026 12:00:00 | Nguồn: CoreBanking NG-eFUND",
       bannerColor: "#4338CA",
       headers: [
-        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+        "SoThangVay", "MaLoaiVay", "MoTaVay",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
         "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#312E81",
-      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy", "W:W": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
     },
     HDTD_CORE_ALL: {
       isTwoTier: true,
       bannerText: "Lưu trữ sao kê tín dụng các ngày cuối tháng | Dữ liệu cập nhật: 22/09/2026 12:00:00 | Nguồn: CoreBanking NG-eFUND",
       bannerColor: "#1E3A8A",
       headers: [
-        "SoHDTD", "MaKH", "HoTen", "DiaChi", "KvXa", "KvThon",
-        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan",
-        "SoThangVay", "MaLoaiVay", "MoTaVay", "MaLoaiHD",
+        "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
+        "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
+        "SoThangVay", "MaLoaiVay", "MoTaVay",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
         "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#101959",
-      formats: { "A:F": "@", "G:H": "#,##0", "I:I": "0.00", "J:K": "dd/MM/yyyy", "L:L": "#,##0", "M:O": "@", "P:P": "dd/MM/yyyy", "Q:Q": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 220, 5: 130, 6: 130, 7: 130, 8: 130, 9: 90, 10: 110, 11: 110, 12: 90, 13: 140, 14: 220, 15: 140, 16: 110, 17: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy", "W:W": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
     },
     DANG_KY_TRICH_NO: {
       aliases: ["DS_TRICH_NO"],

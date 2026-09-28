@@ -232,8 +232,8 @@ var DashboardController = {
         totalWeightedLai += (duNo * laiSuat);
         allBorrowersSet[makh] = true;
 
-        var cust = custMap[makh] || { hoten: rawHoTen, xa: "Xã Quý Lộc", thon: "Thôn khác" };
-        var xa = directXa || cust.xa || "Xã Quý Lộc";
+        var cust = custMap[makh] || { hoten: rawHoTen, xa: "Địa bàn khác", thon: "Thôn khác" };
+        var xa = directXa || cust.xa || "Địa bàn khác";
         var thon = directThon || cust.thon || "Thôn khác";
         var hoten = rawHoTen || cust.hoten || ("Khách hàng " + makh);
         var diachi = rawDiaChi || (thon + ", " + xa);
@@ -730,6 +730,17 @@ var DashboardController = {
 
     if (mode === "current") {
       finalResult = currentStats;
+      // Bổ sung chuỗi diễn biến tháng và Top 50 bình quân từ HDTD_CORE_ALL nếu có
+      var sAllMonths = ss.getSheetByName("HDTD_CORE_ALL");
+      if (sAllMonths && sAllMonths.getLastRow() > 2) {
+        var allStats = this._computeHdtdStats(sAllMonths, custMap, sDS, sNoTon, sDot, sAppraisal, sInspection, "Các kỳ cuối tháng");
+        if (allStats && allStats.monthlyDebtTrend && allStats.monthlyDebtTrend.length > 0) {
+          finalResult.monthlyDebtTrend = allStats.monthlyDebtTrend;
+        }
+        if (allStats && allStats.top50DuNoBinhQuanCuoiThang && allStats.top50DuNoBinhQuanCuoiThang.length > 0) {
+          finalResult.top50DuNoBinhQuanCuoiThang = allStats.top50DuNoBinhQuanCuoiThang;
+        }
+      }
       finalResult.availableSnapshots = snapshotSheets;
     } else if (mode === "as_of_date") {
       // 2. Chế độ Đến Ngày: Lấy từ sheet chỉ định (mặc định HDTD_CORE_DN)
