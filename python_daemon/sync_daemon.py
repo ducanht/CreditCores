@@ -1211,7 +1211,22 @@ def sync_table_from_query(spreadsheet, sql_cfg, table_key, params=None):
         target_ws = get_or_create_worksheet(spreadsheet, target_sheet_name, sheet_headers)
 
         # Xác định dòng bắt đầu ghi (bảng 2 tầng hay bảng thông thường)
-        start_row = 3 if target_sheet_name in ("HDTD_CORE_DN", "HDTD_CORE_ALL") else 2
+        if target_sheet_name in ("HDTD_CORE_DN", "HDTD_CORE_ALL"):
+            start_row = 3
+            as_of_date = (params or {}).get("asOfDate") or start_time.strftime("%d/%m/%Y")
+            if target_sheet_name == "HDTD_CORE_ALL":
+                banner_text = f"Lưu trữ sao kê tín dụng các ngày cuối tháng | Dữ liệu cập nhật: {now_str} | Trạng thái: HOÀN TẤT | Nguồn: CoreBanking NG-eFUND"
+            else:
+                banner_text = f"Sao kê tín dụng đến ngày: {as_of_date} | Dữ liệu cập nhật: {now_str} | Trạng thái: HOÀN TẤT | Nguồn: CoreBanking NG-eFUND"
+            try:
+                target_ws.update(values=[[banner_text]], range_name="A1:A1", value_input_option="USER_ENTERED")
+                end_col_letter = gspread.utils.rowcol_to_a1(2, len(sheet_headers)).replace("2", "")
+                target_ws.update(values=[sheet_headers], range_name=f"A2:{end_col_letter}2", value_input_option="USER_ENTERED")
+                target_ws.freeze(rows=2)
+            except Exception as e_banner:
+                logger.warning(f"Lưu ý khi cập nhật banner 2 tầng cho {target_sheet_name}: {e_banner}")
+        else:
+            start_row = 2
 
         # Ghi dữ liệu batch lên Google Sheets
         rows_synced = sync_records_to_sheet(target_ws, sheet_headers, cleaned_records, start_row=start_row)
@@ -1368,9 +1383,9 @@ def main():
     # 2C. Đồng bộ tất cả các bảng đã cấu hình
     if args.all_tables:
         logger.info("🚀 Chế độ đồng bộ TẤT CẢ các bảng đã cấu hình (--all-tables)...")
-        # 1. Đồng bộ KH và HDTD chuẩn
+        # 1. Đồng bộ KH và HDTD chuẩn (KH_CORE, HDTD_CORE)
         process_sync_request(spreadsheet, sql_cfg)
-        # 2. Đồng bộ các bảng mở rộng khác (TSBD_CORE, CASA_CORE...)
+        # 2. Đồng bộ các bảng sao kê HĐTD còn lại (HDTD_CORE_DN, HDTD_CORE_ALL)
         for t in list_registered_tables():
             k = t["key"]
             if k not in ("KH_CORE", "HDTD_CORE"):
