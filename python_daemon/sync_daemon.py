@@ -35,6 +35,23 @@ from google.oauth2.service_account import Credentials
 # Nhập khẩu module khởi tạo & chữa lành cấu trúc CSDL Google Sheets tách riêng
 from schema_healer import ALL_SCHEMAS, init_or_heal_database_schema, get_or_create_worksheet
 
+# Nhập khẩu module chuyên trách chuẩn hóa dữ liệu & quản lý câu lệnh SQL
+from data_cleaner import (
+    clean_number_code,
+    clean_date,
+    clean_currency,
+    clean_rate,
+    clean_text,
+    extract_xa_thon,
+    clean_record_by_schema
+)
+from sql_queries import (
+    REGISTERED_QUERIES,
+    register_custom_sql,
+    get_query_definition,
+    list_registered_tables
+)
+
 # --- 0. BẢO VỆ MÃ HÓA UTF-8 TRÊN WINDOWS TERMINAL ---
 if sys.platform == "win32":
     try:
@@ -1094,6 +1111,162 @@ def process_extract_hdtd_dn_request(spreadsheet, sql_cfg, params=None):
 def process_extract_hdtd_all_request(spreadsheet, sql_cfg, params=None):
     return process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params, default_target="HDTD_CORE_ALL")
 
+# --- 10C. ĐỒNG BỘ BẢNG BẤT KỲ THEO CẤU HÌNH SQL (GENERIC TABLE SYNC) ---
+def execute_sql_query(sql_conn, query_str, params=None):
+    """
+    Thực thi câu lệnh SQL với các tham số động ({denngay}, {chinhanh}...).
+    Trả về danh sách dict: [{col1: val1, col2: val2, ...}]
+    """
+    params = params or {}
+    denngay_val = params.get("denngay") or params.get("asOfDate") or datetime.now().strftime("%Y%m%d")
+    # Chuẩn hóa về YYYYMMDD nếu là dd/MM/yyyy
+    if "/" in str(denngay_val):
+        pts = str(denngay_val).split("/")
+        if len(pts) == 3:
+            denngay_val = f"{pts[2]}{pts[1].zfill(2)}{pts[0].zfill(2)}"
+
+    chinhanh_val = params.get("chinhanh") or "01"
+
+    # Định dạng chuỗi query an toàn
+    formatted_query = query_str.replace("{denngay}", denngay_val).replace("{chinhanh}", chinhanh_val)
+
+    cursor = sql_conn.cursor()
+    cursor.execute(formatted_query)
+    columns = [col[0] for col in cursor.description]
+    rows = cursor.fetchall()
+    cursor.close()
+
+    result = []
+    for r in rows:
+        row_dict = {col: (val if val is not None else "") for col, val in zip(columns, r)}
+        result.append(row_dict)
+    return result
+
+def sync_table_from_query(spreadsheet, sql_cfg, table_key, params=None):
+    """
+    Trích xuất và đồng bộ dữ liệu của MỘT BẢNG BẤT KỲ từ SQL Server lên Google Sheets
+    dựa trên cấu hình trong sql_queries.py hoặc câu lệnh SQL do người dùng cung cấp.
+    """
+    query_def = get_query_definition(table_key)
+    if not query_def:
+        logger.error(f"❌ Không tìm thấy cấu hình truy vấn cho bảng '{table_key}'.")
+        logger.info(f"💡 Các bảng đã được đăng ký: {[t['key'] for t in list_registered_tables()]}")
+        return False
+
+    target_sheet_name = query_def.get("sheet_name", table_key)
+    sql_query = query_def.get("query", "")
+    fallback_query = query_def.get("fallback_query")
+    field_mapping = query_def.get("field_mapping", {})
+    description = query_def.get("description", "")
+
+    start_time = datetime.now()
+    now_str = start_time.strftime("%d/%m/%Y %H:%M:%S")
+
+    logger.info("=" * 65)
+    logger.info(f"⚡ BẮT ĐẦU ĐỒNG BỘ BẢNG: {table_key} -> Google Sheet: '{target_sheet_name}'")
+    if description:
+        logger.info(f"ℹ️  Mô tả: {description}")
+    logger.info("=" * 65)
+
+    try:
+        with get_sql_connection(sql_cfg) as sql_conn:
+            try:
+                raw_rows = execute_sql_query(sql_conn, sql_query, params)
+                logger.info(f"✅ Truy vấn SQL thành công ({len(raw_rows)} bản ghi).")
+            except Exception as e_sql:
+                if fallback_query:
+                    logger.warning(f"⚠️ Query chính gặp lỗi ({e_sql}), đang thử query dự phòng...")
+                    raw_rows = execute_sql_query(sql_conn, fallback_query, params)
+                    logger.info(f"✅ Truy vấn fallback thành công ({len(raw_rows)} bản ghi).")
+                else:
+                    raise
+
+        # Lấy schema chuẩn của bảng từ ALL_SCHEMAS
+        sheet_schema = ALL_SCHEMAS.get(target_sheet_name, {})
+        sheet_headers = sheet_schema.get("headers")
+
+        if not sheet_headers:
+            # Nếu chưa có trong ALL_SCHEMAS, tự động tạo headers từ các cột của SQL
+            if raw_rows:
+                sheet_headers = list(raw_rows[0].keys())
+            else:
+                sheet_headers = ["ID", "Ten", "NgayCapNhat"]
+
+        # Chuẩn hóa từng bản ghi và ánh xạ cột
+        cleaned_records = []
+        for raw_r in raw_rows:
+            # 1. Ánh xạ cột qua field_mapping
+            mapped_r = {}
+            for col_name, val in raw_r.items():
+                norm_col = col_name.lower().strip()
+                target_col = field_mapping.get(norm_col, col_name)
+                mapped_r[target_col] = val
+
+            # 2. Chuẩn hóa giá trị theo quy tắc Google Sheets
+            clean_r = clean_record_by_schema(mapped_r, sheet_headers)
+            clean_r["NgayCapNhat"] = now_str
+            cleaned_records.append(clean_r)
+
+        # Mở hoặc tạo worksheet
+        target_ws = get_or_create_worksheet(spreadsheet, target_sheet_name, sheet_headers)
+
+        # Xác định dòng bắt đầu ghi (bảng 2 tầng hay bảng thông thường)
+        start_row = 3 if target_sheet_name in ("HDTD_CORE_DN", "HDTD_CORE_ALL") else 2
+
+        # Ghi dữ liệu batch lên Google Sheets
+        rows_synced = sync_records_to_sheet(target_ws, sheet_headers, cleaned_records, start_row=start_row)
+
+        finish_time = datetime.now()
+        elapsed = (finish_time - start_time).total_seconds()
+        logger.info(f"🏆 ĐỒNG BỘ THÀNH CÔNG BẢNG '{target_sheet_name}': {rows_synced} bản ghi ({elapsed:.1f}s).")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi đồng bộ bảng '{table_key}': {e}", exc_info=True)
+        return False
+
+def test_custom_sql_query(sql_cfg, query_str, params=None, preview_limit=5):
+    """
+    Kiểm thử trực tiếp một câu lệnh SQL tùy chỉnh:
+    - Thực thi câu lệnh
+    - In ra tên các cột và số lượng bản ghi
+    - In ra preview 5 bản ghi đầu tiên sau khi được chuẩn hóa kiểu dữ liệu
+    """
+    logger.info("=" * 65)
+    logger.info("🧪 KIỂM THỬ TRUY VẤN SQL TÙY CHỈNH")
+    logger.info("=" * 65)
+    try:
+        with get_sql_connection(sql_cfg) as sql_conn:
+            start = time.time()
+            rows = execute_sql_query(sql_conn, query_str, params)
+            elapsed = time.time() - start
+
+            logger.info(f"✅ Thực thi SQL thành công trong {elapsed:.2f}s!")
+            logger.info(f"📊 Tổng số bản ghi tìm thấy: {len(rows):,}")
+
+            if not rows:
+                logger.info("ℹ️  Không có bản ghi nào được trả về.")
+                return
+
+            columns = list(rows[0].keys())
+            logger.info(f"📋 Danh sách cột ({len(columns)} cột): {columns}")
+            logger.info("-" * 65)
+            logger.info(f"👀 Xem trước {min(preview_limit, len(rows))} bản ghi đầu tiên (đã qua chuẩn hóa):")
+
+            for idx, r in enumerate(rows[:preview_limit], 1):
+                cleaned = clean_record_by_schema(r)
+                print(f"\n--- Bản ghi #{idx} ---")
+                for col in columns:
+                    raw_val = r.get(col)
+                    clean_val = cleaned.get(col)
+                    val_type = type(clean_val).__name__
+                    print(f"  • {col:20s}: {repr(clean_val):25s} (Gốc: {repr(raw_val)}, Kiểu: {val_type})")
+
+            logger.info("-" * 65)
+            logger.info("💡 Bạn có thể cấu hình câu lệnh này vào sql_queries.py để hệ thống tự động đẩy lên Google Sheets.")
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi thực thi câu lệnh SQL kiểm thử: {e}", exc_info=True)
+
 # --- 11. CHỨC NĂNG KIỂM TRA KẾT NỐI (DIAGNOSTICS) ---
 def run_diagnostics(spreadsheet, sql_cfg):
     """
@@ -1134,9 +1307,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--now", action="store_true", help="Thực hiện đồng bộ ngay 1 lần từ SQL Server và thoát")
+    parser.add_argument("--table", type=str, default="", help="Đồng bộ riêng một bảng cụ thể (ví dụ: KH_CORE, HDTD_CORE, TSBD_CORE, CASA_CORE...)")
+    parser.add_argument("--all-tables", action="store_true", help="Đồng bộ tất cả các bảng đã được cấu hình trong sql_queries.py")
+    parser.add_argument("--list-tables", action="store_true", help="Liệt kê danh sách các bảng và câu lệnh SQL đã đăng ký")
+    parser.add_argument("--test-query", type=str, default="", help="Chạy thử nghiệm một câu lệnh SQL tùy chỉnh và in kết quả xem trước")
     parser.add_argument("--extract-dn", action="store_true", help="Thực hiện trích xuất HDTD_CORE_DN ngay 1 lần từ SQL Server và thoát")
     parser.add_argument("--extract-all", action="store_true", help="Thực hiện trích xuất HDTD_CORE_ALL (các ngày cuối tháng) ngay 1 lần từ SQL Server và thoát")
-    parser.add_argument("--as-of-date", type=str, default="", help="Mốc ngày sao kê (dd/MM/yyyy) khi dùng --extract-dn")
+    parser.add_argument("--as-of-date", type=str, default="", help="Mốc ngày sao kê (dd/MM/yyyy) khi dùng --extract-dn hoặc --table")
     parser.add_argument("--mode", type=str, default="as_of_date", help="Chế độ sao kê: 'as_of_date' hoặc 'month_ends'")
     parser.add_argument("--init-schema", action="store_true", help="Khởi tạo hoặc sửa chữa cấu trúc 12 bảng CSDL Google Sheets")
     parser.add_argument("--test-connection", action="store_true", help="Kiểm tra kết nối tới Google Sheets và SQL Server")
@@ -1147,6 +1324,23 @@ def main():
     sheet_id = config["google_sheet_id"]
     cred_file = config["credentials_file"]
     sql_cfg = config["sql_server"]
+
+    # 0. Chế độ kiểm thử câu lệnh SQL tùy chỉnh (Không yêu cầu Google Sheets)
+    if args.test_query:
+        test_custom_sql_query(sql_cfg, args.test_query, {"asOfDate": args.as_of_date})
+        sys.exit(0)
+
+    # 0B. Liệt kê các bảng đã đăng ký SQL
+    if args.list_tables:
+        print("=" * 65)
+        print("DANH SÁCH BẢNG CƠ SỞ DỮ LIỆU ĐÃ ĐĂNG KÝ TRUY VẤN SQL")
+        print("=" * 65)
+        for t in list_registered_tables():
+            print(f"  • Mã bảng:   {t['key']}")
+            print(f"    Tên Sheet: '{t['sheet_name']}'")
+            print(f"    Mô tả:     {t['description']}")
+            print("-" * 65)
+        sys.exit(0)
 
     logger.info(f"🔑 Đang nạp Google Service Account từ '{cred_file}'...")
     gc = get_gspread_client(cred_file)
@@ -1162,6 +1356,26 @@ def main():
     # 2. Kiểm tra kết nối
     if args.test_connection:
         run_diagnostics(spreadsheet, sql_cfg)
+        sys.exit(0)
+
+    # 2B. Đồng bộ một bảng cụ thể
+    if args.table:
+        table_key = args.table.upper().strip()
+        logger.info(f"🚀 Chế độ đồng bộ riêng bảng '{table_key}' (--table {table_key})...")
+        sync_table_from_query(spreadsheet, sql_cfg, table_key, {"asOfDate": args.as_of_date})
+        sys.exit(0)
+
+    # 2C. Đồng bộ tất cả các bảng đã cấu hình
+    if args.all_tables:
+        logger.info("🚀 Chế độ đồng bộ TẤT CẢ các bảng đã cấu hình (--all-tables)...")
+        # 1. Đồng bộ KH và HDTD chuẩn
+        process_sync_request(spreadsheet, sql_cfg)
+        # 2. Đồng bộ các bảng mở rộng khác (TSBD_CORE, CASA_CORE...)
+        for t in list_registered_tables():
+            k = t["key"]
+            if k not in ("KH_CORE", "HDTD_CORE"):
+                sync_table_from_query(spreadsheet, sql_cfg, k, {"asOfDate": args.as_of_date})
+        logger.info("🏆 Đã hoàn tất đồng bộ toàn bộ các bảng lên Google Sheets!")
         sys.exit(0)
 
     # 3. Chế độ chạy thủ công trích xuất HDTD_CORE_DN tức thì
