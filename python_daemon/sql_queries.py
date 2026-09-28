@@ -102,70 +102,33 @@ REGISTERED_QUERIES = {
         "sheet_name": "HDTD_CORE",
         "description": "Danh sách hợp đồng tín dụng & khế ước dư nợ hiện tại thời gian thực (Báo cáo Tổng quan)",
         "query": """
-        DECLARE @denngay VARCHAR(50);
-        SET @denngay = '{denngay}';
-        SELECT 
-            a.so_hdtd AS SoHDTD,
-            b.ma_khach_hang AS MaKH,
-            b.ten_khach_hang AS HoTen,
-            b.so_cmnd AS CCCD,
-            b.so_di_dong AS DienThoai,
-            f.ten_khu_vuc AS DiaChi,
-            ISNULL(G.TEN_DIA_LY, '') AS KvXa,
-            CONVERT(INT, c.so_tien_gn) AS TienVay,
-            CONVERT(INT, e.so_du) AS DuNo,
-            CONVERT(VARCHAR, c.lai_suat) AS LaiSuat,
-            CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(a.ngay_vay, 8), 103), 103) AS NgayVay,
-            CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(a.ngay_dao_han, 8), 103), 103) AS DenHan,
-            a.SO_THANG_VAY AS SoThangVay,
-            sp.TEN_SAN_PHAM AS MaLoaiVay,
-            a.MO_TA_MUC_DICH_VAY AS MoTaVay,
-            a.MA_LOAI_HD AS MaLoaiHD
-        FROM td_hop_dong_td a 
-            INNER JOIN (
-                SELECT DISTINCT kh.*, ISNULL(tv.SO_THANH_VIEN, '') AS so_thanh_vien 
-                FROM dc_khach_hang kh 
-                LEFT JOIN (
-                    SELECT ma_khach_hang, MIN(so_thanh_vien) AS so_thanh_vien 
-                    FROM fn_dc_thanh_vien_ls(@denngay, '%') 
-                    GROUP BY ma_khach_hang
-                ) tv ON kh.ma_khach_hang = tv.ma_khach_hang
-            ) b ON a.ma_khach_hang = b.ma_khach_hang
-            INNER JOIN fn_TD_KHE_UOC_LS('{chinhanh}', @denngay) c ON a.ma_hdtd = c.ma_hdtd 
-                AND c.nhom_no_hien_tai IN ('NHOM1','NHOM2','NHOM3','NHOM4','NHOM5','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','')
-            INNER JOIN td_san_pham d ON c.ma_san_pham = d.ma_san_pham
-            INNER JOIN vwTD_SAN_PHAM sp ON a.MA_SAN_PHAM = sp.MA_SAN_PHAM
-            INNER JOIN fn_KT_TAI_KHOAN_LS_CHI_NHANH(@denngay, 'TKTD', '{chinhanh}') e ON e.so_tai_khoan = c.so_tai_khoan
-            INNER JOIN dc_khu_vuc f ON b.ma_khu_vuc = f.ma_khu_vuc
-            LEFT JOIN (
-                SELECT DISTINCT A.MA_KHU_VUC, B.MA_DIA_LY, B.TEN_DIA_LY 
-                FROM DC_DON_VI_KHU_VUC A 
-                JOIN DC_DIA_LY B ON A.MA_DIA_LY = B.MA_DIA_LY
-            ) G ON B.MA_KHU_VUC = G.MA_KHU_VUC
-        WHERE e.so_du > 0 
-            AND e.ma_chi_nhanh LIKE '{chinhanh}'                       
-            AND E.loai_tk = 'TKTD'
-        ORDER BY a.so_hdtd;
-        """,
-        "fallback_query": """
         SELECT 
             A.MA_KHE_UOC AS SoHDTD,
-            D.MA_KHACH_HANG AS MaKH,
-            B.TEN_KHACH_HANG AS HoTen,
+            D.MA_KHACH_HANG AS MAKH,
+            B.TEN_KHACH_HANG AS TenKH,
             B.SO_CMND AS CCCD,
             B.SO_DI_DONG AS DienThoai,
             B.DIA_CHI AS DiaChi,
-            ISNULL(KV.TEN_KHU_VUC, '') AS KvXa,
+            -- TÁCH LẤY TÊN THÔN TỪ CỘT DIA_CHI
+            LTRIM(RTRIM(
+                CASE 
+                    WHEN CHARINDEX(',', B.DIA_CHI) > 0 
+                    THEN LEFT(B.DIA_CHI, CHARINDEX(',', B.DIA_CHI) - 1)
+                    ELSE B.DIA_CHI 
+                END
+            )) AS KvThon,
+            ISNULL(G.TEN_DIA_LY, N'') AS KvXa,
             D.SO_TIEN_VAY AS TienVay,
             C.SO_DU AS DuNo,
             FORMAT(A.LAI_SUAT, 'N2') AS LaiSuat,
             CONVERT(VARCHAR(10), D.NGAY_VAY, 103) AS NgayVay,
             CONVERT(VARCHAR(10), D.NGAY_DAO_HAN, 103) AS DenHan,
-            CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TraLaiDenNgay,
+            CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TLDenNgay,
             SP.TEN_SAN_PHAM AS MaLoaiVay,
             D.SO_THANG_VAY AS SoThangVay,
-            D.MO_TA_MUC_DICH_VAY AS MoTaVay,
-            D.MA_LOAI_HD AS MaLoaiHD
+            D.MO_TA_MUC_DICH_VAY AS MucDichVay,
+            D.MA_LOAI_HD AS MaLoaiHD,
+            A.NHOM_NO_HIEN_TAI AS NhomNo
         FROM dbo.TD_KHE_UOC A 
         INNER JOIN dbo.TD_HOP_DONG_TD D ON A.MA_HDTD = D.MA_HDTD
         INNER JOIN dbo.DC_KHACH_HANG B ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
@@ -174,17 +137,25 @@ REGISTERED_QUERIES = {
         INNER JOIN dbo.KT_TAI_KHOAN C ON C.SO_TAI_KHOAN = A.SO_TAI_KHOAN
         INNER JOIN dbo.vwTD_SAN_PHAM SP ON SP.MA_SAN_PHAM = A.MA_SAN_PHAM
         INNER JOIN dbo.DC_LOAI_VAY LV ON LV.MA_LOAI_VAY = SP.MA_LOAI_VAY
+        LEFT JOIN (
+            SELECT DISTINCT 
+                A.MA_KHU_VUC, 
+                B.MA_DIA_LY, 
+                B.TEN_DIA_LY 
+            FROM dbo.DC_DON_VI_KHU_VUC A 
+            INNER JOIN dbo.DC_DIA_LY B ON A.MA_DIA_LY = B.MA_DIA_LY 
+            WHERE A.MA_PGD LIKE '01'
+        ) G ON G.MA_KHU_VUC = KV.MA_KHU_VUC
         WHERE C.SO_DU > 0
         ORDER BY D.MA_KHACH_HANG, D.NGAY_VAY DESC;
         """,
         "field_mapping": {
             "sohdtd": "SoHDTD",
             "ma_khe_uoc": "SoHDTD",
-            "so_hdtd": "SoHDTD",
             "makh": "MaKH",
             "ma_khach_hang": "MaKH",
-            "hoten": "HoTen",
             "tenkh": "HoTen",
+            "hoten": "HoTen",
             "ten_khach_hang": "HoTen",
             "cccd": "CCCD",
             "so_cmnd": "CCCD",
@@ -192,11 +163,11 @@ REGISTERED_QUERIES = {
             "so_di_dong": "DienThoai",
             "diachi": "DiaChi",
             "dia_chi": "DiaChi",
+            "kvthon": "KvThon",
             "kvxa": "KvXa",
             "ten_dia_ly": "KvXa",
             "tienvay": "TienVay",
             "so_tien_vay": "TienVay",
-            "so_tien_gn": "TienVay",
             "duno": "DuNo",
             "so_du": "DuNo",
             "laisuat": "LaiSuat",
@@ -205,17 +176,20 @@ REGISTERED_QUERIES = {
             "ngay_vay": "NgayVay",
             "denhan": "DenHan",
             "ngay_dao_han": "DenHan",
+            "tldenngay": "TraLaiDenNgay",
             "tralaidenngay": "TraLaiDenNgay",
             "thu_lai_den_ngay": "TraLaiDenNgay",
             "sothangvay": "SoThangVay",
             "so_thang_vay": "SoThangVay",
             "maloaivay": "MaLoaiVay",
             "ten_san_pham": "MaLoaiVay",
+            "mucdichvay": "MoTaVay",
             "motavay": "MoTaVay",
             "mo_ta_muc_dich_vay": "MoTaVay",
-            "mucdichvay": "MoTaVay",
             "maloaihd": "MaLoaiHD",
-            "ma_loai_hd": "MaLoaiHD"
+            "ma_loai_hd": "MaLoaiHD",
+            "nhomno": "NhomNo",
+            "nhom_no_hien_tai": "NhomNo"
         }
     },
 

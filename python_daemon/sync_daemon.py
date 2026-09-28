@@ -503,7 +503,56 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
         elif len(clean_d) == 8 and clean_d.isdigit():
             denngay_param = clean_d
 
-    query_primary = f"""
+    query_current_production = """
+    SELECT 
+        A.MA_KHE_UOC AS SoHDTD,
+        D.MA_KHACH_HANG AS MAKH,
+        B.TEN_KHACH_HANG AS TenKH,
+        B.SO_CMND AS CCCD,
+        B.SO_DI_DONG AS DienThoai,
+        B.DIA_CHI AS DiaChi,
+        -- TÁCH LẤY TÊN THÔN TỪ CỘT DIA_CHI
+        LTRIM(RTRIM(
+            CASE 
+                WHEN CHARINDEX(',', B.DIA_CHI) > 0 
+                THEN LEFT(B.DIA_CHI, CHARINDEX(',', B.DIA_CHI) - 1)
+                ELSE B.DIA_CHI 
+            END
+        )) AS KvThon,
+        ISNULL(G.TEN_DIA_LY, N'') AS KvXa,
+        D.SO_TIEN_VAY AS TienVay,
+        C.SO_DU AS DuNo,
+        FORMAT(A.LAI_SUAT, 'N2') AS LaiSuat,
+        CONVERT(VARCHAR(10), D.NGAY_VAY, 103) AS NgayVay,
+        CONVERT(VARCHAR(10), D.NGAY_DAO_HAN, 103) AS DenHan,
+        CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TLDenNgay,
+        SP.TEN_SAN_PHAM AS MaLoaiVay,
+        D.SO_THANG_VAY AS SoThangVay,
+        D.MO_TA_MUC_DICH_VAY AS MucDichVay,
+        D.MA_LOAI_HD AS MaLoaiHD,
+        A.NHOM_NO_HIEN_TAI AS NhomNo
+    FROM dbo.TD_KHE_UOC A 
+    INNER JOIN dbo.TD_HOP_DONG_TD D ON A.MA_HDTD = D.MA_HDTD
+    INNER JOIN dbo.DC_KHACH_HANG B ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
+    INNER JOIN dbo.DC_THANH_VIEN TV ON B.MA_KHACH_HANG = TV.MA_KHACH_HANG
+    INNER JOIN dbo.DC_KHU_VUC KV ON B.MA_KHU_VUC = KV.MA_KHU_VUC
+    INNER JOIN dbo.KT_TAI_KHOAN C ON C.SO_TAI_KHOAN = A.SO_TAI_KHOAN
+    INNER JOIN dbo.vwTD_SAN_PHAM SP ON SP.MA_SAN_PHAM = A.MA_SAN_PHAM
+    INNER JOIN dbo.DC_LOAI_VAY LV ON LV.MA_LOAI_VAY = SP.MA_LOAI_VAY
+    LEFT JOIN (
+        SELECT DISTINCT 
+            A.MA_KHU_VUC, 
+            B.MA_DIA_LY, 
+            B.TEN_DIA_LY 
+        FROM dbo.DC_DON_VI_KHU_VUC A 
+        INNER JOIN dbo.DC_DIA_LY B ON A.MA_DIA_LY = B.MA_DIA_LY 
+        WHERE A.MA_PGD LIKE '01'
+    ) G ON G.MA_KHU_VUC = KV.MA_KHU_VUC
+    WHERE C.SO_DU > 0
+    ORDER BY D.MA_KHACH_HANG, D.NGAY_VAY DESC;
+    """
+
+    query_history_ls = f"""
     DECLARE @denngay VARCHAR(50);
     SET @denngay = '{denngay_param}';
     SELECT 
@@ -550,53 +599,35 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
     ORDER BY a.so_hdtd;
     """
 
-    # Query dự phòng nếu CSDL không có sẵn các hàm fn lịch sử
-    query_fallback = """
-    SELECT 
-        A.MA_KHE_UOC AS SoHDTD,
-        D.MA_KHACH_HANG AS MaKH,
-        B.TEN_KHACH_HANG AS HoTen,
-        B.SO_CMND AS CCCD,
-        B.SO_DI_DONG AS DienThoai,
-        B.DIA_CHI AS DiaChi,
-        ISNULL(KV.TEN_KHU_VUC, '') AS KvXa,
-        D.SO_TIEN_VAY AS TienVay,
-        C.SO_DU AS DuNo,
-        FORMAT(A.LAI_SUAT, 'N2') AS LaiSuat,
-        CONVERT(VARCHAR(10), D.NGAY_VAY, 103) AS NgayVay,
-        CONVERT(VARCHAR(10), D.NGAY_DAO_HAN, 103) AS DenHan,
-        CONVERT(VARCHAR(10), A.THU_LAI_DEN_NGAY, 103) AS TraLaiDenNgay,
-        SP.TEN_SAN_PHAM AS MaLoaiVay,
-        D.SO_THANG_VAY AS SoThangVay,
-        D.MO_TA_MUC_DICH_VAY AS MoTaVay,
-        D.MA_LOAI_HD AS MaLoaiHD
-    FROM dbo.TD_KHE_UOC A 
-    INNER JOIN dbo.TD_HOP_DONG_TD D ON A.MA_HDTD = D.MA_HDTD
-    INNER JOIN dbo.DC_KHACH_HANG B ON B.MA_KHACH_HANG = D.MA_KHACH_HANG
-    INNER JOIN dbo.DC_THANH_VIEN TV ON B.MA_KHACH_HANG = TV.MA_KHACH_HANG
-    INNER JOIN dbo.DC_KHU_VUC KV ON B.MA_KHU_VUC = KV.MA_KHU_VUC
-    INNER JOIN dbo.KT_TAI_KHOAN C ON C.SO_TAI_KHOAN = A.SO_TAI_KHOAN
-    INNER JOIN dbo.vwTD_SAN_PHAM SP ON SP.MA_SAN_PHAM = A.MA_SAN_PHAM
-    INNER JOIN dbo.DC_LOAI_VAY LV ON LV.MA_LOAI_VAY = SP.MA_LOAI_VAY
-    WHERE C.SO_DU > 0
-    ORDER BY D.MA_KHACH_HANG, D.NGAY_VAY DESC;
-    """
-
-    logger.info(f"🔍 Đang truy vấn dữ liệu HĐTD & Dư nợ từ NG-eFUND (Mốc @denngay: {denngay_param})...")
     cursor = sql_conn.cursor()
     columns = []
     rows = []
 
-    try:
-        cursor.execute(query_primary)
-        columns = [column[0] for column in cursor.description]
-        rows = cursor.fetchall()
-        logger.info(f"⚡ Thực thi thành công qua fn_TD_KHE_UOC_LS & fn_KT_TAI_KHOAN_LS_CHI_NHANH ({len(rows)} bản ghi).")
-    except Exception as e_prim:
-        logger.warning(f"⚠️ Hàm lịch sử NG-eFUND tạm thời không khả dụng ({e_prim}), chuyển sang truy vấn trực tiếp bảng...")
-        cursor.execute(query_fallback)
-        columns = [column[0] for column in cursor.description]
-        rows = cursor.fetchall()
+    # Nếu không truyền as_of_date (đồng bộ HDTD_CORE thời gian thực), ưu tiên 100% query_current_production
+    if not as_of_date:
+        logger.info("🔍 Đang truy vấn dữ liệu HĐTD & Dư nợ hiện tại thời gian thực từ NG-eFUND...")
+        try:
+            cursor.execute(query_current_production)
+            columns = [column[0] for column in cursor.description]
+            rows = cursor.fetchall()
+            logger.info(f"⚡ Thực thi thành công truy vấn HDTD_CORE trực tiếp ({len(rows)} bản ghi).")
+        except Exception as e_curr:
+            logger.warning(f"⚠️ Truy vấn HDTD_CORE gặp lỗi ({e_curr}), thử qua hàm lịch sử...")
+            cursor.execute(query_history_ls)
+            columns = [column[0] for column in cursor.description]
+            rows = cursor.fetchall()
+    else:
+        logger.info(f"🔍 Đang truy vấn dữ liệu HĐTD & Dư nợ lịch sử tại mốc @denngay: {denngay_param}...")
+        try:
+            cursor.execute(query_history_ls)
+            columns = [column[0] for column in cursor.description]
+            rows = cursor.fetchall()
+            logger.info(f"⚡ Thực thi thành công qua hàm lịch sử NG-eFUND ({len(rows)} bản ghi).")
+        except Exception as e_hist:
+            logger.warning(f"⚠️ Hàm lịch sử gặp lỗi ({e_hist}), chuyển sang truy vấn trực tiếp bảng...")
+            cursor.execute(query_current_production)
+            columns = [column[0] for column in cursor.description]
+            rows = cursor.fetchall()
 
     records = []
     for row in rows:
@@ -614,10 +645,11 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
 
         raw_dia_chi = clean_address(row_map.get("DiaChi"))
         raw_kv_xa = str(row_map.get("KvXa", "")).strip()
-        kv_thon = ""
-        m_thon = re.search(r"Thôn\s+[^,]+", raw_dia_chi, re.IGNORECASE)
-        if m_thon:
-            kv_thon = m_thon.group(0).strip()
+        kv_thon = str(row_map.get("KvThon", "")).strip()
+        if not kv_thon:
+            m_thon = re.search(r"Thôn\s+[^,]+", raw_dia_chi, re.IGNORECASE)
+            if m_thon:
+                kv_thon = m_thon.group(0).strip()
 
         # Phân biệt rõ ràng:
         # TienVay = Vốn cho vay ban đầu (giải ngân)
@@ -639,7 +671,7 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
             "LaiSuat": clean_interest_rate(row_map.get("LaiSuat")),
             "NgayVay": format_efund_date(row_map.get("NgayVay")),
             "DenHan": format_efund_date(row_map.get("DenHan")),
-            "TraLaiDenNgay": format_efund_date(row_map.get("TraLaiDenNgay")),
+            "TraLaiDenNgay": format_efund_date(row_map.get("TLDenNgay") or row_map.get("TraLaiDenNgay")),
             "MaLoaiVay": str(row_map.get("MaLoaiVay", "")).strip(),
             "SoThangVay": so_thang,
             "MoTaVay": clean_address(row_map.get("MoTaVay") or row_map.get("MucDichVay")),
@@ -647,6 +679,7 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
             "Ten_CBTD": "Trần Như Huyền",
             "TrangThaiHD": "DANG_VAY" if val_du_no > 0 else "DA_TAT_TOAN",
             "MaLoaiHD": raw_ma_loai_hd,
+            "NhomNo": str(row_map.get("NhomNo", "NHOM1")).strip(),
             "NgayCapNhat": sync_timestamp_str
         }
         records.append(record)
@@ -772,28 +805,31 @@ def process_sync_request(spreadsheet, sql_cfg):
         for r in records_hdtd:
             makh = str(r.get("MaKH", "")).strip().lstrip("'")
             cust = kh_lookup.get(makh, {})
-            r["HoTen"] = cust.get("HoTen", "")
-            r["CCCD"] = cust.get("CCCD", "")
-            r["DienThoai"] = cust.get("DienThoai", "") or cust.get("DienThoaiDD", "")
+            r["HoTen"] = r.get("HoTen") or cust.get("HoTen", "")
+            r["CCCD"] = r.get("CCCD") or cust.get("CCCD", "")
+            r["DienThoai"] = r.get("DienThoai") or cust.get("DienThoai", "") or cust.get("DienThoaiDD", "")
             r["DiaChi"] = r.get("DiaChi") or cust.get("DiaChi", "")
             r["KvXa"] = r.get("KvXa") or cust.get("KvXa", "")
             r["KvThon"] = r.get("KvThon") or cust.get("KvThon", "")
 
             du_no = float(r.get("DuNo", 0) or 0)
             if makh not in cust_loan_stats:
-                cust_loan_stats[makh] = {"total_duno": 0, "count_hd": 0}
+                cust_loan_stats[makh] = {"total_duno": 0, "count_hd": 0, "nhom_no": "NHOM1"}
             if du_no > 0:
                 cust_loan_stats[makh]["total_duno"] += du_no
                 cust_loan_stats[makh]["count_hd"] += 1
+                curr_n = str(r.get("NhomNo", "NHOM1")).strip().upper()
+                if curr_n > cust_loan_stats[makh]["nhom_no"]:
+                    cust_loan_stats[makh]["nhom_no"] = curr_n
 
         # Cập nhật các chỉ số tổng hợp vào records_kh
         for k in records_kh:
             makh = str(k.get("MaKH", "")).strip().lstrip("'")
-            stats = cust_loan_stats.get(makh, {"total_duno": 0, "count_hd": 0})
+            stats = cust_loan_stats.get(makh, {"total_duno": 0, "count_hd": 0, "nhom_no": "NHOM1"})
             k["TongDuNoHienTai"] = stats["total_duno"]
             k["SoLuongHDVay"] = stats["count_hd"]
             k["TrangThaiVay"] = "DANG_VAY" if stats["count_hd"] > 0 else "CHUA_VAY"
-            k["NhomNoCIC"] = "N1"
+            k["NhomNoCIC"] = stats["nhom_no"]
 
         # 1. Đẩy dữ liệu Khách hàng & Thành viên (KH_CORE)
         kh_headers = ALL_SCHEMAS.get("KH_CORE", {}).get("headers", [
@@ -810,7 +846,7 @@ def process_sync_request(spreadsheet, sql_cfg):
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo", "NgayCapNhat"
         ])
         hdtd_sheet = get_or_create_worksheet(spreadsheet, "HDTD_CORE", hdtd_headers)
 
@@ -1023,6 +1059,7 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
                         "Ten_CBTD": r.get("Ten_CBTD", "Lê Văn Tín (CBTD)"),
                         "TrangThaiHD": r.get("TrangThaiHD", "DANG_VAY" if r.get("DuNo", 0) > 0 else "DA_TAT_TOAN"),
                         "MaLoaiHD": r.get("MaLoaiHD", ""),
+                        "NhomNo": r.get("NhomNo", "NHOM1"),
                         "NgayDuLieu": t_date,
                         "NgayCapNhat": now_str
                     }
@@ -1032,7 +1069,7 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo",
             "NgayDuLieu", "NgayCapNhat"
         ])
         dn_sheet = get_or_create_worksheet(spreadsheet, target_sheet_name, dn_headers)

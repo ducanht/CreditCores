@@ -539,11 +539,11 @@ var SchemaSetup = {
         "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
         "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
         "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo", "NgayCapNhat"
       ],
       color: "#1B365D",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:V": "@", "W:W": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
     },
     HDTD_CORE_DN: {
       isTwoTier: true,
@@ -553,12 +553,12 @@ var SchemaSetup = {
         "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
         "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
         "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo",
         "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#312E81",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy", "W:W": "dd/MM/yyyy HH:mm:ss" },
-      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:V": "@", "W:W": "dd/MM/yyyy", "X:X": "dd/MM/yyyy HH:mm:ss" },
+      colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 110, 24: 160 }
     },
     HDTD_CORE_ALL: {
       isTwoTier: true,
@@ -568,11 +568,11 @@ var SchemaSetup = {
         "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
         "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
         "SoThangVay", "MaLoaiVay", "MoTaVay",
-        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
+        "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo",
         "NgayDuLieu", "NgayCapNhat"
       ],
       color: "#101959",
-      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:U": "@", "V:V": "dd/MM/yyyy", "W:W": "dd/MM/yyyy HH:mm:ss" },
+      formats: { "A:H": "@", "I:J": "#,##0", "K:K": "0.00", "L:N": "dd/MM/yyyy", "O:O": "#,##0", "P:V": "@", "W:W": "dd/MM/yyyy", "X:X": "dd/MM/yyyy HH:mm:ss" },
       colWidths: { 1: 130, 2: 100, 3: 180, 4: 130, 5: 120, 6: 220, 7: 130, 8: 130, 9: 130, 10: 130, 11: 90, 12: 110, 13: 110, 14: 120, 15: 90, 16: 140, 17: 220, 18: 140, 19: 160, 20: 120, 21: 140, 22: 110, 23: 160 }
     },
     DANG_KY_TRICH_NO: {

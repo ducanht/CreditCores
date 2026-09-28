@@ -71,7 +71,7 @@ ALL_SCHEMAS = {
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NgayCapNhat"
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo", "NgayCapNhat"
         ],
         "color": {"red": 0.11, "green": 0.21, "blue": 0.36}
     },
@@ -80,7 +80,7 @@ ALL_SCHEMAS = {
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo",
             "NgayDuLieu", "NgayCapNhat"
         ],
         "color": {"red": 0.19, "green": 0.18, "blue": 0.51}
@@ -90,7 +90,7 @@ ALL_SCHEMAS = {
             "SoHDTD", "MaKH", "HoTen", "CCCD", "DienThoai", "DiaChi", "KvXa", "KvThon",
             "TienVay", "DuNo", "LaiSuat", "NgayVay", "DenHan", "TraLaiDenNgay",
             "SoThangVay", "MaLoaiVay", "MoTaVay",
-            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD",
+            "CBTD_PhuTrach", "Ten_CBTD", "TrangThaiHD", "MaLoaiHD", "NhomNo",
             "NgayDuLieu", "NgayCapNhat"
         ],
         "color": {"red": 0.12, "green": 0.23, "blue": 0.54}
