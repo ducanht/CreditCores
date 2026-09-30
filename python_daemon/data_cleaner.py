@@ -133,16 +133,21 @@ def clean_rate(val):
     """
     Chuẩn hóa lãi suất hoặc tỷ lệ %:
     - Làm tròn 2 chữ số thập phân (float).
+    - Tự động nhân 100 nếu giá trị ở dạng tỷ lệ thập phân (0 < val < 0.99, do SQL chia 100).
     - Thay thế dấu phẩy bằng dấu chấm nếu là chuỗi text.
     - None / NULL / "" -> 0.0.
     """
     if val is None or val == "":
         return 0.0
-    if isinstance(val, (int, float)):
-        return round(float(val), 2)
-    s = str(val).strip().replace(",", ".").replace("%", "")
     try:
-        return round(float(s), 2)
+        if isinstance(val, (int, float)):
+            val_f = float(val)
+        else:
+            s = str(val).strip().replace(",", ".").replace("%", "")
+            val_f = float(s)
+        if 0 < val_f < 0.99:
+            val_f = val_f * 100.0
+        return round(val_f, 2)
     except Exception:
         return 0.0
 

@@ -342,11 +342,15 @@ def clean_interest_rate(val):
     """
     Chuẩn hóa lãi suất (%/năm), làm tròn 2 chữ số thập phân.
     Ví dụ: 10.4600 -> 10.46
+    Nếu dạng 0.1046 (đã bị chia 100 trong SQL) -> tự động nhân 100 thành 10.46
     """
     if not val:
         return 0.0
     try:
-        return round(float(val), 2)
+        f = float(val)
+        if 0 < f < 0.99:
+            f = f * 100.0
+        return round(f, 2)
     except Exception:
         return val
 
@@ -500,6 +504,13 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
             parts = clean_d.split("/")
             if len(parts) == 3:
                 denngay_param = f"{parts[2]}{parts[1].zfill(2)}{parts[0].zfill(2)}"
+        elif "-" in clean_d:
+            parts = clean_d.split("-")
+            if len(parts) == 3:
+                if len(parts[0]) == 4:
+                    denngay_param = f"{parts[0]}{parts[1].zfill(2)}{parts[2].zfill(2)}"
+                else:
+                    denngay_param = f"{parts[2]}{parts[1].zfill(2)}{parts[0].zfill(2)}"
         elif len(clean_d) == 8 and clean_d.isdigit():
             denngay_param = clean_d
 
@@ -553,50 +564,87 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
     """
 
     query_history_ls = f"""
-    DECLARE @denngay VARCHAR(50);
-    SET @denngay = '{denngay_param}';
+    DECLARE @denngay VARCHAR(8) = '{denngay_param}';
+
     SELECT 
         a.so_hdtd AS SoHDTD,
         b.ma_khach_hang AS MaKH,
-        b.ten_khach_hang AS HoTen,
-        b.so_cmnd AS CCCD,
-        b.so_di_dong AS DienThoai,
+        b.ten_khach_hang AS TenKH,
+        b.SO_CMND AS CCCD,
+        b.SO_DI_DONG AS DienThoai,
         f.ten_khu_vuc AS DiaChi,
-        ISNULL(G.TEN_DIA_LY, '') AS KvXa,
-        CONVERT(INT, c.so_tien_gn) AS TienVay,
-        CONVERT(INT, e.so_du) AS DuNo,
-        CONVERT(VARCHAR, c.lai_suat) AS LaiSuat,
+        LTRIM(RTRIM(
+            CASE 
+                WHEN CHARINDEX(',', B.DIA_CHI) > 0 
+                THEN LEFT(B.DIA_CHI, CHARINDEX(',', B.DIA_CHI) - 1)
+                ELSE B.DIA_CHI 
+            END
+        )) AS KvThon,
+        ISNULL(G.TEN_DIA_LY, '') AS KhuVuc,
         CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(a.ngay_vay, 8), 103), 103) AS NgayVay,
         CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(a.ngay_dao_han, 8), 103), 103) AS DenHan,
+        CAST(c.lai_suat AS FLOAT) / 100 AS LaiSuat,
+        CONVERT(INT, c.so_tien_gn) AS TienVay,
+        CONVERT(INT, e.so_du) AS DuNo,
+        CONVERT(VARCHAR(10), CONVERT(DATETIME, LEFT(kw.thu_lai_den_ngay, 8), 103), 103) AS TL_DenNgay,
         a.SO_THANG_VAY AS SoThangVay,
-        sp.TEN_SAN_PHAM AS MaLoaiVay,
-        a.MO_TA_MUC_DICH_VAY AS MoTaVay,
-        a.MA_LOAI_HD AS MaLoaiHD
-    FROM td_hop_dong_td a 
-        INNER JOIN (
-            SELECT DISTINCT kh.*, ISNULL(tv.SO_THANH_VIEN, '') AS so_thanh_vien 
-            FROM dc_khach_hang kh 
-            LEFT JOIN (
-                SELECT ma_khach_hang, MIN(so_thanh_vien) AS so_thanh_vien 
-                FROM fn_dc_thanh_vien_ls(@denngay, '%') 
-                GROUP BY ma_khach_hang
-            ) tv ON kh.ma_khach_hang = tv.ma_khach_hang
-        ) b ON a.ma_khach_hang = b.ma_khach_hang
-        INNER JOIN fn_TD_KHE_UOC_LS('01', @denngay) c ON a.ma_hdtd = c.ma_hdtd 
-            AND c.nhom_no_hien_tai IN ('NHOM1','NHOM2','NHOM3','NHOM4','NHOM5','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','')
-        INNER JOIN td_san_pham d ON c.ma_san_pham = d.ma_san_pham
-        INNER JOIN vwTD_SAN_PHAM sp ON a.MA_SAN_PHAM = sp.MA_SAN_PHAM
-        INNER JOIN fn_KT_TAI_KHOAN_LS_CHI_NHANH(@denngay, 'TKTD', '01') e ON e.so_tai_khoan = c.so_tai_khoan
-        INNER JOIN dc_khu_vuc f ON b.ma_khu_vuc = f.ma_khu_vuc
+        d.MA_LOAI_VAY AS LoaiVay, 
+        A.MA_LOAI_HD AS MaLoaiHD,
+        A.MO_TA_MUC_DICH_VAY AS MucDich,
+        C.nhom_no_hien_tai AS NhomNo
+    FROM 
+        td_hop_dong_td a 
+    INNER JOIN (
+        SELECT DISTINCT 
+            kh.*, 
+            ISNULL(tv.SO_THANH_VIEN, '') AS so_thanh_vien 
+        FROM 
+            dc_khach_hang kh 
         LEFT JOIN (
-            SELECT DISTINCT A.MA_KHU_VUC, B.MA_DIA_LY, B.TEN_DIA_LY 
-            FROM DC_DON_VI_KHU_VUC A 
-            JOIN DC_DIA_LY B ON A.MA_DIA_LY = B.MA_DIA_LY
-        ) G ON B.MA_KHU_VUC = G.MA_KHU_VUC
-    WHERE e.so_du > 0 
+            SELECT 
+                ma_khach_hang, 
+                MIN(so_thanh_vien) AS so_thanh_vien 
+            FROM 
+                fn_dc_thanh_vien_ls(@denngay, '%') 
+            GROUP BY 
+                ma_khach_hang
+        ) tv ON kh.ma_khach_hang = tv.ma_khach_hang 
+    ) b ON a.ma_khach_hang = b.ma_khach_hang
+    INNER JOIN 
+        fn_TD_KHE_UOC_LS('01', @denngay) c ON a.ma_hdtd = c.ma_hdtd 
+        AND c.nhom_no_hien_tai IN ('NHOM1', 'NHOM2', 'NHOM3', 'NHOM4', 'NHOM5')
+    INNER JOIN 
+        td_san_pham d ON c.ma_san_pham = d.ma_san_pham
+    INNER JOIN 
+        fn_KT_TAI_KHOAN_LS_CHI_NHANH(@denngay, 'TKTD', '01') e ON e.so_tai_khoan = c.so_tai_khoan
+    INNER JOIN 
+        dc_khu_vuc f ON b.ma_khu_vuc = f.ma_khu_vuc
+    INNER JOIN 
+        TD_KHE_UOC KW ON KW.MA_HDTD = a.MA_HDTD
+    LEFT JOIN (
+        SELECT DISTINCT 
+            A.MA_KHU_VUC, 
+            B.MA_DIA_LY, 
+            B.TEN_DIA_LY 
+        FROM 
+            DC_DON_VI_KHU_VUC A 
+        JOIN 
+            DC_DIA_LY B ON A.MA_DIA_LY = B.MA_DIA_LY 
+        WHERE 
+            MA_PGD LIKE '01'
+    ) G ON G.MA_KHU_VUC = F.MA_KHU_VUC
+    WHERE 
+        e.so_du > 0 
         AND e.ma_chi_nhanh LIKE '01'                       
+        AND b.ma_khu_vuc IN ('01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24')
+        AND d.ma_san_pham IN ('NH01','NH02','NH03','NH04','NH05','NH06','NH07','TH01','TH02','TH03','TH04','TH05','TH06','TH07')
+        AND c.NGAY_GIAI_NGAN >= '00010101'
+        AND c.NGAY_GIAI_NGAN <= '99991231'
+        AND c.NGAY_DAO_HAN >= '00010101'
+        AND c.NGAY_DAO_HAN <= '99991231'
         AND E.loai_tk = 'TKTD'
-    ORDER BY a.so_hdtd;
+    ORDER BY 
+        a.ngay_vay;
     """
 
     cursor = sql_conn.cursor()
@@ -644,7 +692,7 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
             raw_ma_loai_hd = "THCDBTNMT" if so_thang > 12 else "NHCDBTNMT"
 
         raw_dia_chi = clean_address(row_map.get("DiaChi"))
-        raw_kv_xa = str(row_map.get("KvXa", "")).strip()
+        raw_kv_xa = str(row_map.get("KvXa") or row_map.get("KhuVuc", "")).strip()
         kv_thon = str(row_map.get("KvThon", "")).strip()
         if not kv_thon:
             m_thon = re.search(r"Thôn\s+[^,]+", raw_dia_chi, re.IGNORECASE)
@@ -671,10 +719,10 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
             "LaiSuat": clean_interest_rate(row_map.get("LaiSuat")),
             "NgayVay": format_efund_date(row_map.get("NgayVay")),
             "DenHan": format_efund_date(row_map.get("DenHan")),
-            "TraLaiDenNgay": format_efund_date(row_map.get("TLDenNgay") or row_map.get("TraLaiDenNgay")),
-            "MaLoaiVay": str(row_map.get("MaLoaiVay", "")).strip(),
+            "TraLaiDenNgay": format_efund_date(row_map.get("TL_DenNgay") or row_map.get("TLDenNgay") or row_map.get("TraLaiDenNgay")),
+            "MaLoaiVay": str(row_map.get("MaLoaiVay") or row_map.get("LoaiVay", "")).strip(),
             "SoThangVay": so_thang,
-            "MoTaVay": clean_address(row_map.get("MoTaVay") or row_map.get("MucDichVay")),
+            "MoTaVay": clean_address(row_map.get("MoTaVay") or row_map.get("MucDich") or row_map.get("MucDichVay")),
             "CBTD_PhuTrach": "qtdyentho.huyennhu",
             "Ten_CBTD": "Trần Như Huyền",
             "TrangThaiHD": "DANG_VAY" if val_du_no > 0 else "DA_TAT_TOAN",
