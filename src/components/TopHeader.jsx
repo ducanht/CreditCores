@@ -19,6 +19,7 @@ export default function TopHeader({
   syncStatus,
   isSyncing,
   onTriggerSync,
+  onOpenCoreSync,
   currentUser,
   onToggleSidebar,
   isDarkMode,
@@ -173,7 +174,7 @@ export default function TopHeader({
           {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
         </button>
 
-        {/* Sync Button */}
+        {/* Sync Button - Mở Trung Tâm Đồng Bộ CoreBanking 100% Qua WebApp */}
         <button
           type="button"
           className={`btn btn-sm ${
@@ -182,19 +183,19 @@ export default function TopHeader({
               : 'btn-brand text-white'
           } d-flex align-items-center gap-1.5 fw-medium px-2.5 shadow-sm`}
           style={{ height: '34px', borderRadius: '8px', fontSize: '0.80rem' }}
-          onClick={onTriggerSync}
+          onClick={() => (onOpenCoreSync ? onOpenCoreSync('current') : onTriggerSync && onTriggerSync())}
           disabled={isProcessing}
           title={
             isProcessing
               ? 'Đang thực hiện đồng bộ dữ liệu SQL Server Core...'
-              : `Bấm để đồng bộ dữ liệu CoreBanking (Lần cuối: ${syncStatus?.lastSyncTime || 'Sẵn sàng'})`
+              : `Bấm để mở Trung Tâm Đồng Bộ CoreBanking SQL (Lần cuối: ${syncStatus?.lastSyncTime || 'Sẵn sàng'})`
           }
         >
           <RefreshCw
             size={13}
             className={isProcessing ? 'fa-spin' : ''}
           />
-          <span className="d-none d-md-inline">{isProcessing ? 'Đang đồng bộ...' : 'Đồng bộ'}</span>
+          <span className="d-none d-md-inline">{isProcessing ? 'Đang đồng bộ...' : 'Đồng bộ Core'}</span>
         </button>
 
         {/* User Profile Pill */}

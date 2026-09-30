@@ -18,7 +18,8 @@ import {
   Clock,
   ShieldCheck,
   ChevronRight,
-  Award
+  Award,
+  Database
 } from 'lucide-react';
 import { formatCurrencyVN } from '../utils/dateUtils';
 import CommuneComparisonChart from './dashboard/CommuneComparisonChart';
@@ -68,7 +69,7 @@ function DashboardSkeleton() {
   );
 }
 
-export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, currentUser, onOpenCustomerQuickView }) {
+export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, currentUser, onOpenCustomerQuickView, onOpenCoreSync }) {
   if (!stats) {
     return <DashboardSkeleton />;
   }
@@ -124,6 +125,16 @@ export default function Dashboard({ stats, onNavigate, onRefresh, syncStatus, cu
           </div>
 
           <div className="d-flex align-items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-success d-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-2 shadow-2xs fw-semibold"
+              onClick={() => onOpenCoreSync ? onOpenCoreSync('current') : handleRefresh()}
+              title="Đồng bộ số liệu trực tiếp từ SQL Server CoreBanking 100% qua WebApp"
+            >
+              <Database size={13} />
+              <span className="small">Đồng bộ Core SQL</span>
+            </button>
+
             <button
               type="button"
               className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-2"

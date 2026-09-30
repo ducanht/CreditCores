@@ -49,7 +49,7 @@ const formatCompactVN = (amount) => {
   return num.toLocaleString('vi-VN') + ' đ';
 };
 
-export default function CreditStatement({ currentUser, onOpenCustomerQuickView }) {
+export default function CreditStatement({ currentUser, onOpenCustomerQuickView, onOpenCoreSync }) {
   // Tab điều hướng chính: 'as_of' (Đến ngày) | 'monthly' (Theo tháng) | 'yearly' (Theo năm) | 'top_50' (Top 50) | 'structure' (Cơ cấu vay)
   const [activeTab, setActiveTab] = useState('as_of');
 
@@ -753,6 +753,7 @@ export default function CreditStatement({ currentUser, onOpenCustomerQuickView }
           isOpen={isExtractModalOpen}
           onClose={() => setIsExtractModalOpen(false)}
           onSuccess={() => loadStatementData(true)}
+          initialMode={activeTab === 'monthly' ? 'month_ends' : 'as_of_date'}
         />
       )}
     </div>

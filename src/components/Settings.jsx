@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { getGasApiUrl, setGasApiUrl, api } from '../services/api';
 
-export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
+export default function Settings({ syncStatus, isSyncing, onTriggerSync, onOpenCoreSync }) {
   const [gasUrlInput, setGasUrlInput] = useState(getGasApiUrl());
   const [saveMsg, setSaveMsg] = useState('');
 
@@ -420,17 +420,41 @@ export default function Settings({ syncStatus, isSyncing, onTriggerSync }) {
       {/* 5. Sync Daemon & Queue Monitor */}
       <div className="card-modern p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
-            <Server size={18} className="text-primary" /> Trạng Thái Đồng Bộ Cơ Sở Dữ Liệu SQL Server
-          </h5>
-          <button
-            className="btn btn-outline-primary btn-sm fw-bold d-flex align-items-center gap-1.5"
-            onClick={onTriggerSync}
-            disabled={isSyncing}
-          >
-            <RefreshCw size={14} className={isSyncing ? 'fa-spin' : ''} />
-            {isSyncing ? 'Đang gửi lệnh...' : 'Gửi Lệnh SYNC_DATA'}
-          </button>
+          <div className="d-flex align-items-center gap-2">
+            <h5 className="fw-bold m-0 text-slate-900 font-heading d-flex align-items-center gap-2">
+              <Server size={18} className="text-primary" /> Trạng Thái Đồng Bộ Cơ Sở Dữ Liệu SQL Server
+            </h5>
+            <span className="badge bg-success-subtle text-success small">100% Qua WebApp</span>
+          </div>
+
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <button
+              className="btn btn-outline-success btn-sm fw-semibold d-flex align-items-center gap-1.5 shadow-2xs"
+              onClick={() => onOpenCoreSync ? onOpenCoreSync('current') : onTriggerSync()}
+              title="Đồng bộ Khách hàng & HĐTD hiện tại thời gian thực"
+            >
+              <Zap size={14} />
+              <span>Đồng Bộ Hiện Tại</span>
+            </button>
+
+            <button
+              className="btn btn-outline-primary btn-sm fw-semibold d-flex align-items-center gap-1.5 shadow-2xs"
+              onClick={() => onOpenCoreSync ? onOpenCoreSync('as_of_date') : onTriggerSync()}
+              title="Trích xuất sao kê đến một ngày cụ thể (HDTD_CORE_DN)"
+            >
+              <Database size={14} />
+              <span>Sao Kê Đến Ngày</span>
+            </button>
+
+            <button
+              className="btn btn-outline-info btn-sm fw-semibold d-flex align-items-center gap-1.5 shadow-2xs"
+              onClick={() => onOpenCoreSync ? onOpenCoreSync('month_ends') : onTriggerSync()}
+              title="Trích xuất sao kê các ngày cuối tháng (HDTD_CORE_ALL)"
+            >
+              <RefreshCw size={14} />
+              <span>Sao Kê Cuối Tháng</span>
+            </button>
+          </div>
         </div>
 
         <div className="row g-3">

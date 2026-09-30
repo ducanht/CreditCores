@@ -57,6 +57,7 @@ const UserManagement = lazyWithRetry(() => import('./components/UserManagement')
 const Settings = lazyWithRetry(() => import('./components/Settings'));
 const ChangePasswordModal = lazyWithRetry(() => import('./components/ChangePasswordModal'));
 const CustomerQuickModal = lazyWithRetry(() => import('./components/CustomerQuickModal'));
+const CoreSyncModal = lazyWithRetry(() => import('./components/CoreSyncModal'));
 
 // Dynamic Prefetching Map
 const TAB_PREFETCHERS = {
@@ -145,6 +146,10 @@ export default function App() {
   const [stats, setStats] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Modal điều khiển đồng bộ CoreBanking SQL Server toàn diện 100% qua WebApp
+  const [isCoreSyncModalOpen, setIsCoreSyncModalOpen] = useState(false);
+  const [coreSyncInitialMode, setCoreSyncInitialMode] = useState('current');
 
   // Cross-module prefill & quick view states
   const [prefilledCustomer, setPrefilledCustomer] = useState(null);
@@ -254,26 +259,30 @@ export default function App() {
     }
   };
 
-  const handleTriggerSync = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
+  // Mở Trung Tâm Đồng Bộ CoreBanking SQL trực tiếp trên WebApp
+  const handleOpenCoreSync = (mode = 'current') => {
+    setCoreSyncInitialMode(mode);
+    setIsCoreSyncModalOpen(true);
+  };
+
+  // Callback sau khi CoreSyncModal hoàn tất đồng bộ thành công
+  const handleCoreSyncSuccess = async (targetSheet, mode) => {
+    api.clearCache();
     try {
-      const res = await api.triggerSqlSync();
-      if (res.status === 'success') {
-        api.clearCache();
-        const [sRes, statsRes] = await Promise.all([
-          api.getSyncStatus(),
-          api.getDashboardStats(true)
-        ]);
-        if (sRes && sRes.status === 'success') setSyncStatus(sRes.data);
-        if (statsRes && statsRes.status === 'success') setStats(statsRes.data);
-        alert(res.message || 'Đồng bộ dữ liệu SQL Server Core thành công!');
-      }
+      const [sRes, statsRes] = await Promise.all([
+        api.getSyncStatus(),
+        api.getDashboardStats(true)
+      ]);
+      if (sRes && sRes.status === 'success') setSyncStatus(sRes.data);
+      if (statsRes && statsRes.status === 'success') setStats(statsRes.data);
     } catch (e) {
-      alert('Lỗi kích hoạt đồng bộ: ' + e.message);
-    } finally {
-      setIsSyncing(false);
+      console.error('Lỗi làm mới số liệu sau đồng bộ:', e);
     }
+  };
+
+  // Nút kích hoạt đồng bộ mặc định mở Modal đồng bộ hiện tại
+  const handleTriggerSync = () => {
+    handleOpenCoreSync('current');
   };
 
   // Cross-module navigation helpers
@@ -340,6 +349,7 @@ export default function App() {
           syncStatus={syncStatus}
           isSyncing={isSyncing}
           onTriggerSync={handleTriggerSync}
+          onOpenCoreSync={handleOpenCoreSync}
           currentUser={currentUser}
           onToggleSidebar={handleToggleSidebar}
           isDarkMode={isDarkMode}
@@ -356,6 +366,7 @@ export default function App() {
                 syncStatus={syncStatus}
                 currentUser={currentUser}
                 onOpenCustomerQuickView={handleOpenCustomerQuickView}
+                onOpenCoreSync={handleOpenCoreSync}
               />
             )}
 
@@ -373,6 +384,7 @@ export default function App() {
               <CreditStatement
                 currentUser={currentUser}
                 onOpenCustomerQuickView={handleOpenCustomerQuickView}
+                onOpenCoreSync={handleOpenCoreSync}
               />
             )}
 
@@ -440,6 +452,7 @@ export default function App() {
                 syncStatus={syncStatus}
                 isSyncing={isSyncing}
                 onTriggerSync={handleTriggerSync}
+                onOpenCoreSync={handleOpenCoreSync}
               />
             )}
           </Suspense>
@@ -458,6 +471,15 @@ export default function App() {
             onNavigateToAppraisal={handleNavigateToAppraisal}
             onNavigateToInspection={handleNavigateToInspection}
             onNavigateToDebit={handleNavigateToDebit}
+          />
+        )}
+
+        {isCoreSyncModalOpen && (
+          <CoreSyncModal
+            isOpen={isCoreSyncModalOpen}
+            onClose={() => setIsCoreSyncModalOpen(false)}
+            onSuccess={handleCoreSyncSuccess}
+            initialMode={coreSyncInitialMode}
           />
         )}
       </Suspense>
