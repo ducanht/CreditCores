@@ -965,6 +965,7 @@ def process_sync_request(spreadsheet, sql_cfg):
                     "Ten_CBTD": prev_r.get("Ten_CBTD", "Lê Văn Tín (CBTD)"),
                     "TrangThaiHD": "DA_TAT_TOAN",
                     "MaLoaiHD": prev_r.get("MaLoaiHD") or ("THCDBTNMT" if prev_r.get("SoThangVay", 12) > 12 else "NHCDBTNMT"),
+                    "NhomNo": prev_r.get("NhomNo", "NHOM1"),
                     "NgayCapNhat": sync_timestamp_str
                 }
                 settled_rows.append(settled_row)
@@ -1134,10 +1135,11 @@ def process_extract_hdtd_snapshot_request(spreadsheet, sql_cfg, params=None, def
             value_input_option="USER_ENTERED"
         )
 
-        # 2. Cập nhật Dòng 2 Headers 23 cột (đảm bảo đúng thứ tự)
+        # 2. Cập nhật Dòng 2 Headers (đảm bảo đúng thứ tự và số lượng cột)
+        end_col_dn = gspread.utils.rowcol_to_a1(2, len(dn_headers)).replace("2", "")
         dn_sheet.update(
             values=[dn_headers],
-            range_name="A2:W2",
+            range_name=f"A2:{end_col_dn}2",
             value_input_option="USER_ENTERED"
         )
 
@@ -1415,12 +1417,14 @@ def main():
     parser.add_argument("--extract-all", action="store_true", help="Thực hiện trích xuất HDTD_CORE_ALL (các ngày cuối tháng) ngay 1 lần từ SQL Server và thoát")
     parser.add_argument("--as-of-date", type=str, default="", help="Mốc ngày sao kê (dd/MM/yyyy) khi dùng --extract-dn hoặc --table")
     parser.add_argument("--mode", type=str, default="as_of_date", help="Chế độ sao kê: 'as_of_date' hoặc 'month_ends'")
+    parser.add_argument("--auto-sync-minutes", type=int, default=0, help="Chu kỳ tự động đồng bộ định kỳ (phút, ví dụ: 30 hoặc 60). 0 = tắt")
     parser.add_argument("--init-schema", action="store_true", help="Khởi tạo hoặc sửa chữa cấu trúc 12 bảng CSDL Google Sheets")
     parser.add_argument("--test-connection", action="store_true", help="Kiểm tra kết nối tới Google Sheets và SQL Server")
     args = parser.parse_args()
 
     config = load_config()
     poll_interval = config.get("poll_interval_seconds", 5)
+    auto_sync_interval = args.auto_sync_minutes if args.auto_sync_minutes > 0 else int(config.get("auto_sync_interval_minutes", 0))
     sheet_id = config["google_sheet_id"]
     cred_file = config["credentials_file"]
     sql_cfg = config["sql_server"]
@@ -1496,25 +1500,33 @@ def main():
         process_sync_request(spreadsheet, sql_cfg)
         sys.exit(0)
 
-    # 5. Chế độ Daemon lắng nghe liên tục 24/7
+    # 5. Chế độ Daemon lắng nghe liên tục 24/7 & Lập lịch tự động
     logger.info("=================================================================")
     logger.info("🚀 CREDIT CORE PYTHON SYNC DAEMON - ĐANG LẮNG NGHE LỆNH TỪ WEBAPP")
     logger.info(f"📍 Google Sheet ID: {sheet_id}")
     logger.info(f"🏢 SQL Server Host: {sql_cfg.get('server', 'localhost')} | DB: {sql_cfg.get('database', '')}")
     logger.info(f"⏱️  Chu kỳ quét hàng đợi: {poll_interval} giây/lần")
+    if auto_sync_interval > 0:
+        logger.info(f"⏰ Tự động đồng bộ định kỳ: Cứ mỗi {auto_sync_interval} phút")
+    else:
+        logger.info("⏰ Tự động đồng bộ định kỳ: Tắt (chỉ kích hoạt qua WebApp hoặc CLI)")
     logger.info("=================================================================")
+
+    last_auto_sync_time = datetime.now()
 
     while True:
         try:
+            # 1. Kiểm tra lệnh từ WebApp qua sheet SETTING
             setting_sheet = spreadsheet.worksheet("SETTING")
             row2 = setting_sheet.row_values(2)
 
             command = row2[0].strip() if len(row2) > 0 else "IDLE"
             status = row2[1].strip() if len(row2) > 1 else "IDLE"
 
-            if command == "SYNC_DATA" and status in ["PENDING", "REQUESTED"]:
+            if command in ["SYNC_DATA", "SYNC_NOW"] and status in ["PENDING", "REQUESTED"]:
                 logger.info(f"🔔 Phát hiện lệnh đồng bộ từ WebApp (COMMAND='{command}', STATUS='{status}')")
                 process_sync_request(spreadsheet, sql_cfg)
+                last_auto_sync_time = datetime.now()
             elif command == "EXTRACT_HDTD_DN" and status in ["PENDING", "REQUESTED"]:
                 logger.info(f"🔔 Phát hiện lệnh trích xuất HDTD_CORE_DN từ WebApp (COMMAND='{command}', STATUS='{status}')")
                 params_val = row2[7].strip() if len(row2) > 7 else ""
@@ -1523,6 +1535,17 @@ def main():
                 logger.info(f"🔔 Phát hiện lệnh trích xuất HDTD_CORE_ALL từ WebApp (COMMAND='{command}', STATUS='{status}')")
                 params_val = row2[7].strip() if len(row2) > 7 else ""
                 process_extract_hdtd_all_request(spreadsheet, sql_cfg, params_val)
+
+            # 2. Kiểm tra chu kỳ tự động đồng bộ định kỳ (nếu cấu hình > 0)
+            if auto_sync_interval > 0:
+                elapsed_min = (datetime.now() - last_auto_sync_time).total_seconds() / 60.0
+                if elapsed_min >= auto_sync_interval:
+                    logger.info(f"⏰ Đến lịch tự động đồng bộ định kỳ ({auto_sync_interval} phút/lần)...")
+                    try:
+                        process_sync_request(spreadsheet, sql_cfg)
+                    except Exception as e_cron:
+                        logger.error(f"Lỗi khi tự động đồng bộ định kỳ: {e_cron}")
+                    last_auto_sync_time = datetime.now()
 
         except gspread.exceptions.APIError as api_err:
             logger.warning(f"Google Sheets API tạm thời bận: {api_err}. Đang tiếp tục lắng nghe...")
