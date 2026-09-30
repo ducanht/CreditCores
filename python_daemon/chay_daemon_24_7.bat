@@ -1,12 +1,12 @@
 @echo off
-chcp 65001 > nul
-title CREDITCORES - DAEMON ĐỒNG BỘ SQL SERVER TỰ ĐỘNG 24/7 (QTDND YÊN THỌ)
+chcp 65001 >nul
+title CREDITCORES - DAEMON DONG BO SQL SERVER TU DONG 24/7 (QTDND YEN THO)
 echo =========================================================================
-echo    CREDITCORES - DAEMON ĐỒNG BỘ SQL SERVER TỰ ĐỘNG (QTDND YÊN THỌ)
+echo    CREDITCORES - DAEMON DONG BO SQL SERVER TU DONG (QTDND YEN THO)
 echo =========================================================================
 echo.
-echo [*] Đang khởi động Daemon lắng nghe WebApp và tự động đồng bộ định kỳ...
-echo [*] Để dừng, nhấn Ctrl + C
+echo - Dang khoi dong Daemon lang nghe WebApp va tu dong dong bo dinh ky...
+echo - De dung tien trinh, nhan to hop phim Ctrl + C
 echo.
 cd /d "%~dp0"
 python sync_daemon.py

@@ -488,7 +488,7 @@ def fetch_customer_core_data(sql_conn, sync_timestamp_str):
     logger.info(f"✅ Đã tải và chuẩn hóa thành công {len(records)} khách hàng từ NG-eFUND.")
     return records
 
-def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=None):
+def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=None, as_of_date=None):
     """
     Truy vấn bảng Khế ước & Hợp đồng Tín dụng từ CSDL NG-eFUND theo chuẩn CoreBanking chuẩn xác:
     - @denngay: Mốc ngày chốt dữ liệu (định dạng YYYYMMDD, ví dụ 20260921).
@@ -496,10 +496,13 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
     - DuNo: convert(int, e.so_du) -> Số tiền DƯ NỢ THỰC TẾ lưu hành (chỉ tính e.so_du > 0).
     - Phân định rõ ràng: DuNo là dư nợ thực tế, TienVay là hạn mức giải ngân ban đầu.
     """
+    # Đồng bộ 2 tên biến as_of_date và as_of_date_str
+    target_date = as_of_date or as_of_date_str
+
     # 1. Chuẩn hóa tham số @denngay dạng YYYYMMDD
     denngay_param = datetime.now().strftime("%Y%m%d")
-    if as_of_date_str:
-        clean_d = str(as_of_date_str).strip()
+    if target_date:
+        clean_d = str(target_date).strip()
         if "/" in clean_d:
             parts = clean_d.split("/")
             if len(parts) == 3:
@@ -651,8 +654,8 @@ def fetch_loan_contract_core_data(sql_conn, sync_timestamp_str, as_of_date_str=N
     columns = []
     rows = []
 
-    # Nếu không truyền as_of_date (đồng bộ HDTD_CORE thời gian thực), ưu tiên 100% query_current_production
-    if not as_of_date:
+    # Nếu không truyền ngày sao kê (đồng bộ HDTD_CORE thời gian thực), ưu tiên 100% query_current_production
+    if not target_date:
         logger.info("🔍 Đang truy vấn dữ liệu HĐTD & Dư nợ hiện tại thời gian thực từ NG-eFUND...")
         try:
             cursor.execute(query_current_production)

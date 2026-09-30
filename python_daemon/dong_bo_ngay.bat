@@ -1,14 +1,14 @@
 @echo off
-chcp 65001 > nul
-title CREDITCORES - ĐỒNG BỘ DỮ LIỆU TỨC THÌ TỪ SQL CORE (KH_CORE & HDTD_CORE)
+chcp 65001 >nul
+title CREDITCORES - DONG BO DU LIEU TUC THI TU SQL CORE (KH_CORE & HDTD_CORE)
 echo =========================================================================
-echo    CREDITCORES - ĐỒNG BỘ DỮ LIỆU TỨC THÌ (KH_CORE & HDTD_CORE)
+echo    CREDITCORES - DONG BO DU LIEU TUC THI (KH_CORE & HDTD_CORE)
 echo =========================================================================
 echo.
-echo [*] Đang thực hiện trích xuất dữ liệu từ NG-eFUND và đẩy lên Google Sheets...
+echo - Dang thuc hien trich xuat du lieu tu NG-eFUND va day len Google Sheets...
 echo.
 cd /d "%~dp0"
 python sync_daemon.py --now
 echo.
-echo [*] Hoàn tất quá trình đồng bộ!
+echo - Hoan tat qua trinh dong bo!
 pause

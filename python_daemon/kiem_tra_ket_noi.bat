@@ -1,8 +1,8 @@
 @echo off
-chcp 65001 > nul
-title CREDITCORES - CHẨN ĐOÁN KẾT NỐI GOOGLE SHEETS VÀ SQL SERVER
+chcp 65001 >nul
+title CREDITCORES - KIEM TRA KET NOI GOOGLE SHEETS & SQL SERVER
 echo =========================================================================
-echo    CREDITCORES - KIỂM TRA KẾT NỐI HỆ THỐNG
+echo    CREDITCORES - KIEM TRA KET NOI HE THONG (QTDND YEN THO)
 echo =========================================================================
 echo.
 cd /d "%~dp0"
